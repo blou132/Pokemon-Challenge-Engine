@@ -3,6 +3,17 @@
 Contrôles exécutés le 29 septembre 2026 sous Windows, avec Python 3.13.7,
 PySide6 6.11.2 et pytest 9.1.1.
 
+## Reprise et publication de la V0.1
+
+Le 29 septembre 2026, la V0.1 a été réauditée dans le dossier de travail renommé.
+La suite a de nouveau réussi (**191 tests**, 13,46 s), ainsi que la compilation et
+l'ouverture/fermeture du véritable point d'entrée Windows. Le code V0.1 a été conservé.
+Les exclusions Git racine couvrent aussi les secrets, les ROM en majuscules, les
+save states DeSmuME et les configurations placées hors du sous-dossier applicatif.
+`python -m tools.audit_repository` vérifie ces exclusions et les fichiers déjà suivis
+sans afficher de contenu sensible. Aucun fichier interdit ni format de secret usuel
+n'a été détecté dans les fichiers suivis avant publication.
+
 ## Résultats
 
 | Contrôle | Résultat |

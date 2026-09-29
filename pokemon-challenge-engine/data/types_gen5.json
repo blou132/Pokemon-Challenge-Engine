@@ -1,0 +1,87 @@
+[
+  {
+    "id": "normal",
+    "name": "Normal",
+    "color": "#A8A77A"
+  },
+  {
+    "id": "fire",
+    "name": "Feu",
+    "color": "#EE8130"
+  },
+  {
+    "id": "water",
+    "name": "Eau",
+    "color": "#6390F0"
+  },
+  {
+    "id": "electric",
+    "name": "Électrik",
+    "color": "#F7D02C"
+  },
+  {
+    "id": "grass",
+    "name": "Plante",
+    "color": "#7AC74C"
+  },
+  {
+    "id": "ice",
+    "name": "Glace",
+    "color": "#96D9D6"
+  },
+  {
+    "id": "fighting",
+    "name": "Combat",
+    "color": "#C22E28"
+  },
+  {
+    "id": "poison",
+    "name": "Poison",
+    "color": "#A33EA1"
+  },
+  {
+    "id": "ground",
+    "name": "Sol",
+    "color": "#E2BF65"
+  },
+  {
+    "id": "flying",
+    "name": "Vol",
+    "color": "#A98FF3"
+  },
+  {
+    "id": "psychic",
+    "name": "Psy",
+    "color": "#F95587"
+  },
+  {
+    "id": "bug",
+    "name": "Insecte",
+    "color": "#A6B91A"
+  },
+  {
+    "id": "rock",
+    "name": "Roche",
+    "color": "#B6A136"
+  },
+  {
+    "id": "ghost",
+    "name": "Spectre",
+    "color": "#735797"
+  },
+  {
+    "id": "dragon",
+    "name": "Dragon",
+    "color": "#6F35FC"
+  },
+  {
+    "id": "dark",
+    "name": "Ténèbres",
+    "color": "#705746"
+  },
+  {
+    "id": "steel",
+    "name": "Acier",
+    "color": "#B7B7CE"
+  }
+]

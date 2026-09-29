@@ -1,0 +1,296 @@
+[
+  {
+    "id": "nuzlocke",
+    "name": "Nuzlocke",
+    "description": "Seule la première rencontre de chaque zone peut être capturée. Un Pokémon K.O. est retiré définitivement. Convention proposée, à adapter à votre partie.",
+    "difficulty": 3,
+    "category": "Aventure",
+    "requires": [
+      "permanent_death"
+    ],
+    "conflicts_with": [
+      "shiny_only"
+    ],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  },
+  {
+    "id": "permanent_death",
+    "name": "Mort permanente",
+    "description": "Tout Pokémon K.O. est retiré de l'équipe et ne peut plus être utilisé. Suivi manuel uniquement en V0.1.",
+    "difficulty": 4,
+    "category": "Équipe",
+    "requires": [],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "future_strict",
+    "parameters": {}
+  },
+  {
+    "id": "species_clause",
+    "name": "Species Clause",
+    "description": "Les espèces déjà capturées peuvent être ignorées pour la première rencontre d'une zone. Cette variante suppose le cadre Nuzlocke.",
+    "difficulty": 2,
+    "category": "Capture",
+    "requires": [
+      "nuzlocke"
+    ],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  },
+  {
+    "id": "level_cap",
+    "name": "Level Cap",
+    "description": "Fixez manuellement le niveau maximum autorisé. Le plafond peut évoluer dans le suivi du profil.",
+    "difficulty": 3,
+    "category": "Progression",
+    "requires": [],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "future_strict",
+    "parameters": {
+      "max_level": {
+        "type": "integer",
+        "label": "Niveau maximum",
+        "default": 20,
+        "min": 1,
+        "max": 100
+      }
+    }
+  },
+  {
+    "id": "monotype",
+    "name": "Monotype",
+    "description": "Composez une équipe autour d'un type tiré parmi les 17 types de génération V. Modes souple, strict et pur configurables.",
+    "difficulty": 3,
+    "category": "Équipe",
+    "requires": [],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "future_strict",
+    "parameters": {}
+  },
+  {
+    "id": "no_items",
+    "name": "No Items",
+    "description": "Aucun objet du sac pendant un combat, sauf les Poké Balls. Les objets tenus restent autorisés dans cette convention.",
+    "difficulty": 3,
+    "category": "Combat",
+    "requires": [],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  },
+  {
+    "id": "no_healing",
+    "name": "No Healing",
+    "description": "Interdisez manuellement les soins volontaires par objets ou capacités. Les soins au Centre Pokémon sont gérés séparément.",
+    "difficulty": 4,
+    "category": "Combat",
+    "requires": [],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  },
+  {
+    "id": "no_pokemon_center",
+    "name": "No Pokémon Center",
+    "description": "N'utilisez pas les services de soin des Centres Pokémon. Les soins scénarisés restent à votre appréciation.",
+    "difficulty": 4,
+    "category": "Exploration",
+    "requires": [],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  },
+  {
+    "id": "no_evolution",
+    "name": "No Evolution",
+    "description": "Aucun membre de l'équipe ne peut évoluer pendant cette partie. Les Pokémon capturés déjà évolués restent autorisés.",
+    "difficulty": 3,
+    "category": "Équipe",
+    "requires": [],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  },
+  {
+    "id": "solo_run",
+    "name": "Solo Run",
+    "description": "Un seul Pokémon participe aux combats. Les compagnons nécessaires à la progression restent hors des combats.",
+    "difficulty": 4,
+    "category": "Équipe",
+    "requires": [],
+    "conflicts_with": [
+      "nuzlocke",
+      "catch_limit"
+    ],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  },
+  {
+    "id": "shiny_only",
+    "name": "Shiny Only",
+    "description": "Seuls les Pokémon chromatiques peuvent combattre. Convention de départ à organiser avant la partie.",
+    "difficulty": 5,
+    "category": "Capture",
+    "requires": [],
+    "conflicts_with": [
+      "nuzlocke",
+      "starter_only"
+    ],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  },
+  {
+    "id": "randomizer",
+    "name": "Randomizer",
+    "description": "Enregistrez l'intention d'utiliser une ROM randomisée séparément. Cette application ne randomise et ne modifie aucune ROM.",
+    "difficulty": 3,
+    "category": "Variation",
+    "requires": [],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "planned",
+    "parameters": {}
+  },
+  {
+    "id": "catch_limit",
+    "name": "Catch Limit",
+    "description": "Limitez le nombre de captures autorisées par zone. Réglage manuel; incompatible ici avec la première rencontre Nuzlocke.",
+    "difficulty": 3,
+    "category": "Capture",
+    "requires": [],
+    "conflicts_with": [
+      "nuzlocke",
+      "solo_run",
+      "starter_only"
+    ],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {
+      "per_zone": {
+        "type": "integer",
+        "label": "Captures par zone",
+        "default": 1,
+        "min": 1,
+        "max": 99
+      }
+    }
+  },
+  {
+    "id": "starter_only",
+    "name": "Starter Only",
+    "description": "Seul le Pokémon de départ participe aux combats. Implique Solo Run; aucun remplacement du combattant.",
+    "difficulty": 4,
+    "category": "Équipe",
+    "requires": [
+      "solo_run"
+    ],
+    "conflicts_with": [
+      "shiny_only",
+      "catch_limit"
+    ],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  },
+  {
+    "id": "unevolved",
+    "name": "Unevolved Challenge",
+    "description": "Seuls les Pokémon au premier stade d'une famille évolutive peuvent combattre. Implique l'interdiction d'évoluer.",
+    "difficulty": 4,
+    "category": "Équipe",
+    "requires": [
+      "no_evolution"
+    ],
+    "conflicts_with": [],
+    "supported_games": [
+      "black",
+      "black2"
+    ],
+    "supports_strict_mode": false,
+    "supports_soft_mode": true,
+    "implementation_status": "ui_only",
+    "parameters": {}
+  }
+]

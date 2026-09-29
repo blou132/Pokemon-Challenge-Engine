@@ -1,0 +1,49 @@
+[
+  {
+    "id": "classic_nuzlocke",
+    "name": "Classic Nuzlocke",
+    "mode": "custom",
+    "required": [
+      "nuzlocke",
+      "permanent_death",
+      "species_clause"
+    ],
+    "count": 3
+  },
+  {
+    "id": "hardcore_nuzlocke",
+    "name": "Hardcore Nuzlocke",
+    "mode": "custom",
+    "required": [
+      "nuzlocke",
+      "permanent_death",
+      "species_clause",
+      "level_cap",
+      "no_items"
+    ],
+    "count": 5
+  },
+  {
+    "id": "monotype",
+    "name": "Monotype",
+    "mode": "custom",
+    "required": [
+      "monotype"
+    ],
+    "count": 1
+  },
+  {
+    "id": "chaos",
+    "name": "Chaos",
+    "mode": "random",
+    "required": [],
+    "count": 5
+  },
+  {
+    "id": "custom",
+    "name": "Custom — libre",
+    "mode": "custom",
+    "required": [],
+    "count": 0
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "black",
+    "name": "Pokémon Noir",
+    "generation": 5,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": true,
+    "supports_desmume": true,
+    "status": "supported"
+  },
+  {
+    "id": "black2",
+    "name": "Pokémon Noir 2",
+    "generation": 5,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": true,
+    "supports_desmume": true,
+    "status": "supported"
+  },
+  {
+    "id": "white",
+    "name": "Pokémon Blanc",
+    "generation": 5,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": true,
+    "supports_desmume": true,
+    "status": "planned"
+  },
+  {
+    "id": "white2",
+    "name": "Pokémon Blanc 2",
+    "generation": 5,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": true,
+    "supports_desmume": true,
+    "status": "planned"
+  },
+  {
+    "id": "platinum",
+    "name": "Pokémon Platine",
+    "generation": 4,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": true,
+    "supports_desmume": true,
+    "status": "planned"
+  },
+  {
+    "id": "heartgold",
+    "name": "Pokémon HeartGold",
+    "generation": 4,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": true,
+    "supports_desmume": true,
+    "status": "planned"
+  },
+  {
+    "id": "soulsilver",
+    "name": "Pokémon SoulSilver",
+    "generation": 4,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": true,
+    "supports_desmume": true,
+    "status": "planned"
+  },
+  {
+    "id": "emerald",
+    "name": "Pokémon Émeraude",
+    "generation": 3,
+    "platform": "Game Boy Advance",
+    "type_count": 17,
+    "supports_monotype": true,
+    "supports_desmume": false,
+    "status": "planned"
+  }
+]

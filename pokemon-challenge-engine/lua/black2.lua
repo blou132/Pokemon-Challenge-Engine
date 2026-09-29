@@ -1,0 +1,6 @@
+-- Pokemon Challenge Engine — Pokémon Noir 2 — placeholder V0.1.
+-- Ce fichier ne lit et n'écrit aucune adresse mémoire.
+-- TODO V0.2 : identifier région, révision et empreinte de la ROM autorisée.
+-- TODO V0.2 : vérifier les adresses de l'équipe et les structures des Pokémon.
+-- TODO V0.2 : concevoir le protocole de lecture avec l'application Python.
+-- TODO : maintenir une cartographie distincte de celle de Pokémon Noir.

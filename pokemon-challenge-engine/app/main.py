@@ -9,6 +9,7 @@ import sys
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMessageBox
 
+from app import __version__
 from app.core.catalog import Catalog
 from app.ui.main_window import MainWindow
 from app.ui.theme import STYLESHEET
@@ -52,7 +53,7 @@ def main() -> int:
     app.setWindowIcon(application_icon())
     try:
         configure_logging(PROJECT_DIR, args.debug)
-        logging.info("Démarrage de Pokemon Challenge Engine V0.1.0")
+        logging.info("Démarrage de Pokemon Challenge Engine V%s", __version__)
         catalog = Catalog.load(PROJECT_DIR / "data")
         window = MainWindow(catalog, PROJECT_DIR)
     except (ValueError, OSError) as exc:

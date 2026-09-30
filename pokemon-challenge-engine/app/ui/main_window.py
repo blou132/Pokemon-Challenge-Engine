@@ -6,13 +6,16 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QMainWindow, QMessageBox, QPushButton, QStackedWidget, QVBoxLayout, QWidget
 
+from app import __version__
 from app.core.catalog import Catalog
 from app.core.challenge_engine import ChallengeEngine
 from app.core.profile_manager import ProfileManager
 from app.models.challenge import Challenge
 from app.models.profile import Profile
+from app.services.bridge_controller import BridgeController
 from app.services.config_service import AppConfig, ConfigService
 from app.services.launcher_service import LauncherService
+from app.ui.bridge_page import BridgePage
 from app.ui.challenge_page import ChallengePage
 from app.ui.home_page import HomePage
 from app.ui.profile_page import ProfilePage
@@ -48,7 +51,7 @@ class MainWindow(QMainWindow):
         side.addSpacing(28)
         self.nav_group = QButtonGroup(self)
         self.nav_buttons: list[QPushButton] = []
-        for index, name in enumerate(["⌂   Accueil", "+   Nouveau challenge", "≡   Règles", "▤   Profils", "⚙   Paramètres"]):
+        for index, name in enumerate(["⌂   Accueil", "+   Nouveau challenge", "≡   Règles", "▤   Profils", "⚙   Paramètres", "↔   Connexion DeSmuME"]):
             button = QPushButton(name)
             button.setObjectName("nav")
             button.setCheckable(True)
@@ -60,7 +63,7 @@ class MainWindow(QMainWindow):
         side.addWidget(label("UN CHALLENGE À LA FOIS", "eyebrow"))
         side.addWidget(label("Préparez. Sauvegardez.\nPartez à l'aventure.", "muted"))
         side.addSpacing(15)
-        side.addWidget(label("V0.1.0   •   LOCAL", "badge"))
+        side.addWidget(label(f"V{__version__}   •   LOCAL", "badge"))
         main.addWidget(sidebar)
         self.pages = QStackedWidget()
         self.home_page = HomePage(catalog)
@@ -68,7 +71,9 @@ class MainWindow(QMainWindow):
         self.rules_page = RulesPage(catalog)
         self.profile_page = ProfilePage(catalog, self.profiles)
         self.settings_page = SettingsPage(self.config_service, self.config, catalog.games.values())
-        for page in (self.home_page, self.challenge_page, self.rules_page, self.profile_page, self.settings_page):
+        self.bridge_controller = BridgeController(base_dir, self)
+        self.bridge_page = BridgePage(catalog, self.bridge_controller, self.config)
+        for page in (self.home_page, self.challenge_page, self.rules_page, self.profile_page, self.settings_page, self.bridge_page):
             self.pages.addWidget(page)
         main.addWidget(self.pages, 1)
         self.setCentralWidget(center)
@@ -82,7 +87,7 @@ class MainWindow(QMainWindow):
         self.settings_page.config_changed.connect(self.config_changed)
         self.navigate(0)
         self.refresh_home()
-        self.statusBar().showMessage("Prêt  ·  V0.1 : préparation et suivi, sans application des règles dans le jeu")
+        self.statusBar().showMessage(f"Prêt  ·  V{__version__} : préparation et lecture Lua, règles à respecter manuellement")
         if self.config_service.warnings:
             warning_text = "\n".join(self.config_service.warnings)
             QTimer.singleShot(0, lambda: QMessageBox.warning(self, "Configuration à vérifier", warning_text))
@@ -112,6 +117,7 @@ class MainWindow(QMainWindow):
 
     def config_changed(self, config: AppConfig) -> None:
         self.config = config
+        self.bridge_page.set_config(config)
         self.statusBar().showMessage("Paramètres enregistrés", 6000)
 
     def launch_challenge(self, challenge: Challenge) -> None:
@@ -126,7 +132,8 @@ class MainWindow(QMainWindow):
         except (ValueError, OSError) as exc:
             QMessageBox.warning(self, "Lancement impossible", str(exc))
             return
-        self.statusBar().showMessage("DeSmuME démarré · Les règles restent à respecter manuellement en V0.1.", 12000)
+        self.bridge_page.track_process(process)
+        self.statusBar().showMessage("DeSmuME démarré · Consultez Connexion DeSmuME pour préparer Lua. Les règles restent manuelles.", 12000)
         # Détecter un refus immédiat, sans attendre ni bloquer l'interface.
         QTimer.singleShot(1500, lambda: self._check_launch(process))
 
@@ -135,3 +142,7 @@ class MainWindow(QMainWindow):
         if code is not None and code != 0:
             LOGGER.warning("DeSmuME s'est arrêté au démarrage (code %s).", code)
             QMessageBox.warning(self, "DeSmuME s'est arrêté", "L'émulateur s'est arrêté après le lancement. Vérifiez votre installation et la ROM sélectionnée.")
+
+    def closeEvent(self, event) -> None:
+        self.bridge_controller.shutdown()
+        super().closeEvent(event)

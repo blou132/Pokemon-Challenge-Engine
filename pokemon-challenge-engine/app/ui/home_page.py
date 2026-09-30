@@ -3,6 +3,7 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
+from app import __version__
 from app.core.catalog import Catalog
 from app.ui.widgets.common import card, label, page_layout
 
@@ -17,7 +18,7 @@ class HomePage(QWidget):
         hero, box = card()
         hero.setObjectName("hero")
         box.setContentsMargins(30, 28, 30, 28)
-        box.addWidget(label("POKEMON CHALLENGE ENGINE   /   V0.1", "eyebrow"))
+        box.addWidget(label(f"POKEMON CHALLENGE ENGINE   /   V{__version__}", "eyebrow"))
         box.addSpacing(8)
         box.addWidget(label("Votre prochaine aventure,\nvos propres règles.", "heroTitle"))
         box.addWidget(label("De la première idée au profil prêt à lancer : composez un Nuzlocke,\ntentez un Monotype ou laissez le hasard décider.", "subtitle"))
@@ -56,6 +57,6 @@ class HomePage(QWidget):
         layout.addLayout(stats)
         self.profile_count = label("", "subtitle")
         layout.addWidget(self.profile_count)
-        layout.addWidget(label("V0.1 · Les règles sont préparées et suivies dans cette application. Leur application dans DeSmuME est prévue pour les prochaines versions.", "badge"))
+        layout.addWidget(label(f"V{__version__} · Les règles restent à respecter manuellement dans le jeu. La page Connexion DeSmuME affiche les données transmises par Lua.", "badge"))
         layout.addStretch()
 

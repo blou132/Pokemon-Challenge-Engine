@@ -13,3 +13,6 @@ class Game:
     supports_monotype: bool
     supports_desmume: bool
     status: str
+    game_code: str | None = None
+    region: str | None = None
+    revision: int | None = None

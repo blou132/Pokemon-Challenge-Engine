@@ -5,6 +5,7 @@ from copy import deepcopy
 import pytest
 
 from app.core.challenge_engine import ChallengeEngine
+from app.core.profile_manager import ProfileManager
 from app.models.challenge import Challenge
 
 
@@ -17,6 +18,20 @@ def test_normal_has_no_rules_even_when_states_are_required(catalog):
 def test_custom_includes_dependency_closure(catalog):
     result = ChallengeEngine(catalog).generate("black2", "custom", {"species_clause": "required"}, 1, 123)
     assert result.active_rules == ["nuzlocke", "permanent_death", "species_clause"]
+
+
+@pytest.mark.parametrize("game_id", ["black", "white", "black2", "white2"])
+def test_gen5_challenge_roundtrip_keeps_game_and_v01_profile_schema(catalog, tmp_path, game_id):
+    engine = ChallengeEngine(catalog)
+    challenge = engine.generate(game_id, "custom", {"species_clause": "required", "monotype": "required"}, 4, 123)
+    assert not engine.validate(challenge)
+    assert challenge.active_rules == ["monotype", "nuzlocke", "permanent_death", "species_clause"]
+    manager = ProfileManager(tmp_path / "profiles")
+    stored = manager.create(catalog.games[game_id].name, challenge)
+    loaded = manager.load(stored.id).challenge
+    assert loaded.game_id == game_id
+    assert loaded.version == "0.1.0"
+    assert loaded.to_dict() == challenge.to_dict()
 
 
 def test_monotype_auto_config_and_parameters_saved(catalog):

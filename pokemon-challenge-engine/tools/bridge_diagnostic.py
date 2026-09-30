@@ -9,6 +9,7 @@ from pathlib import Path
 import time
 
 from app.bridge.state import BridgeState
+from app.bridge.protocol import GAME_IDS
 from app.services.bridge_service import BridgeService
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -71,7 +72,8 @@ def _frequency(first_received: float | None, last_received: float | None, messag
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Vérifier le transport fichier entre DeSmuME/Lua et Python.")
-    parser.add_argument("--game", choices=("black", "black2"), required=True, help="Jeu attendu : black (Noir) ou black2 (Noir 2).")
+    parser.add_argument("--game", choices=sorted(GAME_IDS), required=True,
+                        help="Jeu attendu : black (Noir), white (Blanc), black2 (Noir 2), white2 (Blanc 2).")
     parser.add_argument("--rom", default="", help="ROM locale à identifier en lecture seule ; son lancement reste manuel.")
     parser.add_argument("--duration", type=_duration, default=60.0, help="Durée de surveillance en secondes (défaut : 60).")
     parser.add_argument("--base-dir", type=Path, default=PROJECT_DIR, help="Dossier des fichiers locaux (défaut : dossier du projet).")

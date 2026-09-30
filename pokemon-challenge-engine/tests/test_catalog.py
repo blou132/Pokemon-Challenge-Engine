@@ -7,6 +7,7 @@ import shutil
 import pytest
 
 from app.core.catalog import Catalog
+from app.models.game import Game
 
 
 @pytest.fixture
@@ -25,9 +26,29 @@ def _mutate(data_dir, filename, change):
 
 
 def test_catalog_contains_expected_base(catalog):
-    assert {game.id for game in catalog.games.values() if game.status == "supported"} == {"black", "black2"}
+    assert {game.id for game in catalog.games.values() if game.status == "supported"} == {"black", "white", "black2", "white2"}
     assert len(catalog.rules) == 15
     assert {preset["id"] for preset in catalog.presets} == {"classic_nuzlocke", "hardcore_nuzlocke", "monotype", "chaos", "custom"}
+
+
+@pytest.mark.parametrize("game_id,name,code", [
+    ("black", "Pokémon Noir", "IRBF"), ("white", "Pokémon Blanc", "IRAF"),
+    ("black2", "Pokémon Noir 2", "IREF"), ("white2", "Pokémon Blanc 2", "IRDF"),
+])
+def test_gen5_catalog_has_distinct_french_identity(catalog, game_id, name, code):
+    game = catalog.games[game_id]
+    assert (game.name, game.generation, game.platform) == (name, 5, "Nintendo DS")
+    assert (game.game_code, game.region, game.revision) == (code, "FR", 0)
+    assert game.status == "supported" and game.supports_desmume
+    assert all(game_id in rule.supported_games for rule in catalog.rules.values())
+
+
+def test_catalog_and_game_from_v01_remain_compatible(data_dir):
+    _mutate(data_dir, "games.json", lambda rows: [row.pop(key, None) for row in rows
+                                                for key in ("game_code", "region", "revision")])
+    game = Catalog.load(data_dir).games["black"]
+    assert (game.game_code, game.region, game.revision) == (None, None, None)
+    assert Game("custom", "Ancien jeu", 5, "Nintendo DS", 17, True, True, "supported").game_code is None
 
 
 @pytest.mark.parametrize("filename,change,match", [
@@ -35,6 +56,12 @@ def test_catalog_contains_expected_base(catalog):
     ("games.json", lambda rows: rows[0].update(generation=True), "entier"),
     ("games.json", lambda rows: rows[0].update(supports_monotype="yes"), "booléens"),
     ("games.json", lambda rows: rows[0].update(status="live"), "statut"),
+    ("games.json", lambda rows: rows[0].update(game_code="IR"), "code de jeu"),
+    ("games.json", lambda rows: rows[0].update(game_code=[]), "code de jeu"),
+    ("games.json", lambda rows: rows[0].update(region="XX"), "région"),
+    ("games.json", lambda rows: rows[0].update(revision=True), "entier"),
+    ("games.json", lambda rows: rows[0].update(revision=256), "entier"),
+    ("games.json", lambda rows: rows[0].pop("revision"), "champs"),
     ("rules.json", lambda rows: rows[0].update(requires=["missing"]), "inconnue"),
     ("rules.json", lambda rows: rows[0].update(supported_games=["missing"]), "inconnu"),
     ("rules.json", lambda rows: rows[0].update(implementation_status="applied"), "statut"),

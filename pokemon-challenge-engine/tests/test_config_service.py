@@ -24,6 +24,29 @@ def test_configuration_roundtrip(tmp_path: Path) -> None:
     assert not list(service.path.parent.glob("*.tmp"))
 
 
+def test_v01_config_gains_white_paths_without_changing_existing_file(tmp_path: Path) -> None:
+    original = {"retrobat_path": "D:/RetroBat", "desmume_path": "D:/DeSmuME.exe", "save_path": "D:/Saves",
+                "rom_paths": {"black": "D:/ROM/Noir.nds", "black2": "D:/ROM/Noir 2.nds", "custom": "D:/ROM/custom.nds"}}
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps(original), encoding="utf-8")
+    before = (path.read_bytes(), path.stat().st_mtime_ns)
+    service = ConfigService(path)
+    config = service.load()
+    assert config.rom_paths == original["rom_paths"] | {"white": "", "white2": ""}
+    assert (path.read_bytes(), path.stat().st_mtime_ns) == before
+    config.rom_paths.update(white="D:/ROM/Blanc.nds", white2="D:/ROM/Blanc 2.nds")
+    service.save(config)
+    assert service.load() == config
+    assert not service.warnings
+
+
+def test_constructor_preserves_caller_rom_mapping():
+    paths = {"white": "D:/ROM/Blanc.nds"}
+    config = AppConfig(rom_paths=paths)
+    assert paths == {"white": "D:/ROM/Blanc.nds"}
+    assert config.rom_paths == {"black": "", "white": paths["white"], "black2": "", "white2": ""}
+
+
 @pytest.mark.parametrize("content", [
     "{", "[]", '{"desmume_path": null}', '{"rom_paths": []}', '{"rom_paths": {"black": 42}}',
     '{"save_path": NaN}', '{"save_path": "a", "save_path": "b"}', '{"unknown_field": true}',

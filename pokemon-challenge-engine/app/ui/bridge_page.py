@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QWidget,
 )
 
-from app.bridge.protocol import PROTOCOL_VERSION
+from app.bridge.protocol import GAME_IDS, PROTOCOL_VERSION
 from app.bridge.state import BridgeState
 from app.core.catalog import Catalog
 from app.services.bridge_controller import BridgeController
@@ -43,7 +43,7 @@ class BridgePage(QWidget):
         self.game_combo = QComboBox()
         self.game_combo.setAccessibleName("Jeu à connecter")
         for game in catalog.games.values():
-            if game.id in {"black", "black2"} and game.status == "supported":
+            if game.id in GAME_IDS and game.status == "supported":
                 self.game_combo.addItem(game.name, game.id)
         actions = QHBoxLayout()
         actions.addWidget(self.game_combo, 1)

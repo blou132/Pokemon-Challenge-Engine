@@ -61,9 +61,28 @@ def test_missing_paths_return_french_errors() -> None:
 
 def test_unsupported_game_is_rejected(configured: tuple[LauncherService, Path, Path, Path]) -> None:
     service, _, _, _ = configured
-    assert service.validate("white")
+    assert service.validate("platinum")
     with pytest.raises(ValueError):
-        service.build_command("white")
+        service.build_command("platinum")
+
+
+@pytest.mark.parametrize("game_id", ["black", "white", "black2", "white2"])
+def test_gen5_launch_uses_only_selected_rom(tmp_path, game_id):
+    emulator = tmp_path / "DeSmuME.exe"
+    emulator.write_bytes(b"emulateur factice")
+    paths = {}
+    for candidate in ("black", "white", "black2", "white2"):
+        rom = tmp_path / f"{candidate}.nds"
+        rom.write_bytes(candidate.encode("ascii"))
+        paths[candidate] = str(rom)
+    service = LauncherService(AppConfig(desmume_path=str(emulator), rom_paths=paths))
+    before = {candidate: Path(path).read_bytes() for candidate, path in paths.items()}
+    with patch("pathlib.Path.open", side_effect=AssertionError("Le launcher ne lit pas la ROM")), \
+         patch("app.services.launcher_service.subprocess.Popen", return_value=Mock(pid=1234)) as popen:
+        assert service.validate(game_id) == []
+        service.launch(game_id)
+    assert popen.call_args.args[0] == [str(emulator.resolve()), str(Path(paths[game_id]).resolve())]
+    assert {candidate: Path(path).read_bytes() for candidate, path in paths.items()} == before
 
 
 def test_directories_cannot_be_executable_or_rom(tmp_path: Path) -> None:

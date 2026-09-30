@@ -65,6 +65,19 @@ def test_save_emits_config_and_persists(settings) -> None:
     dialog.assert_called_once()
 
 
+def test_four_gen5_rom_fields_keep_independent_paths(settings):
+    _, page, service = settings
+    assert set(page.rom_edits) == {"black", "white", "black2", "white2"}
+    expected = {game_id: f"D:/ROM/{game_id}.nds" for game_id in page.rom_edits}
+    for game_id, path in expected.items():
+        page.rom_edits[game_id].setText(path)
+    assert page.rom_edits["white"].accessibleName() == "Pokémon Blanc — ROM .nds"
+    assert page.rom_edits["white2"].accessibleName() == "Pokémon Blanc 2 — ROM .nds"
+    with patch("app.ui.settings_page.QMessageBox.information"):
+        page.save_button.click()
+    assert service.load().rom_paths == expected
+
+
 def test_save_error_is_shown_without_signal(settings) -> None:
     _, page, service = settings
     updates = []

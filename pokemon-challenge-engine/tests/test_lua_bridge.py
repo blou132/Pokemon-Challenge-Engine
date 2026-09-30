@@ -8,8 +8,8 @@ from app.services.emulator_service import EmulatorService, lua_literal
 from test_lua_gen5_reader import PROJECT, PROFILES, lua51, scenario, synthetic_slot
 
 
-def run_producer(lua51, script, *, slots=(), code="IREF", revision=0, extra="", frames=120, normal_exit=False):
-    simulation = scenario(PROFILES[1], slots, code=code, revision=revision)
+def run_producer(lua51, script, *, slots=(), code="IREF", revision=0, extra="", frames=120, normal_exit=False, profile=None):
+    simulation = scenario(profile or PROFILES[1], slots, code=code, revision=revision)
     # scenario définit memory localement ; le producteur consulte l'API globale.
     simulation += f"""
 _G.memory = memory
@@ -52,6 +52,17 @@ def test_lua_reads_synthetic_party_then_python_validates(tmp_path, lua51):
     assert state.status == "receiving"
     assert state.party == [{"slot": 1, "species_id": 501, "level": 5, "hp": 0, "max_hp": 21}]
     assert state.memory_profile == "black2_fr_rev0"
+
+
+@pytest.mark.parametrize("profile", PROFILES, ids=lambda profile: profile["id"])
+def test_all_profiles_cross_the_lua_python_boundary_without_aliases(tmp_path, lua51, profile):
+    bridge = BridgeService(tmp_path / "runtime/bridge")
+    script = EmulatorService(tmp_path, bridge).prepare(profile["game_id"])
+    run_producer(lua51, script, slots=[synthetic_slot(7)], code=profile["game_code"], profile=profile)
+    state = bridge.poll()
+    assert state.game_id == profile["game_id"] and state.game_code == profile["game_code"]
+    assert state.memory_profile == profile["id"] and state.status == "receiving"
+    assert state.party == [{"slot": 1, "species_id": 501, "level": 5, "hp": 19, "max_hp": 21}]
 
 
 @pytest.mark.parametrize("code,revision", [("IREO", 0), ("IREF", 1), ("IREK", 0)])

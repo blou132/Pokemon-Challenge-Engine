@@ -5,10 +5,12 @@ import json
 import re
 from typing import Any
 
+from app.core.game_detector import GAME_CODE_PREFIXES
+
 PROTOCOL_VERSION = 1
 SCRIPT_VERSION = "0.2.0"
 MAX_MESSAGE_BYTES = 65_536
-GAME_IDS = frozenset({"black", "black2"})
+GAME_IDS = frozenset(GAME_CODE_PREFIXES.values())
 GAME_REGIONS = frozenset({"FR", "EN", "DE", "IT", "ES", "JP", "KO"})
 CAPABILITIES = frozenset({"heartbeat", "game_identity", "party_size", "party_level", "party_hp", "party_species"})
 EVENTS = frozenset({"hello", "heartbeat", "party_update", "bridge_error", "emulator_closing"})
@@ -114,6 +116,8 @@ def parse_message(payload: bytes) -> BridgeMessage:
     code = data["game_code"]
     if code is not None and (not isinstance(code, str) or re.fullmatch(r"[A-Z0-9]{4}", code) is None):
         raise ProtocolError("Code du jeu invalide.")
+    if code is not None and data["game_id"] is not None and GAME_CODE_PREFIXES.get(code[:3]) != data["game_id"]:
+        raise ProtocolError("Le code ROM et l'identifiant du jeu ne correspondent pas.")
     _integer(data["rom_revision"], "rom_revision", 0, 255, nullable=True)
     capabilities = data["capabilities"]
     if not isinstance(capabilities, list) or len(capabilities) > len(CAPABILITIES):

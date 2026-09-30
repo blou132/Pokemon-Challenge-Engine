@@ -1,7 +1,7 @@
 """Accueil sobre : jeux disponibles et accès aux parcours principaux."""
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget
+from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QPushButton, QWidget
 
 from app import __version__
 from app.core.catalog import Catalog
@@ -35,7 +35,7 @@ class HomePage(QWidget):
         box.addLayout(actions)
         layout.addWidget(hero)
         layout.addWidget(label("Choisissez votre terrain de jeu", "sectionTitle"))
-        games_row = QHBoxLayout()
+        games_row = QGridLayout()
         games_row.setSpacing(18)
         for index, game in enumerate(g for g in catalog.games.values() if g.status == "supported"):
             frame, game_box = card()
@@ -45,7 +45,7 @@ class HomePage(QWidget):
             button = QPushButton("Préparer une partie  →")
             button.clicked.connect(lambda _checked=False, game_id=game.id: self.create_requested.emit(game_id))
             game_box.addWidget(button)
-            games_row.addWidget(frame, 1)
+            games_row.addWidget(frame, index // 2, index % 2)
         layout.addLayout(games_row)
         stats = QHBoxLayout()
         for value, title, description in [(str(len(catalog.rules)), "Règles configurables", "Obligatoires, possibles ou interdites."), (str(len(catalog.types)), "Types pour votre Monotype", "Une roue animée, un tirage reproductible."), ("100 %", "Préparation locale", "Vos profils restent sur cet ordinateur.")]:

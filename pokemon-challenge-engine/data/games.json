@@ -7,17 +7,10 @@
     "type_count": 17,
     "supports_monotype": true,
     "supports_desmume": true,
-    "status": "supported"
-  },
-  {
-    "id": "black2",
-    "name": "Pokémon Noir 2",
-    "generation": 5,
-    "platform": "Nintendo DS",
-    "type_count": 17,
-    "supports_monotype": true,
-    "supports_desmume": true,
-    "status": "supported"
+    "status": "supported",
+    "game_code": "IRBF",
+    "region": "FR",
+    "revision": 0
   },
   {
     "id": "white",
@@ -27,7 +20,23 @@
     "type_count": 17,
     "supports_monotype": true,
     "supports_desmume": true,
-    "status": "planned"
+    "status": "supported",
+    "game_code": "IRAF",
+    "region": "FR",
+    "revision": 0
+  },
+  {
+    "id": "black2",
+    "name": "Pokémon Noir 2",
+    "generation": 5,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": true,
+    "supports_desmume": true,
+    "status": "supported",
+    "game_code": "IREF",
+    "region": "FR",
+    "revision": 0
   },
   {
     "id": "white2",
@@ -37,7 +46,10 @@
     "type_count": 17,
     "supports_monotype": true,
     "supports_desmume": true,
-    "status": "planned"
+    "status": "supported",
+    "game_code": "IRDF",
+    "region": "FR",
+    "revision": 0
   },
   {
     "id": "platinum",

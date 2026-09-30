@@ -78,6 +78,17 @@ def test_without_producer_cli_fails_and_stops_session(scenario, capsys) -> None:
     assert (scenario.directory / "stop").exists()
 
 
+@pytest.mark.parametrize("game,code", [("white", "IRAF"), ("white2", "IRDF")])
+def test_cli_accepts_white_versions_with_real_identity_contract(scenario, capsys, game, code):
+    identity = {"game_id": game, "game_code": code}
+    scenario.messages = [(0.2, identity), (0.4, identity)]
+    args = scenario.args()
+    args[1] = game
+    assert diagnostic.main(args) == 0
+    state = output_events(capsys)[-1]["state"]
+    assert state["game_id"] == game and state["game_code"] == code
+
+
 def test_cli_reports_received_heartbeats_identity_and_frequency(scenario, capsys) -> None:
     scenario.messages = [(0.2, {"event": "hello"}), (0.4, {}), (0.6, {})]
     rom = str(scenario.base_dir / "ROM personnelle.nds")

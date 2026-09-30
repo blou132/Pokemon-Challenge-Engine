@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from app.bridge.protocol import GAME_IDS, SCRIPT_VERSION
+from app.core.game_detector import GAME_CODE_PREFIXES
 from app.services.bridge_service import BridgeService
 
 RESOURCE_DIR = Path(__file__).resolve().parents[2]
@@ -46,7 +47,7 @@ class EmulatorService:
 
     def prepare(self, game_id: str, rom_path: str = "") -> Path:
         if game_id not in GAME_IDS:
-            raise ValueError("Sélectionnez Pokémon Noir ou Noir 2.")
+            raise ValueError("Sélectionnez Pokémon Noir, Blanc, Noir 2 ou Blanc 2.")
         code, revision = None, None
         if rom_path:
             rom = Path(rom_path)
@@ -57,8 +58,7 @@ class EmulatorService:
             if len(header) < 512:
                 raise ValueError("En-tête de ROM incomplet.")
             code = header[12:16].decode("ascii", errors="replace")
-            prefix = "IRB" if game_id == "black" else "IRE"
-            if len(code) != 4 or not code.isascii() or not code.isalnum() or code[:3] != prefix:
+            if len(code) != 4 or not code.isascii() or not code.isalnum() or GAME_CODE_PREFIXES.get(code[:3]) != game_id:
                 raise ValueError("L'en-tête de ROM ne correspond pas au jeu sélectionné.")
             revision = header[30]
         profiles = json.loads((RESOURCE_DIR / "data/memory_profiles.json").read_text(encoding="utf-8"))

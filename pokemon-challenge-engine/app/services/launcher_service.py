@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 
+from app.core.game_detector import GAME_CODE_PREFIXES
 from app.services.config_service import AppConfig
 
 logger = logging.getLogger(__name__)
@@ -19,8 +20,8 @@ class LauncherService:
     def validate(self, game_id: str) -> list[str]:
         """Contrôle uniquement les métadonnées des chemins, jamais le contenu des fichiers."""
         errors: list[str] = []
-        if game_id not in {"black", "black2"}:
-            return ["Ce jeu n'est pas pris en charge pour le lancement dans la V0.1."]
+        if game_id not in GAME_CODE_PREFIXES.values():
+            return ["Ce jeu n'est pas pris en charge pour le lancement."]
         try:
             config = AppConfig.from_dict(self.config.to_dict())
         except (AttributeError, TypeError, ValueError):

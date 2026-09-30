@@ -285,9 +285,29 @@ def test_invalid_timeout_is_rejected(tmp_path: Path, timeout: object) -> None:
         BridgeService(tmp_path, timeout_seconds=timeout)
 
 
-@pytest.mark.parametrize("game,code,revision", [("white", None, None), ([], None, None), ("black", "invalid", None), ("black", "IRBF", True)])
+@pytest.mark.parametrize("game,code,revision", [("platinum", None, None), ([], None, None), ("black", "invalid", None), ("black", "IRBF", True)])
 def test_invalid_start_is_rejected(tmp_path: Path, game: object, code: object, revision: object) -> None:
     service = BridgeService(tmp_path)
     with pytest.raises(ValueError):
         service.start(game, code, revision)
     assert service.state.status == "stopped"
+
+
+GEN_V = (("black", "IRBF"), ("white", "IRAF"), ("black2", "IREF"), ("white2", "IRDF"))
+
+
+@pytest.mark.parametrize("game,code", GEN_V)
+def test_each_version_connects_and_rejects_other_versions(tmp_path, game, code):
+    service = BridgeService(tmp_path)
+    service.start(game, code, 0)
+    client = FakeLuaClient(service.session_dir, service.session_id)
+    client.send(game_id=game, game_code=code)
+    assert service.poll().connected
+    for other, other_code in GEN_V:
+        if other == game:
+            continue
+        client.party(game_id=other, game_code=other_code)
+        state = service.poll()
+        assert state.status == "error" and state.party is None
+    client.send(game_id=game, game_code=code)
+    assert service.poll().connected

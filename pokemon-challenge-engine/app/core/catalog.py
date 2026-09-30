@@ -92,8 +92,10 @@ class Catalog:
         data_dir = Path(data_dir)
         games: dict[str, Game] = {}
         game_fields = {"id", "name", "generation", "platform", "type_count", "supports_monotype", "supports_desmume", "status"}
+        identity_fields = {"game_code", "region", "revision"}
         for row in _read_list(data_dir / "games.json"):
-            _fields(row, game_fields, "Jeu")
+            # Les catalogues V0.1 n'indiquaient pas encore d'identité de ROM.
+            _fields(row, game_fields | (identity_fields if identity_fields & row.keys() else set()), "Jeu")
             _identifier(row["id"], "Identifiant de jeu")
             for key in ("name", "platform"):
                 _text(row[key], f"Jeu {row['id']}.{key}")
@@ -103,6 +105,12 @@ class Catalog:
                 raise ValueError(f"Jeu {row['id']} : les compatibilités doivent être des booléens.")
             if row["status"] not in ("supported", "planned"):
                 raise ValueError(f"Jeu {row['id']} : statut inconnu.")
+            if "game_code" in row:
+                if not isinstance(row["game_code"], str) or not re.fullmatch(r"[A-Z0-9]{4}", row["game_code"]):
+                    raise ValueError(f"Jeu {row['id']} : code de jeu invalide.")
+                if row["region"] not in ("FR", "EN", "DE", "IT", "ES", "JP", "KO"):
+                    raise ValueError(f"Jeu {row['id']} : région inconnue.")
+                _integer(row["revision"], 0, 255, "Révision ROM")
             if row["id"] in games:
                 raise ValueError(f"Jeu dupliqué : {row['id']}.")
             games[row["id"]] = Game(**row)

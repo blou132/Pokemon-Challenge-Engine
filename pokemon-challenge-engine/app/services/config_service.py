@@ -11,6 +11,8 @@ import tempfile
 from typing import Any
 from uuid import uuid4
 
+from app.core.game_detector import GAME_CODE_PREFIXES
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,8 +22,13 @@ class AppConfig:
 
     retrobat_path: str = ""
     desmume_path: str = ""
-    rom_paths: dict[str, str] = field(default_factory=lambda: {"black": "", "black2": ""})
+    rom_paths: dict[str, str] = field(default_factory=lambda: dict.fromkeys(GAME_CODE_PREFIXES.values(), ""))
     save_path: str = ""
+
+    def __post_init__(self) -> None:
+        # Compléter les anciennes configurations sans remplacer leurs chemins.
+        if isinstance(self.rom_paths, dict):
+            self.rom_paths = dict.fromkeys(GAME_CODE_PREFIXES.values(), "") | self.rom_paths
 
     @classmethod
     def from_dict(cls, value: Any) -> "AppConfig":
@@ -43,7 +50,7 @@ class AppConfig:
             _validate_unicode(key)
             _validate_unicode(path)
         return cls(retrobat_path=value.get("retrobat_path", ""), desmume_path=value.get("desmume_path", ""),
-                   rom_paths={"black": "", "black2": ""} | paths, save_path=value.get("save_path", ""))
+                   rom_paths=paths, save_path=value.get("save_path", ""))
 
     def to_dict(self) -> dict[str, Any]:
         # Valider avant de copier évite une récursion sur un objet Python mal formé.

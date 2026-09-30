@@ -52,3 +52,20 @@ def test_missing_rom_is_read_only_error(tmp_path):
     with pytest.raises(OSError):
         EmulatorService(tmp_path, bridge).prepare("black", str(tmp_path / "missing.nds"))
     assert not (tmp_path / "missing.nds").exists()
+
+
+@pytest.mark.parametrize("game,code", [("black", "IRBF"), ("white", "IRAF"), ("black2", "IREF"), ("white2", "IRDF")])
+def test_all_four_rom_headers_select_the_exact_game(tmp_path, game, code):
+    header = bytearray(512)
+    header[12:16] = code.encode("ascii")
+    rom = tmp_path / "game.nds"
+    rom.write_bytes(header)
+    bridge = BridgeService(tmp_path / "runtime/bridge")
+    service = EmulatorService(tmp_path, bridge)
+    assert service.prepare(game, str(rom)).is_file()
+    session = bridge.session_id
+    for other in {"black", "white", "black2", "white2"} - {game}:
+        with pytest.raises(ValueError, match="ne correspond pas"):
+            service.prepare(other, str(rom))
+        assert bridge.session_id == session
+    assert rom.read_bytes() == header

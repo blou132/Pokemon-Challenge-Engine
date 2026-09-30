@@ -76,7 +76,7 @@ def test_malformed_messages_are_rejected(payload: bytes) -> None:
     ("sequence", False), ("sequence", 0), ("sequence", 1.1),
     ("timestamp", -1), ("timestamp", True), ("timestamp", "now"),
     ("event", "read_memory"), ("event", []), ("emulator", "melonds"), ("script_version", "0.1.0"),
-    ("game_id", "white"), ("game_id", {}), ("game_code", "IRBé"), ("game_code", "irbf"),
+    ("game_id", "platinum"), ("game_id", {}), ("game_code", "IRBé"), ("game_code", "irbf"),
     ("game_code", "IRBFF"), ("game_code", []), ("game_region", "US"),
     ("rom_revision", -1), ("rom_revision", 256), ("rom_revision", True),
     ("capabilities", "heartbeat"), ("capabilities", ["heartbeat", "heartbeat"]),
@@ -137,3 +137,20 @@ def test_unavailable_fields_remain_null() -> None:
     data = party_message(capabilities=["game_identity", "party_size"])
     data["party"][0] = {"slot": 1, "level": None, "species_id": None, "hp": None, "max_hp": None}
     assert parse_message(json.dumps(data).encode()).party[0]["level"] is None
+
+
+GEN_V = (("black", "IRBF"), ("white", "IRAF"), ("black2", "IREF"), ("white2", "IRDF"))
+
+
+@pytest.mark.parametrize("game,code", GEN_V)
+def test_four_games_keep_protocol_v1_compatible(game, code):
+    data = party_message(game_id=game, game_code=code, memory_profile=f"{game}_fr_rev0")
+    parsed = parse_message(json.dumps(data).encode())
+    assert parsed.protocol_version == 1 and parsed.script_version == "0.2.0"
+    assert parsed.game_id == game and parsed.party[0]["hp"] == 0
+
+
+@pytest.mark.parametrize("game,other_code", [(game, other_code) for game, _ in GEN_V for other, other_code in GEN_V if game != other])
+def test_identifier_cannot_impersonate_other_version(game, other_code):
+    with pytest.raises(ProtocolError, match="ne correspondent pas"):
+        parse_message(encoded(game_id=game, game_code=other_code))

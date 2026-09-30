@@ -1,7 +1,8 @@
 # Pokemon Challenge Engine — V0.2
 
-Application Windows en français pour préparer des challenges **Pokémon Noir** et
-**Pokémon Noir 2**, enregistrer des profils, lancer DeSmuME standalone et consulter
+Application Windows en français pour préparer des challenges **Pokémon Noir**,
+**Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, enregistrer des profils,
+lancer DeSmuME standalone et consulter
 les données transmises par une passerelle Lua locale en lecture seule.
 
 **L'application ne modifie pas la ROM, n'écrit pas dans la mémoire du jeu et n'impose
@@ -22,11 +23,21 @@ les paramètres et le launcher de la V0.1 sont conservés.
 Le transport DeSmuME → Lua → Python et l'identification de **Noir 2 français,
 code `IREF`, révision `0`** ont été testés réellement, avec déconnexion, reprise
 dans la même session et arrêt demandé par Python. La CLI et l'interface Qt ont reçu
-les messages du vrai producteur Lua. Noir n'a pas été testé dans un émulateur réel.
-Cela ne valide pas la lecture d'une équipe. Les profils mémoire de Noir et Noir 2 français
-révision 0 sont documentés et restent expérimentaux. Pour l'équipe, les espèces, les
-niveaux et les PV : **En attente de validation sur la machine utilisateur.**
-La situation de test ne disposait pas d'une partie Noir 2 avec une équipe chargée.
+les messages du vrai producteur Lua. Cela ne valide pas la lecture d'une équipe.
+Les quatre profils mémoire français de révision 0 sont documentés et testés sur
+mémoire synthétique. Blanc et Blanc 2 possèdent leurs propres adresses, issues
+des branches correspondantes de PokeLua.
+
+Le **30 septembre 2026**, un échantillon réel de **Pokémon Blanc** (`IRAF`, `FR`,
+révision `0`, profil `white_fr_rev0`) a été comparé au jeu : deux Pokémon,
+Feuillajou (ID `511`, niveau `15`, PV `6/42`) et Gruikui (ID `498`, niveau `14`,
+PV `45/45`). L'identité, les heartbeat et ces valeurs ont été reçus par les
+services et l'interface Qt de production. Le statut `real_sample_verified`
+décrit cet échantillon ; il ne garantit pas toutes les ROM, situations ou équipes.
+
+Pour l'équipe de Noir, Noir 2 et Blanc 2 : **En attente de validation sur la
+machine utilisateur.** Noir 2 ne disposait pas d'une équipe chargée lors de son
+essai de transport. Noir et Blanc 2 n'ont pas été validés en émulateur.
 Voir le [rapport de vérification](docs/verification.md) pour les preuves et les limites exactes.
 
 Les versions sont distinctes : application et scripts **`0.2.0`**, format des profils
@@ -73,7 +84,7 @@ pour éviter une console Python supplémentaire :
 
 ## Utilisation
 
-1. Ouvrir **Nouveau challenge** et choisir Noir ou Noir 2.
+1. Ouvrir **Nouveau challenge** et choisir Noir, Blanc, Noir 2 ou Blanc 2.
 2. Choisir un preset ou régler les états : obligatoire, possible, interdite.
 3. En mode aléatoire, choisir le total exact de règles et une seed facultative.
 4. Pour Monotype, ouvrir la roue, exclure des types si souhaité, tirer puis confirmer.
@@ -99,7 +110,7 @@ toujours un nouveau profil ; la modification du suivi existant demande confirmat
 
 Les chemins sont choisis par l'utilisateur : aucun chemin RetroBat n'est présumé.
 Les paramètres enregistrent le dossier ou l'exécutable RetroBat, l'exécutable DeSmuME,
-les deux ROM `.nds` et un dossier de sauvegardes facultatif.
+une ROM `.nds` par jeu parmi les quatre jeux Gen V et un dossier de sauvegardes facultatif.
 
 Le launcher lance **directement DeSmuME standalone** avec la ROM configurée, même si cet
 émulateur est aussi utilisé depuis RetroBat. Elle ne modifie pas la configuration de
@@ -116,12 +127,20 @@ Il faut un build DeSmuME standalone proposant le menu **Tools > Lua Scripting**.
 La présence d'un exécutable DeSmuME ne garantit pas son support Lua. L'application
 n'ajoute aucun argument de lancement Lua supposé et ne pilote pas les menus de l'émulateur.
 
-1. Dans **Connexion DeSmuME**, sélectionner Noir ou Noir 2, puis **Préparer la connexion**.
+1. Dans **Connexion DeSmuME**, sélectionner Noir, Blanc, Noir 2 ou Blanc 2, puis
+   **Préparer la connexion**. Pour reproduire l'essai de Blanc, sélectionner **Pokémon Blanc**.
 2. Dans DeSmuME, ouvrir le jeu correspondant et le laisser en cours d'exécution.
 3. Ouvrir **Tools > Lua Scripting > New Lua Script**, sélectionner le chemin exact
    `connect.lua` affiché par l'application, puis cliquer sur **Run**.
 4. Consulter l'état, le jeu identifié et le diagnostic. Un PID lancé ne prouve pas
    une connexion Lua ; celle-ci dépend des messages effectivement reçus.
+
+Pour Blanc français, vérifier `Pokémon Blanc`, code `IRAF`, région `FR`, révision
+`0` et profil `white_fr_rev0`, puis comparer le nombre de Pokémon, chaque espèce
+(affichée par son identifiant), le niveau et les PV avec l'équipe visible dans le jeu.
+Le [guide de connexion](docs/desmume-bridge.md#validation-prioritaire--pokémon-blanc)
+détaille cette validation. La console de diagnostic accepte également
+`python -m tools.bridge_diagnostic --game white --duration 60`.
 
 Les données absentes sont affichées **Non disponible**. Une ROM, région ou révision
 sans profil mémoire compatible ne donne pas lieu à une lecture d'équipe supposée.
@@ -138,9 +157,10 @@ attendu. Le transport écrit seulement dans le dossier local ignoré `runtime/br
 
 ## Tests et contrôles
 
-Contrôle du 30 septembre 2026 : **453 tests réussis, aucun ignoré**, avec le moteur
-Lua 5.1 disponible localement. Les preuves des essais réels sont consignées dans
-le [rapport de vérification](docs/verification.md).
+Les résultats des tests automatisés, leur environnement et les preuves des essais
+réels sont consignés séparément dans le [rapport de vérification](docs/verification.md).
+Les tests synthétiques couvrent les quatre codes de jeu, les quatre profils distincts
+et le refus d'utiliser le profil d'un autre jeu avant de lire son équipe.
 
 Avec l'environnement du projet :
 

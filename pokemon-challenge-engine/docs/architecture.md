@@ -21,7 +21,10 @@
 - `app/main.py` : chargement, journalisation, thème et démarrage.
 
 Les règles et jeux sont définis dans `data/`. Les identifiants sont stables, les noms
-affichés sont français. Les deux jeux pris en charge sont `black` et `black2`.
+affichés sont français. Les quatre jeux Gen V pris en charge sont `black`, `white`,
+`black2` et `white2`. Chaque entrée conserve son code attendu, sa région et sa
+révision de référence. Le statut catalogue `supported` permet la préparation et
+le lancement ; il ne certifie pas une validation des lectures sur une partie réelle.
 Les autres jeux ont le statut `planned` et ne peuvent pas être générés ou lancés.
 
 ## Versions indépendantes
@@ -120,12 +123,34 @@ l'interface retire l'équipe précédemment affichée.
 ## Limites de la lecture mémoire
 
 Les profils de `data/memory_profiles.json` sélectionnent explicitement le jeu, la
-région et la révision. Ils portent actuellement le statut `source_documented` :
-leurs sources sont identifiées, leur fonctionnement sur une équipe réelle n'est
-pas présenté comme validé. Le transport réel, son cycle de connexion et l'identité
+région et la révision. Les profils Noir, Noir 2 et Blanc 2 portent le statut
+`source_documented` : leurs sources sont identifiées, leur fonctionnement sur
+une équipe réelle n'est pas présenté comme validé. Le transport réel, son cycle de connexion et l'identité
 `IREF / FR / 0` ont été vérifiés avec les scripts et services de production.
-Pour l'équipe, les espèces, les niveaux et les PV :
+Pour l'équipe de ces trois jeux, les espèces, les niveaux et les PV :
 **En attente de validation sur la machine utilisateur.**
+
+Le profil Blanc `white_fr_rev0` porte `real_sample_verified` : le 30 septembre
+2026, deux Pokémon d'une partie réelle `IRAF / FR / 0` ont été comparés à
+l'écran du jeu, puis reçus par l'interface Qt de production. Feuillajou (ID 511,
+niveau 15, PV 6/42) et Gruikui (ID 498, niveau 14, PV 45/45) correspondaient.
+Ce statut décrit un échantillon réel vérifié, pas une compatibilité universelle.
+
+Le lecteur reconnaît le jeu depuis l'en-tête RAM : `IRB` → `black`, `IRA` →
+`white`, `IRE` → `black2`, `IRD` → `white2`. Les profils français de révision 0
+sont distincts : `black_fr_rev0`, `white_fr_rev0`, `black2_fr_rev0` et
+`white2_fr_rev0`. Les adresses de Blanc et Blanc 2 sont calculées d'après les
+décalages explicitement fournis par PokeLua, puis stockées dans leurs propres
+profils. Aucun profil n'est choisi par proximité ou par famille de jeu : le jeu,
+le code complet, la région et la révision doivent tous correspondre avant une
+lecture d'équipe. Une incompatibilité ne déclenche aucune lecture aux adresses
+d'un autre jeu. Les messages `black` et `black2` déjà produits restent acceptés
+dans le protocole `1`, étendu aux identifiants `white` et `white2`.
+
+La validation réelle prioritaire de Blanc (`IRAF / FR / 0`) dispose donc d'un
+premier échantillon comparé. Les essais
+et leurs limites sont conservés dans le rapport de vérification ; le statut des
+sources, les tests synthétiques et les observations dans DeSmuME sont distincts.
 
 Le lecteur vérifie notamment les bornes, la somme de contrôle des blocs et la
 cohérence de l'instantané. Une mémoire d'équipe non initialisée ne produit pas

@@ -1,11 +1,98 @@
 # Vérification de la V0.2 et historique V0.1
 
-## V0.2 — contrôles du 30 septembre 2026
+## Extension aux quatre jeux Gen V — 30 septembre 2026
+
+Le catalogue, les paramètres, le launcher, le protocole v1, la préparation Lua
+et la page Connexion DeSmuME acceptent `black`, `white`, `black2` et `white2`.
+Les profils français de révision 0 sont séparés :
+
+| Jeu | Code | Profil | Compteur / début de l'équipe |
+| --- | --- | --- | --- |
+| Noir | `IRBF` | `black_fr_rev0` | `0x02234930` / `0x02234934` |
+| Blanc | `IRAF` | `white_fr_rev0` | `0x02234950` / `0x02234954` |
+| Noir 2 | `IREF` | `black2_fr_rev0` | `0x0221E408` / `0x0221E40C` |
+| Blanc 2 | `IRDF` | `white2_fr_rev0` | `0x0221E428` / `0x0221E42C` |
+
+Les décalages Blanc/Blanc 2 sont explicites dans les branches françaises de
+PokeLua, avec sources épinglées dans [memory-map.md](memory-map.md).
+Ils ne proviennent pas d'une supposition d'égalité entre versions.
+
+La suite complète a réussi : **598 tests, aucun ignoré**, en 37,67 s,
+avec Python 3.13.7, PySide6 6.11.2 et la DLL Lua 5.1 locale. La compilation et
+le démarrage natif Qt (`tools.verify_ui --entrypoint`) ont aussi réussi.
+Les quatre cartes d'accueil sont lisibles à 1060×640 et 1366×768.
+
+Les tests synthétiques couvrent les quatre codes, les 32 permutations du PID
+sur chaque profil, le transport Lua → JSON → Python et les douze associations
+avec un profil étranger. Ces associations sont refusées avant toute lecture
+d'équipe. Le protocole refuse aussi une identité dont `game_code` et `game_id`
+se contredisent. Les anciens messages valides Noir/Noir 2 restent acceptés.
+Les configurations V0.1 sont chargées sans réécriture, leurs chemins conservés
+et les deux nouveaux chemins initialisés en mémoire. Les profils de challenge
+restent au schéma `0.1.0`.
+
+### Essai réel de Pokémon Blanc
+
+Une copie de la ROM personnelle et une copie de la sauvegarde `.dsv` existante
+ont été chargées dans un DeSmuME x64 isolé sous `runtime/white-validation/`.
+L'exécutable et les DLL sont ceux de l'essai Noir 2 décrit plus bas ; la
+configuration Battery/States/Lua de cette copie ne vise que ce dossier.
+Le script et les services de production sont utilisés sans injection de
+messages simulés. L'instrumentation locale de test utilise seulement
+`joypad.set` pour les menus et `gui.gdscreenshot` pour lire les écrans rendus,
+API documentées dans le
+[moteur Lua DeSmuME](https://github.com/TASEmulators/desmume/blob/1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a/desmume/src/lua-engine.cpp).
+Cette instrumentation ne fait pas partie des scripts distribués.
+
+Le pont a reçu `hello`, `heartbeat`, puis `party_update` et identifié
+`white / IRAF / FR / 0`, avec `white_fr_rev0`. Les données d'équipe effectivement
+reçues depuis la RAM sont :
+
+| Place | Espèce, identifiant national | Niveau | PV actuels / maximum |
+| --- | --- | --- | --- |
+| 1 | Feuillajou, `511` | 15 | 6 / 42 |
+| 2 | Gruikui, `498` | 14 | 45 / 45 |
+
+**La comparaison visuelle a réussi** : le menu Pokémon du jeu montre exactement
+ces deux espèces, ces niveaux et ces PV. Les noms associés aux identifiants
+nationaux sont confirmés par
+[la table française PKHeX](https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/Resources/text/other/fr/text_Species_fr.txt#L499-L512).
+La page Qt de production a ensuite reçu trois nouveaux messages du même
+producteur DeSmuME réel et affiché cette équipe, le code `IRAF`, la révision 0
+et le profil `white_fr_rev0`. Aucune valeur n'a été injectée dans le protocole
+pour obtenir ce résultat.
+
+Le statut du profil Blanc est donc **`real_sample_verified`** : un échantillon
+réel comparé. Les trois autres profils conservent **`source_documented`**.
+Les tests synthétiques restent un contrôle distinct et ne changent pas à eux
+seuls ces statuts.
+
+Après la fermeture du test, les **empreintes SHA-256 et dates de modification**
+de l'archive ROM Blanc, de sa sauvegarde `.dsv` originale et de la configuration
+DeSmuME d'origine sont inchangées. Le processus isolé a été arrêté. Les écrans
+du jeu, le nom du joueur, les ROM et sauvegardes restent exclus de Git.
+Les traces locales sont dans `runtime/white-validation/` : `result.json`,
+`ui_result.json`, `party-real.png` et `ui-real-white-top.png`/`bottom.png`.
+
+Le premier essai avait été interrompu par un verrou Windows/OneDrive sur
+l'export de diagnostic `latest_state.json` du banc de test. Ce fichier n'est
+pas le transport de production, qui emploie des noms de snapshots inédits.
+Après correction de l'export du banc, l'essai complet ci-dessus a réussi.
+
+Ces observations concernent cette ROM et cette équipe. Elles ne valident pas
+toutes les situations de jeu, toutes les sauvegardes, les révisions différentes
+ou les ROM modifiées. Noir, Noir 2 et Blanc 2 restent, pour leur **équipe réelle**,
+**En attente de validation sur la machine utilisateur.** Noir 2 dispose déjà
+d'une validation réelle du transport et de l'identité, détaillée ci-dessous.
+La branche de travail reste `feat/v0.2-desmume-bridge` ; aucune fusion dans `main`.
+
+## Historique V0.2 initiale — contrôles avant l'extension Blanc
 
 Branche : `feat/v0.2-desmume-bridge`. Base V0.1 : `ac1fa31`, déjà publiée
 sur `main`. Aucune fusion automatique dans `main`.
 
-**Transport réel et identification de Noir 2 validés. Lecture d'une équipe,
+État à la date de ce premier essai, avant la validation Blanc décrite ci-dessus :
+**transport réel et identification de Noir 2 validés. Lecture d'une équipe,
 des niveaux et des PV : En attente de validation sur la machine utilisateur.**
 Le décodeur d'équipe est expérimental ; la V0.2 n'est pas déclarée entièrement
 validée pour ces lectures. Aucun mécanisme strict Nuzlocke n'est ajouté.

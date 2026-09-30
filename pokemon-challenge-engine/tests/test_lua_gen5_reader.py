@@ -263,7 +263,7 @@ def test_profile_offsets_match_pinned_sources():
         ("IRBF", 0x02234930, 0x02234934), ("IREF", 0x0221E408, 0x0221E40C),
         ("IRAF", 0x02234950, 0x02234954), ("IRDF", 0x0221E428, 0x0221E42C),
     ]
-    assert all(p["validation"] == "source_documented" and p["revision"] == 0 for p in PROFILES)
+    assert all(p["validation"] in {"source_documented", "real_sample_verified"} and p["revision"] == 0 for p in PROFILES)
 
 
 def test_four_separate_profiles_keep_sourced_version_offsets():

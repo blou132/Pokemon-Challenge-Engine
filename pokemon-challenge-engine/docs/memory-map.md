@@ -6,10 +6,21 @@ proviennent exclusivement de [memory_profiles.json](../data/memory_profiles.json
 
 ## État de validation
 
-Les deux profils portent le statut `source_documented` : leurs adresses sont
-documentées dans les sources ci-dessous. **La lecture d'une équipe réelle avec
-ces profils n'a pas été vérifiée.** Les tests du décodeur exécutent le module Lua
-5.1 sur une RAM synthétique chiffrée et ne changent pas ce statut.
+Les quatre profils ont des sources documentées et des tests Lua 5.1 sur RAM
+synthétique chiffrée. Ces tests ne constituent pas une validation réelle.
+
+Le profil **`white_fr_rev0`** porte `real_sample_verified` : un échantillon réel
+de **Pokémon Blanc français** (`IRAF / FR / 0`) a été comparé à l'écran du jeu
+le **30 septembre 2026**. L'équipe comptait deux Pokémon : Feuillajou (ID 511,
+niveau 15, PV 6/42) et Gruikui (ID 498, niveau 14, PV 45/45). Les valeurs
+correspondaient à celles reçues par la passerelle et l'interface Qt de production.
+Ce résultat qualifie cet échantillon, pas toutes les ROM, situations ou équipes.
+
+Les trois autres profils restent `source_documented`. Pour leurs équipes :
+**En attente de validation sur la machine utilisateur.** Le transport et
+l'identité de Noir 2 ont été testés réellement ; cela ne valide pas son équipe.
+Les résultats en émulateur sont consignés séparément dans le
+[rapport de vérification](verification.md#essai-réel-de-pokémon-blanc).
 
 PokeLua ne distingue pas les révisions de ROM pour ces adresses. La restriction
 à la révision `0` est donc un choix conservateur du projet, pas une validation
@@ -22,15 +33,28 @@ ne constituent pas une preuve d'identité de l'ensemble de la ROM.
 | Profil | Jeu | Code | Révision admise | Compteur, 1 octet | Premier Pokémon | Taille par Pokémon |
 | --- | --- | --- | --- | --- | --- | --- |
 | `black_fr_rev0` | Noir français | `IRBF` | `0` | `0x02234930` | `0x02234934` | `220` (`0xDC`) octets |
+| `white_fr_rev0` | Blanc français | `IRAF` | `0` | `0x02234950` | `0x02234954` | `220` (`0xDC`) octets |
 | `black2_fr_rev0` | Noir 2 français | `IREF` | `0` | `0x0221E408` | `0x0221E40C` | `220` (`0xDC`) octets |
+| `white2_fr_rev0` | Blanc 2 français | `IRDF` | `0` | `0x0221E428` | `0x0221E42C` | `220` (`0xDC`) octets |
 
 Pour l'emplacement `n`, numéroté de 1 à 6, l'adresse est
 `party_address + (n - 1) * pokemon_size`. Les adresses françaises viennent de
-[PokeLua, Noir](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L451)
+[PokeLua, Noir et Blanc](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L457-L458)
 et de
-[PokeLua, Noir 2](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/B2W2_RNG_DeSmuMe.lua#L405).
+[PokeLua, Noir 2 et Blanc 2](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/B2W2_RNG_DeSmuMe.lua#L411-L412).
+
+Les adresses de Blanc sont calculées par la source : les bases françaises
+`0x02234930` et `0x02234934` reçoivent `0x20` **uniquement si le jeu est Blanc**,
+selon [getGameAddrOffset(version, offset)](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L426-L427).
+Pour Blanc 2, les bases françaises `0x0221E408` et `0x0221E40C` reçoivent
+également `0x20`, d'après sa [fonction propre à Blanc 2](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/B2W2_RNG_DeSmuMe.lua#L382-L383).
+Le projet stocke les quatre paires résultantes dans des profils distincts.
+Il ne déduit aucune adresse à l'exécution à partir d'un autre jeu et ne
+réutilise pas un profil Noir pour Blanc, ni Noir 2 pour Blanc 2.
+
 La lecture du compteur et le pas de `0xDC` sont employés dans
-[la lecture de l'équipe de Noir 2](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/B2W2_RNG_DeSmuMe.lua#L937).
+[la lecture de l'équipe de Noir/Blanc](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L1137-L1138)
+et [celle de Noir 2/Blanc 2](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/B2W2_RNG_DeSmuMe.lua#L937-L938).
 
 Un compteur égal à zéro donne **`not_ready`**, sans équipe ni taille publiées :
 il ne permet pas de distinguer une équipe vide d'une mémoire non initialisée.
@@ -46,7 +70,10 @@ Le lecteur lit le code de quatre caractères à `0x027FFE0C` et la révision à
 et dans la
 [structure NDS_header](https://github.com/TASEmulators/desmume/blob/1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a/desmume/src/NDSSystem.h#L135).
 
-Le préfixe `IRB` identifie Noir et `IRE` identifie Noir 2. Le dernier caractère
+Les préfixes sont `IRB` pour Noir, `IRA` pour Blanc, `IRE` pour Noir 2 et `IRD`
+pour Blanc 2. Les valeurs du troisième caractère (`B`, `A`, `E`, `D`) sont
+explicites dans [l'identification PokeLua](https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L416-L423).
+Le dernier caractère
 est traduit vers la région du protocole : `F` → `FR`, `O` → `EN`, `D` → `DE`,
 `I` → `IT`, `J` → `JP`, `K` → `KO`, `S` → `ES`. La détection d'une région
 n'implique pas qu'un profil d'équipe existe pour celle-ci. Avant de lire
@@ -104,6 +131,11 @@ indépendante du flux et des permutations.
 
 Les tests couvrent les 32 valeurs de permutation pour chaque profil, les six
 emplacements, un Pokémon à zéro PV, les niveaux limites, les erreurs de somme
-de contrôle, les identités incompatibles et les erreurs de lecture. En l'absence
+de contrôle, les identités incompatibles et les erreurs de lecture. Les douze
+combinaisons de jeu chargé/profil d'un autre jeu sont refusées avant de lire
+le compteur ou un Pokémon ; les tests placent pourtant une équipe valide au
+mauvais emplacement pour déceler un mélange entre versions. Les quatre codes
+réels attendus sont injectés dans les en-têtes synthétiques et les adresses
+des quatre profils sont vérifiées séparément. En l'absence
 de moteur Lua, les cas correspondants sont explicitement ignorés par pytest ;
 ils ne doivent pas être présentés comme exécutés.

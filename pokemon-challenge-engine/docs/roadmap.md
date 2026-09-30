@@ -8,17 +8,34 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 La **V0.1 est conservée** : préparation, génération par seed, Monotype, profils,
 suivi manuel, paramètres et launcher. La **V0.2 ajoute une passerelle locale en
 lecture seule**, un protocole versionné, les états de connexion et un lecteur
-Gen V avec profils mémoire documentés. Elle ne met pas encore en œuvre de règles
+Gen V pour **Noir, Blanc, Noir 2 et Blanc 2**, avec quatre profils français de
+révision 0 documentés séparément et testés sur mémoire synthétique.
+Elle ne met pas encore en œuvre de règles
 dans le jeu ni de mise à jour automatique de la progression des challenges.
 
 Le transport de production et l'identification de Noir 2 français (`IREF`,
 révision `0`) ont été testés réellement, de même que la déconnexion, la reprise
 dans la même session et l'arrêt demandé par Python. La CLI et l'interface Qt
 ont reçu les messages du vrai DeSmuME.
-La validation de l'équipe réelle, de ses espèces, niveaux et PV reste ouverte :
+Pour Noir, Noir 2 et Blanc 2, la validation de l'équipe réelle, de ses espèces,
+niveaux et PV reste ouverte :
 **En attente de validation sur la machine utilisateur.** Aucun succès de tests
 sur données synthétiques ne clôt cette étape. Le périmètre V0.2 ne doit donc pas
 être présenté comme entièrement validé en jeu.
+
+La priorité **Pokémon Blanc français** a produit un échantillon réel comparé le
+**30 septembre 2026** : transport, heartbeat, identité `IRAF / FR / 0`, profil
+`white_fr_rev0`, puis deux Pokémon correspondant à l'écran du jeu et à
+l'interface Qt (Feuillajou, niveau 15, PV 6/42 ; Gruikui, niveau 14, PV 45/45).
+Le statut `real_sample_verified` ne garantit pas toutes les situations ou ROM.
+Les adresses de
+Blanc et Blanc 2 proviennent de leurs propres branches PokeLua ; aucune égalité
+avec Noir ou Noir 2 n'est supposée. La lecture d'équipe de chacun des quatre
+profils nécessite sa propre validation réelle.
+
+Le travail V0.2 reste sur `feat/v0.2-desmume-bridge`. La condition de validation
+réelle de Blanc dispose maintenant de cet échantillon documenté ; **aucune fusion
+dans `main` n'est effectuée**. `main` conserve la V0.1.
 
 [Résultats et limites des essais](verification.md) · [Profils mémoire](memory-map.md)
 
@@ -34,7 +51,7 @@ sur données synthétiques ne clôt cette étape. Le périmètre V0.2 ne doit do
 | V0.8 | Randomizer et règles avancées | Compatibilité, reproductibilité, sauvegardes et distribution documentées |
 
 Autres axes : empaquetage PyInstaller, installation par utilisateur, migration des profils,
-clavier et mise à l'échelle élevée, jeux Blanc/Blanc 2 puis Platine, HeartGold/SoulSilver,
+clavier et mise à l'échelle élevée, jeux Platine, HeartGold/SoulSilver,
 Émeraude et catalogues de types propres à chaque génération.
 
 Une option visible ou un statut `future_strict` ne constitue jamais une fonctionnalité

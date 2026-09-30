@@ -6,9 +6,13 @@ existe : seuls des messages acceptés par le service font évoluer son état.
 La passerelle ne modifie ni la RAM, ni les ROM, ni les sauvegardes Pokémon.
 Elle n'applique pas les règles du challenge au jeu.
 
-Les profils d'équipe français de révision 0 sont **expérimentaux**. Leur statut
-`source_documented` indique des sources documentaires, pas une validation
-visuelle sur une équipe réelle. Les adresses, le déchiffrement et ces limites
+Les quatre jeux proposés sont Noir (`black`), Blanc (`white`), Noir 2 (`black2`)
+et Blanc 2 (`white2`). Leurs profils d'équipe français de révision 0 ont des
+sources documentées et des tests synthétiques. Noir, Noir 2 et Blanc 2 portent
+le statut `source_documented`, sans validation visuelle d'équipe réelle.
+Blanc porte `real_sample_verified` pour l'échantillon comparé le 30 septembre
+2026 ; ce statut ne garantit pas toutes les équipes ou ROM.
+Les adresses, le déchiffrement et ces limites
 sont décrits dans [memory-map.md](memory-map.md). Les résultats d'essais réels
 doivent être consignés séparément dans [verification.md](verification.md) ;
 ce guide décrit le fonctionnement prévu et ne constitue pas un compte rendu
@@ -49,14 +53,14 @@ locaux et ne sont pas ajoutés au dépôt Pokemon Challenge Engine.
 1. Dans **Paramètres**, renseigner si possible le chemin de la ROM `.nds` du jeu.
    La préparation ne lit que son en-tête pour vérifier le code et la révision.
    Sans chemin de ROM, le jeu sélectionné reste contrôlé lors de la réception.
-2. Ouvrir **Connexion DeSmuME**, choisir Noir ou Noir 2 et cliquer sur
+2. Ouvrir **Connexion DeSmuME**, choisir Noir, Blanc, Noir 2 ou Blanc 2 et cliquer sur
    **Préparer la connexion**.
 3. Copier le chemin exact affiché. Il désigne
    `runtime/bridge/<session_id>/connect.lua`, créé pour cette préparation.
 4. Dans DeSmuME, ouvrir la ROM puis **Tools > Lua Scripting > New Lua Script**.
    Sélectionner ce `connect.lua` et cliquer sur **Run**.
-5. Laisser le jeu s'exécuter. Vérifier l'état, le code du jeu, la révision,
-   le compteur d'instantanés et les éventuels détails d'erreur dans l'application.
+5. Laisser le jeu s'exécuter. Vérifier le jeu détecté, le code, la région, la
+   révision, le profil mémoire, le compteur d'instantanés et les éventuelles erreurs.
 
 Le chargement Lua est manuel. Le launcher du projet ne suppose pas l'existence
 d'une option DeSmuME `--lua`. Les fichiers `lua/common/*.lua` sont des modules :
@@ -74,21 +78,58 @@ identifiant de session. Un script encore actif peut aussi détecter une nouvelle
 configuration du même jeu au passage suivant ; ne pas dépendre de cela si la
 console est déjà arrêtée. Pour changer de jeu, arrêter puis préparer le jeu voulu.
 
+## Validation prioritaire : Pokémon Blanc
+
+Le test prioritaire concerne **Pokémon Blanc français**. Un échantillon réel a
+été comparé le **30 septembre 2026**, sur des copies isolées de DeSmuME, de la ROM
+et de la sauvegarde : Feuillajou (ID 511, niveau 15, PV 6/42) et Gruikui (ID 498,
+niveau 14, PV 45/45), soit deux Pokémon. Le code `IRAF`, la région `FR`, la
+révision `0`, les heartbeat et l'équipe ont été reçus par les services et
+l'interface Qt de production. Les fichiers originaux contrôlés sont restés
+inchangés. Voir les [preuves et limites](verification.md#essai-réel-de-pokémon-blanc).
+
+Les étapes ci-dessous permettent de reproduire la comparaison sur sa propre
+partie. Elles vérifient trois résultats distincts : le transport, l'identité
+puis les valeurs de l'équipe. L'échantillon déjà vérifié ne prouve pas la
+compatibilité de toutes les situations, régions ou révisions.
+
+1. Renseigner la ROM `.nds` de **Pokémon Blanc** dans les paramètres, préparer la
+   connexion pour ce jeu et charger son `connect.lua` dans DeSmuME.
+2. Laisser les frames s'exécuter et vérifier que les instantanés reçus augmentent
+   et que des événements `heartbeat` sont reçus.
+3. Vérifier l'identité réelle dans l'interface : **Pokémon Blanc**, code **`IRAF`**,
+   région **`FR`**, révision **`0`**, profil **`white_fr_rev0`**. Un autre code
+   nécessite sa propre vérification ; ne pas sélectionner Noir pour contourner
+   une incompatibilité.
+4. Charger sa partie normalement dans DeSmuME et ouvrir l'équipe. Comparer son
+   nombre de Pokémon et, pour chaque place, l'espèce, le niveau, les PV actuels
+   et les PV maximaux. L'application affiche actuellement l'espèce par son
+   identifiant, pas par son nom. Noter séparément les valeurs du jeu et celles
+   de l'application, ainsi que toute donnée **Non disponible**.
+5. Noter le build DeSmuME, l'architecture, la version Lua, le code et la révision,
+   le profil reçu et le résultat des comparaisons. Seules ces observations
+   peuvent compléter la validation réelle dans [verification.md](verification.md).
+
+Un heartbeat seul n'atteste pas une lecture d'équipe. Au menu de démarrage, un
+compteur RAM nul signifie que la lecture n'est pas prête ; l'interface conserve
+**Non disponible**. Une validation de Blanc ne valide pas automatiquement Noir,
+Noir 2 ou Blanc 2, qui utilisent des profils séparés.
+
 ## Diagnostic en ligne de commande
 
 Depuis le dossier contenant `app/`, avec l'environnement Python du projet :
 
 ```powershell
-python -m tools.bridge_diagnostic --game black2 --duration 60
+python -m tools.bridge_diagnostic --game white --duration 60
 ```
 
 Cette commande prépare une session et affiche immédiatement le chemin du Lua
 à charger manuellement dans DeSmuME. Elle ne lance pas l'émulateur. `--game`
-accepte `black` ou `black2`. `--duration` est une durée positive et finie, de
+accepte `black`, `white`, `black2` ou `white2`. `--duration` est une durée positive et finie, de
 60 secondes par défaut. Une ROM locale peut être vérifiée en lecture seule :
 
 ```powershell
-python -m tools.bridge_diagnostic --game black2 --rom "D:\Mes jeux\Noir 2.nds" --duration 60
+python -m tools.bridge_diagnostic --game white --rom "D:\Mes jeux\Blanc.nds" --duration 60
 ```
 
 `--base-dir "D:\Diagnostic PCE"` choisit un autre emplacement pour les fichiers
@@ -190,7 +231,7 @@ champs est libre, les champs supplémentaires ou manquants sont refusés.
 | `timestamp` | Entier positif ou nul : secondes Unix issues de `os.time()`. |
 | `emulator` | Texte `desmume`. |
 | `script_version` | Texte `0.2.0` pour cette version du lecteur. |
-| `game_id` | `black`, `black2` ou `null`. |
+| `game_id` | `black`, `white`, `black2`, `white2` ou `null`. |
 | `game_code` | Quatre caractères ASCII majuscules ou chiffres, ou `null`. |
 | `game_region` | `FR`, `EN`, `DE`, `IT`, `ES`, `JP`, `KO` ou `null`. |
 | `rom_revision` | Entier de `0` à `255`, ou `null`. |
@@ -226,6 +267,10 @@ un jeu différent ou, si une ROM a été renseignée, un code ou une révision
 différents. Les instantanés d'une session antérieure ne sont jamais relus par
 une nouvelle session.
 
+L'ajout de Blanc et Blanc 2 conserve les 16 champs et le numéro de protocole `1`.
+Les messages existants de Noir et Noir 2 restent acceptés. Chaque session continue
+de refuser l'identifiant ou le code d'un autre jeu.
+
 ## Versions et limites de validation
 
 | Version | Valeur | Rôle |
@@ -235,12 +280,25 @@ une nouvelle session.
 | Protocole | `1` | Structure et validation des échanges JSON. |
 | Schéma des profils de challenge | `0.1.0` | Champ `version` des challenges persistés ; les profils V0.1 restent compatibles. |
 
-Les identifiants `black_fr_rev0` et `black2_fr_rev0` désignent des profils
-mémoire, pas des versions du schéma de sauvegarde des challenges. Seuls les
-codes `IRBF` et `IREF`, région `FR`, révision `0`, disposent actuellement de ces
-profils documentés. Une autre identité peut recevoir des heartbeat sans données
+Les identifiants ci-dessous désignent des profils mémoire, pas des versions du
+schéma de sauvegarde des challenges. Chaque profil a ses propres adresses et ses
+sources ; aucun profil Noir n'est réutilisé pour Blanc, ni Noir 2 pour Blanc 2.
+
+| Jeu | Identifiant | Code | Région | Révision | Profil mémoire |
+| --- | --- | --- | --- | --- | --- |
+| Pokémon Noir | `black` | `IRBF` | `FR` | `0` | `black_fr_rev0` |
+| Pokémon Blanc | `white` | `IRAF` | `FR` | `0` | `white_fr_rev0` |
+| Pokémon Noir 2 | `black2` | `IREF` | `FR` | `0` | `black2_fr_rev0` |
+| Pokémon Blanc 2 | `white2` | `IRDF` | `FR` | `0` | `white2_fr_rev0` |
+
+Seules ces identités disposent actuellement de profils documentés.
+Une autre identité peut recevoir des heartbeat sans données
 d'équipe. Le choix conservateur de la révision 0 n'est pas une preuve de
 validation de cette révision par les sources utilisées.
+
+Pour les équipes de Noir, Noir 2 et Blanc 2 : **En attente de validation sur la
+machine utilisateur.** La validation de l'échantillon Blanc n'est pas étendue
+aux trois autres profils.
 
 Pour une validation réelle, conserver le build et l'architecture DeSmuME,
 la version Lua, le code et la révision de ROM, le profil choisi, les événements

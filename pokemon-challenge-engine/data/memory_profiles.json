@@ -48,8 +48,10 @@
     "party_count_address": 35866960,
     "party_address": 35866964,
     "pokemon_size": 220,
-    "validation": "source_documented",
-    "revision_note": "PokeLua ne qualifie pas les revisions. Le choix conservateur de la revision 0 doit etre valide sur le jeu reel; une source documentaire ne constitue pas un test en emulateur.",
+    "validation": "real_sample_verified",
+    "validation_evidence": "docs/verification.md#essai-réel-de-pokémon-blanc",
+    "validation_scope": "Le 30 septembre 2026 : une equipe reelle de deux Pokemon comparee visuellement au jeu et a Qt. Ce resultat ne valide pas toutes les ROM, sauvegardes ou situations de jeu.",
+    "revision_note": "PokeLua ne qualifie pas les revisions. La revision 0 a ete verifiee sur une ROM francaise et une equipe reelle ; cette observation ne prouve pas une compatibilite universelle.",
     "sources": [
       "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L457-L458",
       "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L426-L427",

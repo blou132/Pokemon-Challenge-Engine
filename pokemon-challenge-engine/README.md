@@ -1,15 +1,37 @@
-# Pokemon Challenge Engine — V0.1
+# Pokemon Challenge Engine — V0.2
 
 Application Windows en français pour préparer des challenges **Pokémon Noir** et
-**Pokémon Noir 2**, enregistrer des profils et lancer DeSmuME standalone.
+**Pokémon Noir 2**, enregistrer des profils, lancer DeSmuME standalone et consulter
+les données transmises par une passerelle Lua locale en lecture seule.
 
-**La V0.1 ne modifie pas la ROM, n'écrit pas dans la mémoire du jeu et n'impose aucune
-règle dans Pokémon.** Le suivi est manuel. Le mode STRICT est une intention enregistrée
+**L'application ne modifie pas la ROM, n'écrit pas dans la mémoire du jeu et n'impose
+aucune règle dans Pokémon.** Le suivi des challenges reste manuel. Le mode STRICT est une intention enregistrée
 pour les versions suivantes. La règle Randomizer est uniquement prévue et configurable.
 
-![Accueil de l'application](docs/screenshots/accueil-1920.png)
+![Accueil de l'application — capture V0.1](docs/screenshots/accueil-1920.png)
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)
+
+## État de la V0.2
+
+La nouvelle page **Connexion DeSmuME** prépare un script local, affiche l'état de la
+connexion, l'identité du jeu, les capacités reçues et les données d'équipe disponibles.
+La génération par seed, les 15 règles configurables, la roue Monotype, les profils,
+les paramètres et le launcher de la V0.1 sont conservés.
+
+Le transport DeSmuME → Lua → Python et l'identification de **Noir 2 français,
+code `IREF`, révision `0`** ont été testés réellement, avec déconnexion, reprise
+dans la même session et arrêt demandé par Python. La CLI et l'interface Qt ont reçu
+les messages du vrai producteur Lua. Noir n'a pas été testé dans un émulateur réel.
+Cela ne valide pas la lecture d'une équipe. Les profils mémoire de Noir et Noir 2 français
+révision 0 sont documentés et restent expérimentaux. Pour l'équipe, les espèces, les
+niveaux et les PV : **En attente de validation sur la machine utilisateur.**
+La situation de test ne disposait pas d'une partie Noir 2 avec une équipe chargée.
+Voir le [rapport de vérification](docs/verification.md) pour les preuves et les limites exactes.
+
+Les versions sont distinctes : application et scripts **`0.2.0`**, format des profils
+**`0.1.0`** conservé, protocole de la passerelle **`1`**. Les anciens profils ne sont
+pas migrés ni réécrits par la connexion Lua.
 
 ## Installation sous Windows
 
@@ -79,7 +101,7 @@ Les chemins sont choisis par l'utilisateur : aucun chemin RetroBat n'est présum
 Les paramètres enregistrent le dossier ou l'exécutable RetroBat, l'exécutable DeSmuME,
 les deux ROM `.nds` et un dossier de sauvegardes facultatif.
 
-La V0.1 lance **directement DeSmuME standalone** avec la ROM configurée, même si cet
+Le launcher lance **directement DeSmuME standalone** avec la ROM configurée, même si cet
 émulateur est aussi utilisé depuis RetroBat. Elle ne modifie pas la configuration de
 RetroBat et ne le pilote pas. Le champ RetroBat sert de repère local pour l'intégration
 future. Le bouton Tester contrôle les chemins, sans démarrer un jeu.
@@ -88,7 +110,37 @@ Le chemin des sauvegardes est informatif : aucune sauvegarde n'est redirigée, s
 copiée ou écrasée par cette application. DeSmuME conserve son comportement normal lorsque
 vous jouez. Aucun émulateur, jeu, ROM ou asset Pokémon officiel n'est fourni.
 
+## Connecter Lua
+
+Il faut un build DeSmuME standalone proposant le menu **Tools > Lua Scripting**.
+La présence d'un exécutable DeSmuME ne garantit pas son support Lua. L'application
+n'ajoute aucun argument de lancement Lua supposé et ne pilote pas les menus de l'émulateur.
+
+1. Dans **Connexion DeSmuME**, sélectionner Noir ou Noir 2, puis **Préparer la connexion**.
+2. Dans DeSmuME, ouvrir le jeu correspondant et le laisser en cours d'exécution.
+3. Ouvrir **Tools > Lua Scripting > New Lua Script**, sélectionner le chemin exact
+   `connect.lua` affiché par l'application, puis cliquer sur **Run**.
+4. Consulter l'état, le jeu identifié et le diagnostic. Un PID lancé ne prouve pas
+   une connexion Lua ; celle-ci dépend des messages effectivement reçus.
+
+Les données absentes sont affichées **Non disponible**. Une ROM, région ou révision
+sans profil mémoire compatible ne donne pas lieu à une lecture d'équipe supposée.
+Une mémoire d'équipe non initialisée ne produit pas de fausse équipe vide. Les
+données d'équipe sont retirées de l'affichage en cas de déconnexion ou d'erreur.
+
+La préparation peut se faire sans chemin de ROM pour un jeu déjà ouvert manuellement.
+Si un chemin est configuré, son en-tête est lu en lecture seule pour vérifier le jeu
+attendu. Le transport écrit seulement dans le dossier local ignoré `runtime/bridge/`.
+**Arrêter la connexion** arrête le suivi ; l'application ne ferme pas DeSmuME.
+
+[Installation et dépannage de la passerelle](docs/desmume-bridge.md) ·
+[Scripts Lua](lua/README.md) · [Profils et sources mémoire](docs/memory-map.md)
+
 ## Tests et contrôles
+
+Contrôle du 30 septembre 2026 : **453 tests réussis, aucun ignoré**, avec le moteur
+Lua 5.1 disponible localement. Les preuves des essais réels sont consignées dans
+le [rapport de vérification](docs/verification.md).
 
 Avec l'environnement du projet :
 
@@ -107,8 +159,25 @@ Avec l'environnement déjà préparé dans le parent :
 Les tests couvrent les obligations/interdictions, dépendances, conflits, jeux, seed,
 comptage exact, Monotype et position finale de la roue, profils corrompus ou manquants,
 configuration, arguments du launcher et intégrité de fichiers sentinelles ROM/sauvegarde.
-Le launcher est testé avec processus simulé ; le lancement d'un véritable jeu dépend
-des chemins locaux que vous renseignerez.
+La passerelle ajoute des tests de protocole, de sessions, de messages invalides,
+de déconnexion et de reprise. Les tests Qt vérifient les signaux, l'affichage des
+valeurs absentes, la réactivité pendant la préparation et l'arrêt du worker.
+Les tests du launcher avec processus simulé sont distingués des essais réels dans
+le [rapport de vérification](docs/verification.md).
+
+Les tests du lecteur et du producteur Lua exécutent le code Lua sur des données
+**synthétiques**. Ils nécessitent facultativement une bibliothèque Lua **5.1** compatible
+avec l'architecture de Python. Pour indiquer une DLL installée localement :
+
+```powershell
+$env:PCE_LUA51_DLL = "C:\chemin\vers\lua5.1.dll"
+..\.venv\Scripts\python.exe -m pytest tests/test_lua_gen5_reader.py tests/test_lua_bridge.py -q
+```
+
+Sans moteur Lua 5.1 disponible, ces tests sont marqués **skipped**, pas présentés comme
+réussis. Le chemin de repli local est `../runtime/probe/lua5.1.dll`. Aucun binaire Lua
+n'est distribué dans le dépôt. Ces tests ne remplacent pas la comparaison avec une
+équipe réellement affichée dans le jeu.
 
 ## Architecture et limites
 
@@ -117,29 +186,33 @@ app/
   main.py       démarrage, thème et logs
   models/       dataclasses et validation
   core/         catalogue, règles, tirages, profils
-  services/     chemins et lancement DeSmuME
+  bridge/       protocole versionné et état de connexion
+  services/     configuration, launcher, préparation Lua, réception et worker Qt
   ui/           navigation, pages et roue Qt
-data/           jeux, règles, types Gen V et presets JSON
+data/           jeux, règles, types Gen V, presets et profils mémoire JSON
 profiles/       un dossier par profil
-lua/            placeholders documentés pour V0.2
+lua/            points d'entrée et modules de transport, JSON et lecture Gen V
+runtime/        sessions locales de la passerelle, ignorées par Git
 tests/          tests pytest métier, fichiers et interface
 docs/           architecture, roadmap et vérification
 ```
 
 [Architecture détaillée](docs/architecture.md) · [Feuille de route](docs/roadmap.md) ·
-[Passerelle Lua prévue](lua/README.md) · [Vérification de la livraison](docs/verification.md)
+[Passerelle DeSmuME/Lua](docs/desmume-bridge.md) · [Vérification de la livraison](docs/verification.md)
 
 Les journaux rotatifs sont dans `logs/app.log`. `--debug` active les détails dont la
 commande de lancement (les chemins sont alors visibles dans ce journal).
-Les profils, la configuration, les logs et les ROM sont exclus de Git.
+Les profils locaux, la configuration, les logs, les sessions de passerelle, les ROM,
+les sauvegardes, les environnements Python, les caches et les secrets sont exclus de Git.
 
-Le catalogue V0.1 contient 15 règles. Les jeux futurs sont décrits dans les données mais
+Le catalogue contient 15 règles. Les jeux futurs sont décrits dans les données mais
 restent indisponibles. Une forte augmentation du catalogue nécessitera d'adapter la
-recherche de combinaisons. La synchronisation DeSmuME, les blocages stricts, le vrai
-Randomizer et l'empaquetage PyInstaller ne sont pas implémentés.
+recherche de combinaisons. Les blocages stricts, le vrai Randomizer, le suivi automatique
+des zones, rencontres et captures, et l'empaquetage PyInstaller ne sont pas implémentés.
 
-La V0.2 dispose déjà d'une séparation métier/UI, de profils versionnés, d'un historique
-structuré et de points d'entrée Lua documentés. Aucune adresse mémoire n'a été inventée.
+Les messages Lua ne mettent pas à jour la progression ou l'historique des profils.
+Les adresses utilisées et leur statut de validation sont décrits dans la
+[cartographie mémoire](docs/memory-map.md).
 
 Documentation Qt utilisée : [Qt for Python](https://doc.qt.io/qtforpython-6/),
 [QPropertyAnimation](https://doc.qt.io/qtforpython-6/PySide6/QtCore/QPropertyAnimation.html).

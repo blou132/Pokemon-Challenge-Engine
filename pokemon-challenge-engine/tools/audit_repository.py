@@ -16,6 +16,9 @@ PROBES = (
     "game.dsv.bak", "game.ds0", "config.json", "nested/config.json",
     "logs/app.log", "nested/logs/app.log", ".env", "nested/.env.production",
     "secrets.json", "nested/credentials.json", "private.pem",
+    "diagnostic.log", "nested/debug.log.1", "settings.local.toml", "desmume.ini",
+    "archive.ZIP", "game.7z", "game.rar", "DeSmuME.exe", "lua51.dll",
+    "runtime/bridge/session/snapshot-0000000001.json",
     "pokemon-challenge-engine/profiles/run_001/challenge.json",
 )
 SECRET_PATTERNS = (

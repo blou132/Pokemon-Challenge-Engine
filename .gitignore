@@ -10,7 +10,11 @@ htmlcov/
 config.json
 config.json.*
 *.local.json
+*.local.*
+desmume.ini
 logs/
+*.log
+*.log.*
 runtime/
 roms/
 saves/
@@ -32,6 +36,15 @@ savestates/
 *.[dD][uU][cC]
 *.[sS][rR][mM]
 *.state*
+
+# Archives locales susceptibles de contenir des ROM ou sauvegardes.
+*.[zZ][iI][pP]
+*.[7][zZ]
+*.[rR][aA][rR]
+
+# Binaires d'émulateur et bibliothèques Lua fournis par l'installation locale.
+*.exe
+*.dll
 
 # Secrets : ne jamais utiliser git add -f pour contourner ces exclusions.
 .env

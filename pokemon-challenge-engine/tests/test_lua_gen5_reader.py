@@ -124,9 +124,10 @@ return table.concat({pokemon.slot, pokemon.species_id, pokemon.level, pokemon.hp
     assert lua51.run(script) == "1,501,5,19,21"
 
 
-def test_six_slots_with_zero_hp_and_level_100(lua51):
+@pytest.mark.parametrize("profile", PROFILES, ids=lambda value: value["id"])
+def test_six_slots_with_zero_hp_and_level_100(lua51, profile):
     slots = [synthetic_slot(index, species=index + 1, level=100, hp=0) for index in range(6)]
-    script = scenario(PROFILES[1], slots, after="""
+    script = scenario(profile, slots, after="""
 local result = reader.read_party(memory, profile)
 assert(result.status == 'ok' and result.party_size == 6)
 for index, pokemon in ipairs(result.party) do
@@ -180,12 +181,45 @@ return reader.read_party(memory, profile).status
     assert lua51.run(script) == "unsupported"
 
 
-def test_detection_reports_actual_header(lua51):
-    script = scenario(PROFILES[1], revision=2, after="""
+@pytest.mark.parametrize("profile", PROFILES, ids=lambda value: value["id"])
+def test_detection_reports_actual_header(lua51, profile):
+    script = scenario(profile, revision=2, after="""
 local value = reader.detect(memory.readbyte)
 return table.concat({value.game_id, value.game_code, value.game_region, value.rom_revision}, ',')
 """)
-    assert lua51.run(script) == "black2,IREF,FR,2"
+    assert lua51.run(script) == f"{profile['game_id']},{profile['game_code']},FR,2"
+
+
+@pytest.mark.parametrize("profile,other", [
+    (profile, other) for profile in PROFILES for other in PROFILES
+    if profile["game_id"] != other["game_id"]
+], ids=lambda value: value["game_id"])
+def test_foreign_profile_is_rejected_before_any_party_read(lua51, profile, other):
+    # Même avec un Pokémon valide au mauvais emplacement, aucune équipe étrangère
+    # ne doit être lue : seules les lectures de l'identité RAM sont autorisées.
+    script = scenario(profile, [synthetic_slot(0)], code=other["game_code"], after="""
+local original = memory.readbyte
+local party_read = false
+memory.readbyte = function(address)
+    if address < 0x027FFE00 or address > 0x027FFE1F then party_read = true end
+    return original(address)
+end
+local result = reader.read_party(memory, profile)
+assert(not party_read, 'Lecture equipe interdite pour un autre jeu')
+assert(result.party == nil and result.party_size == nil)
+return result.status
+""")
+    assert lua51.run(script) == "unsupported"
+
+
+@pytest.mark.parametrize("code", ["ABAF", "ABDF", "IRCF", "????"])
+def test_unknown_header_never_falls_back_to_a_gen5_game(lua51, code):
+    script = scenario(PROFILES[0], code=code, after="""
+local result = reader.detect(memory.readbyte)
+assert(result.game_id == nil)
+return reader.read_party(memory, profile).status
+""")
+    assert lua51.run(script) == "unsupported"
 
 
 def test_detection_uses_protocol_region_for_korean_game(lua51):
@@ -227,5 +261,23 @@ return reader.read_party(memory, profile).status
 def test_profile_offsets_match_pinned_sources():
     assert [(p["game_code"], p["party_count_address"], p["party_address"]) for p in PROFILES] == [
         ("IRBF", 0x02234930, 0x02234934), ("IREF", 0x0221E408, 0x0221E40C),
+        ("IRAF", 0x02234950, 0x02234954), ("IRDF", 0x0221E428, 0x0221E42C),
     ]
     assert all(p["validation"] == "source_documented" and p["revision"] == 0 for p in PROFILES)
+
+
+def test_four_separate_profiles_keep_sourced_version_offsets():
+    profiles = {profile["game_id"]: profile for profile in PROFILES}
+    assert set(profiles) == {"black", "white", "black2", "white2"}
+    assert len({profile["id"] for profile in PROFILES}) == 4
+    assert len({profile["party_count_address"] for profile in PROFILES}) == 4
+    assert len({profile["party_address"] for profile in PROFILES}) == 4
+    for game, profile in profiles.items():
+        assert profile["id"] == f"{game}_fr_rev0"
+        assert profile["region"] == "FR" and profile["pokemon_size"] == 220
+        assert profile["sources"] and "PokeLua ne qualifie pas" in profile["revision_note"]
+    for black, white in (("black", "white"), ("black2", "white2")):
+        # Le décalage +0x20 est explicite dans les branches françaises PokeLua.
+        for field in ("party_count_address", "party_address"):
+            assert profiles[white][field] == profiles[black][field] + 0x20
+        assert len(profiles[white]["sources"]) >= 2

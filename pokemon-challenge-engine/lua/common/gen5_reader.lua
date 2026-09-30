@@ -64,7 +64,9 @@ function M.detect(readbyte)
         end
         local game_id
         if code:sub(1, 3) == "IRB" then game_id = "black"
-        elseif code:sub(1, 3) == "IRE" then game_id = "black2" end
+        elseif code:sub(1, 3) == "IRA" then game_id = "white"
+        elseif code:sub(1, 3) == "IRE" then game_id = "black2"
+        elseif code:sub(1, 3) == "IRD" then game_id = "white2" end
         return {
             game_id = game_id,
             game_code = code,

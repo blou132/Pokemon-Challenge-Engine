@@ -11,7 +11,7 @@
     "validation": "source_documented",
     "revision_note": "PokeLua ne qualifie pas les revisions. Le choix conservateur de la revision 0 doit etre valide sur le jeu reel; une source documentaire ne constitue pas un test en emulateur.",
     "sources": [
-      "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L451",
+      "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L457-L458",
       "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/PK5.cs#L43",
       "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/PK5.cs#L276",
       "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/Util/PokeCrypto.cs#L166",
@@ -31,7 +31,49 @@
     "validation": "source_documented",
     "revision_note": "PokeLua ne qualifie pas les revisions. Le choix conservateur de la revision 0 doit etre valide sur le jeu reel; une source documentaire ne constitue pas un test en emulateur.",
     "sources": [
-      "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/B2W2_RNG_DeSmuMe.lua#L405",
+      "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/B2W2_RNG_DeSmuMe.lua#L411-L412",
+      "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/PK5.cs#L43",
+      "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/PK5.cs#L276",
+      "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/Util/PokeCrypto.cs#L166",
+      "https://github.com/TASEmulators/desmume/blob/1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a/desmume/src/NDSSystem.cpp#L2589",
+      "https://github.com/TASEmulators/desmume/blob/1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a/desmume/src/NDSSystem.h#L135"
+    ]
+  },
+  {
+    "id": "white_fr_rev0",
+    "game_id": "white",
+    "game_code": "IRAF",
+    "region": "FR",
+    "revision": 0,
+    "party_count_address": 35866960,
+    "party_address": 35866964,
+    "pokemon_size": 220,
+    "validation": "source_documented",
+    "revision_note": "PokeLua ne qualifie pas les revisions. Le choix conservateur de la revision 0 doit etre valide sur le jeu reel; une source documentaire ne constitue pas un test en emulateur.",
+    "sources": [
+      "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L457-L458",
+      "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L426-L427",
+      "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/PK5.cs#L43",
+      "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/PK5.cs#L276",
+      "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/Util/PokeCrypto.cs#L166",
+      "https://github.com/TASEmulators/desmume/blob/1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a/desmume/src/NDSSystem.cpp#L2589",
+      "https://github.com/TASEmulators/desmume/blob/1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a/desmume/src/NDSSystem.h#L135"
+    ]
+  },
+  {
+    "id": "white2_fr_rev0",
+    "game_id": "white2",
+    "game_code": "IRDF",
+    "region": "FR",
+    "revision": 0,
+    "party_count_address": 35775528,
+    "party_address": 35775532,
+    "pokemon_size": 220,
+    "validation": "source_documented",
+    "revision_note": "PokeLua ne qualifie pas les revisions. Le choix conservateur de la revision 0 doit etre valide sur le jeu reel; une source documentaire ne constitue pas un test en emulateur.",
+    "sources": [
+      "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/B2W2_RNG_DeSmuMe.lua#L411-L412",
+      "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/B2W2_RNG_DeSmuMe.lua#L382-L383",
       "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/PK5.cs#L43",
       "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/PK5.cs#L276",
       "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/Util/PokeCrypto.cs#L166",

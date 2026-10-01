@@ -16,6 +16,8 @@ logs/
 *.log
 *.log.*
 runtime/
+backups/
+*.pce-backup*
 roms/
 saves/
 savestates/

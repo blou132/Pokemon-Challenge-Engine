@@ -20,6 +20,8 @@ PROBES = (
     "archive.ZIP", "game.7z", "game.rar", "DeSmuME.exe", "lua51.dll",
     "runtime/bridge/session/snapshot-0000000001.json",
     "pokemon-challenge-engine/profiles/run_001/challenge.json",
+    "backups/pce-backups.json", "nested/backups/index.json", "desmume.ini.pce-backup.1",
+    "game-mode.local.json", "controls.local.json", ".game-mode.local.example.tmp",
 )
 SECRET_PATTERNS = (
     re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),

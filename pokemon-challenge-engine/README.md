@@ -1,4 +1,4 @@
-# Pokemon Challenge Engine — V0.2
+# Pokemon Challenge Engine — V0.3 en cours
 
 Application Windows en français pour préparer des challenges **Pokémon Noir**,
 **Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, enregistrer des profils,
@@ -6,14 +6,32 @@ lancer DeSmuME standalone et consulter
 les données transmises par une passerelle Lua locale en lecture seule.
 
 **L'application ne modifie pas la ROM, n'écrit pas dans la mémoire du jeu et n'impose
-aucune règle dans Pokémon.** Le suivi des challenges reste manuel. Le mode STRICT est une intention enregistrée
+aucune règle dans Pokémon.** Le suivi manuel est conservé. Le mode STRICT est une intention enregistrée
 pour les versions suivantes. La règle Randomizer est uniquement prévue et configurable.
 
 ![Accueil de l'application — capture V0.1](docs/screenshots/accueil-1920.png)
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)
 
-## État de la V0.2
+## État de la V0.3
+
+Le panneau **Suivi Nuzlocke**, dans **Connexion DeSmuME**, associe le suivi au
+profil choisi avant la connexion. Sans profil, la connexion reste un diagnostic.
+Le moteur indépendant traite première rencontre, capture, K.O., fuites, résultat
+inconnu et Species Clause exacte, avec sauvegarde de progression et historique
+idempotent. Ces comportements sont vérifiés par des **événements synthétiques**.
+
+Les lectures de carte de Noir et Blanc FR rev0 sont documentées et testées sur
+RAM synthétique. Les profils de suivi de Noir 2 et Blanc 2 restent indisponibles.
+Les adresses permettant de distinguer combat sauvage/dresseur et capture/fuite
+ne sont pas suffisamment documentées pour ces ROM françaises. Elles restent
+`null` : **les captures réelles ne sont pas encore détectées automatiquement**.
+La V0.3 n'est donc pas terminée. Pour la lecture réelle des cartes et la chaîne
+complète : **En attente de validation sur la machine utilisateur.**
+
+[Modèle de suivi, limites et procédure de validation](docs/nuzlocke-tracking.md).
+
+## État conservé de la V0.2
 
 La nouvelle page **Connexion DeSmuME** prépare un script local, affiche l'état de la
 connexion, l'identité du jeu, les capacités reçues et les données d'équipe disponibles.
@@ -40,9 +58,11 @@ machine utilisateur.** Noir 2 ne disposait pas d'une équipe chargée lors de so
 essai de transport. Noir et Blanc 2 n'ont pas été validés en émulateur.
 Voir le [rapport de vérification](docs/verification.md) pour les preuves et les limites exactes.
 
-Les versions sont distinctes : application et scripts **`0.2.0`**, format des profils
-**`0.1.0`** conservé, protocole de la passerelle **`1`**. Les anciens profils ne sont
-pas migrés ni réécrits par la connexion Lua.
+Les versions sont distinctes : application et scripts **`0.3.0`**, challenge
+**`0.1.0`** conservé, progression **schéma `2`**, protocole **`2`**. Python accepte
+aussi les messages v1 des scripts `0.2.0`, sans observations Nuzlocke.
+Les anciens suivis sont migrés en mémoire à la lecture, puis persistés seulement
+lors d'une sauvegarde ou d'un événement applicable au profil actif.
 
 ## Installation sous Windows
 
@@ -127,7 +147,8 @@ Il faut un build DeSmuME standalone proposant le menu **Tools > Lua Scripting**.
 La présence d'un exécutable DeSmuME ne garantit pas son support Lua. L'application
 n'ajoute aucun argument de lancement Lua supposé et ne pilote pas les menus de l'émulateur.
 
-1. Dans **Connexion DeSmuME**, sélectionner Noir, Blanc, Noir 2 ou Blanc 2, puis
+1. Dans **Connexion DeSmuME**, choisir le profil actif, ou le diagnostic sans
+   profil, puis sélectionner Noir, Blanc, Noir 2 ou Blanc 2 et
    **Préparer la connexion**. Pour reproduire l'essai de Blanc, sélectionner **Pokémon Blanc**.
 2. Dans DeSmuME, ouvrir le jeu correspondant et le laisser en cours d'exécution.
 3. Ouvrir **Tools > Lua Scripting > New Lua Script**, sélectionner le chemin exact
@@ -227,10 +248,13 @@ les sauvegardes, les environnements Python, les caches et les secrets sont exclu
 
 Le catalogue contient 15 règles. Les jeux futurs sont décrits dans les données mais
 restent indisponibles. Une forte augmentation du catalogue nécessitera d'adapter la
-recherche de combinaisons. Les blocages stricts, le vrai Randomizer, le suivi automatique
-des zones, rencontres et captures, et l'empaquetage PyInstaller ne sont pas implémentés.
+recherche de combinaisons. Les blocages stricts, le vrai Randomizer et
+l'empaquetage PyInstaller ne sont pas implémentés.
 
-Les messages Lua ne mettent pas à jour la progression ou l'historique des profils.
+Les observations valides alimentent uniquement le profil actif compatible dont
+la règle Nuzlocke est sélectionnée. Les profils livrés peuvent actuellement
+émettre des changements de carte ; aucune rencontre réelle ne peut être consommée
+avec leurs champs de combat inconnus.
 Les adresses utilisées et leur statut de validation sont décrits dans la
 [cartographie mémoire](docs/memory-map.md).
 

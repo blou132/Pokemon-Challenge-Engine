@@ -1,4 +1,4 @@
-# Architecture V0.2
+# Architecture V0.3
 
 ## Séparation des responsabilités
 
@@ -9,6 +9,9 @@
 - `app/core/challenge_engine.py` : orchestration des règles, paramètres et Monotype, sans dépendance Qt.
 - `app/core/monotype.py` : ensemble des 17 types Gen V et sélection reproductible.
 - `app/core/profile_manager.py` : persistance des profils et récupération contrôlée des données partielles.
+- `app/events/` : observations nullables et événements structurés sans dépendance Qt.
+- `app/core/nuzlocke_tracker.py` : zones, rencontres, résultats et Species Clause optionnelle.
+- `app/services/tracking_service.py` : profil actif, identité compatible et persistance du suivi.
 - `app/core/game_detector.py` : détection optionnelle depuis 16 octets de l'en-tête d'une ROM, en lecture seule ; non utilisée par le launcher V0.1.
 - `app/services/config_service.py` et `launcher_service.py` : configuration des chemins et création du processus DeSmuME, conservées de la V0.1.
 - `app/bridge/protocol.py` : décodage JSON strict, versions, capacités et validation des messages.
@@ -31,13 +34,16 @@ Les autres jeux ont le statut `planned` et ne peuvent pas être générés ou la
 
 | Élément | Version | Rôle |
 | --- | --- | --- |
-| Application et scripts Lua | `0.2.0` | Version du logiciel livré |
+| Application et scripts Lua | `0.3.0` | Version du logiciel livré |
 | Format sérialisé des challenges/profils | `0.1.0` | Compatibilité des profils existants |
-| Protocole de passerelle | `1` | Structure des messages échangés |
+| Progression | `2` | Migration additive conservant le suivi manuel |
+| Protocole de passerelle | `2` | Observations nullables ; réception v1 conservée |
 
-La V0.2 ne migre pas les profils et ne confond pas leur champ `version` avec la
-version affichée par l'application. Les lectures Lua n'alimentent pas encore la
-progression ni l'historique des challenges.
+Le champ `version` du challenge reste indépendant de `schema_version` dans la
+progression. La migration des anciens suivis se fait en mémoire sans réécriture
+à la consultation. Les événements alimentent le seul profil actif compatible,
+si Nuzlocke est sélectionné. Les champs de combat des profils livrés restent
+inconnus : seul le moteur synthétique couvre actuellement les résultats.
 
 ## Génération
 
@@ -68,7 +74,7 @@ doit être accessible en écriture. Les chemins utilisateur sont absents du dép
 Les profils sont stockés dans des répertoires distincts avec :
 
 - `challenge.json` : jeu, version, mode, règles, états, paramètres, Monotype, seed, date, nom et identifiant du profil.
-- `progress.json` : badges, captures, morts (`deaths`), zones et level cap courant ; saisie manuelle.
+- `progress.json` : champs manuels conservés, plus `schema_version: 2` et `nuzlocke` contenant zones, rencontre active, espèces et curseurs de déduplication.
 - `history.json` : liste d'événements, initialement vide.
 
 Une création produit un nouvel identifiant même si le nom existe déjà. La mise à jour du
@@ -97,8 +103,9 @@ non vérifié n'est ajouté au launcher.
 
 ## Transport et interface
 
-Le trajet d'une lecture est : **RAM DeSmuME → lecteur Lua → instantané JSON local →
-BridgeService → signaux du BridgeController → BridgePage**. Les widgets ne contiennent
+Le trajet d'une lecture est : **RAM DeSmuME → lecteur Lua → protocole →
+observations/événements → NuzlockeTracker → ProfileManager → signaux Qt → panneau**.
+`BridgePage` ne décide pas du résultat d'une rencontre. Les widgets ne contiennent
 aucune adresse mémoire et n'effectuent pas de lecture de la passerelle.
 
 Chaque préparation crée un identifiant de session et un dossier dédié. Lua termine
@@ -109,10 +116,17 @@ La validation rejette les versions incompatibles, les messages mal formés et le
 données qui ne correspondent pas à la session attendue. Les doublons ne maintiennent
 pas artificiellement une connexion en vie.
 
-Le controller crée son `QThread` au premier démarrage demandé. Le worker prépare la
+Le controller crée son `QThread` à la sélection d'un profil ou au démarrage demandé. Le worker prépare la
 session puis utilise son propre `QTimer` pour effectuer le polling. Les signaux
 mettent les widgets à jour sur le thread principal. La fermeture de la fenêtre
 arrête le timer dans le worker puis attend la fin du thread.
+
+Le journal local `observation-<sequence>.json` conserve les observations différentes
+jusqu'à leur traitement et leur persistance. Le worker acquitte ensuite les entrées.
+Une erreur de sauvegarde conserve les fichiers pour réessai. Les curseurs et
+identifiants de rencontre persistés rendent ce réessai idempotent. Les règles
+de migration, de récupération atomique et les limites de reconnexion sont
+décrites dans [Suivi Nuzlocke](nuzlocke-tracking.md).
 
 Les états distinguent une session arrêtée, l'attente, la connexion Lua, la réception
 de données d'équipe, la déconnexion et une erreur. Une connexion Lua ou un PID de

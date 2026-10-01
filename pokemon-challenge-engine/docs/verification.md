@@ -1,4 +1,60 @@
-# Vérification de la V0.2 et historique V0.1
+# Vérification V0.3 et historique V0.2 / V0.1
+
+## V0.3 en cours — 1er octobre 2026
+
+Base : `f0f66e2c00e8ba53f39651fe1eaeb4e1713deedb`, branche
+`feat/v0.2-desmume-bridge`. Avant modification : **598 tests réussis, aucun ignoré,
+34,36 s**. Le travail V0.3 est sur `feat/v0.3-nuzlocke-tracking` ; aucune fusion.
+
+Après implémentation et corrections : **779 tests réussis, aucun ignoré,
+91,28 s** avec Python 3.13.7, pytest 9.1.1, PySide6 6.11.2 et la DLL Lua 5.1
+locale. La suite existante est conservée. `compileall -q app tools` réussit.
+
+Contrôles nouveaux, tous **synthétiques** pour les données de jeu :
+
+- Cartes Noir/Blanc FR : adresses distinctes, uint16, regroupements sourcés,
+  identité réelle du lecteur simulée, inconnues et transitions ; aucune adresse BW
+  transférée aux suites BW2 et aucune fausse classification depuis un tampon ennemi.
+- Protocole v1/v2, valeurs nulles, valeurs contradictoires, journal conservé malgré
+  la perte des snapshots, acquittement après traitement et refus d'un autre jeu.
+- Exécution du producteur Lua jusqu'au service Python et aux fichiers du profil
+  pour capture, K.O., fuite joueur, fuite sauvage et résultat inconnu. Ces combats
+  sont injectés comme **fixtures de contrat du lecteur**, sans offsets RAM inventés.
+- Long flux de heartbeat ne remplissant pas le journal ; saturation à 256
+  observations préservant les événements et signalant l'erreur ; reprise Lua et
+  refus d'un index corrompu.
+- Première rencontre, Species Clause active/inactive, zone déjà utilisée,
+  changements de zone en combat, reconnexion et événements idempotents.
+- Profil absent, mauvaise identité, règle inactive, migration d'anciens suivis,
+  JSON corrompu et récupération après interruption entre les remplacements de fichiers.
+- Interface : sélection explicite du profil, verrouillage pendant la session,
+  résultat/restauration/historique et conservation du suivi automatique pendant
+  une modification manuelle.
+
+L'entrée native Windows `tools.verify_ui --entrypoint` a démarré puis fermé
+l'application sans erreur. Des rendus des widgets Qt ont été inspectés à
+**1060×640** et **1366×768** avec la police Segoe UI : sélection du profil,
+capture factice et lectures de combat indisponibles sont lisibles. Ces rendus
+utilisent un profil **« Démonstration synthétique »** et restent dans le dossier
+ignoré `runtime/v03-ui/`. Ils ne prouvent aucune lecture d'une partie réelle.
+
+**Aucun nouvel essai réel de rencontre n'a été réalisé pour V0.3.** Aucun
+déplacement, combat ou choix de capture n'a été automatisé. Aucune ROM ni
+sauvegarde utilisateur n'a été modifiée par ce travail. La validation réelle
+V0.2 de l'équipe Blanc ci-dessous reste un résultat historique distinct.
+
+Les cartes ont des sources et des tests synthétiques ; les lectures de combat
+et de résultat des ROM françaises restent **non implémentées faute d'adresses
+suffisamment documentées**. Le pipeline réel zone → rencontre → résultat → profil
+ne fonctionne donc pas encore entièrement. **La V0.3 n'est pas terminée.**
+
+**En attente de validation sur la machine utilisateur.** La
+[procédure Nuzlocke](nuzlocke-tracking.md#validation-utilisateur-prioritaire--blanc-fr-rev0)
+sépare l'essai de carte disponible maintenant des essais de rencontre bloqués
+par les lectures manquantes. Les [sources de suivi](tracking-sources.md)
+expliquent ce qui est retenu et ce qui n'est pas déduit.
+
+## Historique de validation V0.2
 
 ## Extension aux quatre jeux Gen V — 30 septembre 2026
 

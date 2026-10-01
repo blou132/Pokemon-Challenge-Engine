@@ -1,4 +1,4 @@
-# Passerelle DeSmuME / Lua — V0.2
+# Passerelle DeSmuME / Lua — V0.3 en cours
 
 Les scripts réalisent une communication locale **en lecture seule** avec DeSmuME.
 Ils lisent la mémoire exposée par l'émulateur et écrivent des instantanés JSON
@@ -32,6 +32,7 @@ Les étapes détaillées, les états et le dépannage sont décrits dans
 | `common/bridge.lua` | Chargement de la session, sélection du profil, heartbeat, événements et publication atomique des instantanés |
 | `common/protocol.lua` | Encodage JSON, tableaux et valeurs nulles |
 | `common/gen5_reader.lua` | Identification du jeu, validation du profil, déchiffrement et contrôles des données d'équipe |
+| `common/gen5_tracking_reader.lua` | Carte Noir/Blanc FR rev0 ; contrôles d'identité ; combat et résultat inconnus |
 | `black.lua`, `white.lua`, `black2.lua`, `white2.lua` | Points d'entrée pour les quatre jeux dans l'arborescence standard |
 
 Le script utilise les API DeSmuME `memory.readbyte` et `emu.frameadvance`.
@@ -39,9 +40,15 @@ Le script utilise les API DeSmuME `memory.readbyte` et `emu.frameadvance`.
 Les capacités effectivement reçues sont affichées par l'application ; les
 données indisponibles ne sont pas remplacées par des valeurs fictives.
 
-Les versions sont indépendantes : scripts/application `0.2.0`, protocole JSON
-`1`, format de profil de challenge conservé `0.1.0`. Le transport ne met pas à
-jour les profils ou leur progression manuelle.
+Les versions sont indépendantes : scripts/application `0.3.0`, protocole JSON
+`2` (Python reçoit aussi v1), challenge conservé `0.1.0`, progression schéma `2`.
+Lua écrit uniquement les fichiers de transport ; le service Python décide du
+suivi du profil actif. Le journal des observations est acquitté après traitement.
+
+Les cartes ont des sources et des tests synthétiques. Les lectures de combat,
+capture et fuite restent indisponibles ; aucun offset n'est supposé. Le cycle
+Nuzlocke réel n'est donc pas opérationnel. **En attente de validation sur la machine utilisateur.**
+Voir [les sources et limites du suivi](../docs/tracking-sources.md).
 
 ## Profils mémoire et validation
 

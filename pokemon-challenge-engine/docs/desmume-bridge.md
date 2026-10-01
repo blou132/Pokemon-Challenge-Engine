@@ -1,4 +1,15 @@
-# Connexion DeSmuME / Lua — V0.2
+# Connexion DeSmuME / Lua — V0.3 en cours
+
+La V0.3 ajoute un sélecteur de profil actif et le panneau **Suivi Nuzlocke**.
+Choisir ce profil avant de préparer la connexion ; arrêter la connexion avant
+d'en changer. Sans profil, les observations restent un diagnostic sans écriture
+de progression. Une identité incompatible suspend le suivi.
+
+Les lecteurs de carte Noir/Blanc FR rev0 sont documentés ; les lectures de
+combat/capture/fuite restent **indisponibles faute de sources suffisantes**.
+Un heartbeat ou une carte lisible ne valide donc pas le suivi d'une rencontre.
+**En attente de validation sur la machine utilisateur.**
+Voir [le périmètre et la procédure Nuzlocke](nuzlocke-tracking.md).
 
 La passerelle transmet à Python des instantanés lus par un script Lua dans
 DeSmuME. Le lancement d'un processus DeSmuME ne prouve pas que cette connexion
@@ -182,6 +193,21 @@ limite l'énumération du dossier à 512 entrées. Un fichier incomplet, mal for
 ou trop grand est signalé sans planter le service. Chaque événement contient
 tout l'état disponible : manquer le premier `hello` n'empêche pas la connexion.
 
+En protocole v2, les observations différentes sont aussi écrites dans
+`observation-<sequence>.json`. Python les traite dans l'ordre, même si leurs
+snapshots ont disparu, puis les retire seulement après sauvegarde réussie du
+profil (ou traitement en diagnostic sans profil applicable). `ack.txt` confirme
+la dernière séquence traitée. Une erreur de persistance conserve le journal.
+Les identifiants et curseurs persistés empêchent de doubler un événement après
+réessai. Un rechargement Lua conserve les fichiers en attente de la session.
+Un journal plein suspend le suivi ; il n'est pas tronqué silencieusement.
+
+Cela protège les observations effectivement échantillonnées, pas un événement
+RAM qui surviendrait entièrement entre deux lectures. Une future lecture de
+résultat devra donc utiliser un état suffisamment durable ou un indicateur
+documenté. Une nouvelle préparation crée une autre session et ne réimporte pas
+les anciens journaux non acquittés ; conserver ces dossiers en cas d'erreur.
+
 La boucle Lua examine la session toutes les 12 frames. Les publications normales
 sont plafonnées à **5 par seconde civile** par `os.time`; la notification finale
 de fermeture est distincte. Il n'existe aucune garantie d'une période exacte de
@@ -217,6 +243,9 @@ vaut vrai. Un message peut inclure une erreur de lecture d'équipe tout en
 maintenant la connexion ; une lecture indisponible n'est pas remplacée par zéro.
 
 ## Protocole JSON v1
+
+Ce format historique reste accepté pour les scripts `0.2.0`. Les scripts
+livrés `0.3.0` produisent le format v2 décrit après cette section.
 
 Le validateur de référence est [app/bridge/protocol.py](../app/bridge/protocol.py).
 Un message doit contenir exactement les **16 champs** suivants. L'ordre des
@@ -273,12 +302,39 @@ de refuser l'identifiant ou le code d'un autre jeu.
 
 ## Versions et limites de validation
 
+### Extension JSON v2
+
+Le message conserve les 16 champs ci-dessus, avec `protocol_version: 2`,
+`script_version: "0.3.0"`, et ajoute exactement un champ `observation`.
+Il vaut `null` lorsque le lecteur n'est pas disponible. Sinon la capacité
+`tracking` et l'identité complète sont exigées. Les 20 champs de l'observation
+sont présents et nullables :
+
+- carte : `map_id`, `capture_zone_id`, `zone_name` ;
+- combat : `battle_active`, `battle_type`, `encounter_kind`, `battle_id` ;
+- adversaire : `species_id`, `level`, `hp`, `max_hp`, `encounter_slot` ;
+- cycle et résultat : `outcome`, `wild_encounter`, `encounter_started`,
+  `encounter_ended`, `capture_detected`, `capture_success`, `fainted_wild`, `fled`.
+
+`battle_type` accepte `wild`, `trainer`, `double`, `scripted`, `unknown`.
+`encounter_kind` accepte les huit classifications du [modèle Nuzlocke](nuzlocke-tracking.md).
+`outcome` accepte `captured`, `fainted`, `escaped`, `player_fled`,
+`battle_ended_unknown`. `fled` vaut `player`, `wild`, `unknown` ou `null`.
+Un résultat `captured` exige `capture_success: true` et `capture_detected: true`.
+Le lecteur livré n'émet aucun de ces résultats faute d'adresses documentées.
+L'équipe avant/après n'est pas utilisée comme preuve de capture : elle manquerait
+notamment les captures envoyées aux boîtes.
+
+Les formats sont stricts : v1 avec observations, v2 sans le nouveau champ,
+version inconnue ou paire script/protocole incompatible sont refusés.
+
 | Version | Valeur | Rôle |
 | --- | --- | --- |
-| Application | `0.2.0` | Version de Pokemon Challenge Engine. |
-| Script Lua | `0.2.0` | Contrôle de compatibilité du producteur de messages. |
-| Protocole | `1` | Structure et validation des échanges JSON. |
+| Application | `0.3.0` | Version de Pokemon Challenge Engine. |
+| Script Lua | `0.3.0` | Producteur v2 ; anciens scripts 0.2.0 acceptés en v1. |
+| Protocole | `2` | Structure et validation des échanges JSON ; réception v1 conservée. |
 | Schéma des profils de challenge | `0.1.0` | Champ `version` des challenges persistés ; les profils V0.1 restent compatibles. |
+| Progression | `2` | Migration additive, état Nuzlocke et déduplication. |
 
 Les identifiants ci-dessous désignent des profils mémoire, pas des versions du
 schéma de sauvegarde des challenges. Chaque profil a ses propres adresses et ses

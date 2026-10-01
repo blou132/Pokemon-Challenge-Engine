@@ -1,0 +1,2208 @@
+{
+  "schema_version": 1,
+  "tables": {
+    "bw_fr_rev0": {
+      "games": [
+        "black",
+        "white"
+      ],
+      "region": "FR",
+      "revision": 0,
+      "policy": "same_documented_area",
+      "validation": "source_documented",
+      "sources": [
+        "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L363-L403",
+        "https://github.com/Real96/PokeLua/blob/b76caf669872897295db5304eebbdf5e53125efb/Gen%205/DeSmuMe/BW_RNG_DeSmuMe.lua#L1194-L1195",
+        "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/Resources/text/locations/gen5/text_bw2_00000_en.txt",
+        "https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/Resources/text/locations/gen5/text_bw2_00000_fr.txt"
+      ],
+      "excluded_reason": "Portes generiques, lieux speciaux et zones exclusives non regroupes ; toute carte absente reste inconnue.",
+      "entries": {
+        "6": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "7": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "8": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "9": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "10": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "11": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "12": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "13": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "14": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "15": {
+          "capture_zone_id": "striaton_city",
+          "zone_name": "Ogoesse",
+          "source_area_name": "Striaton City",
+          "name_location_id": 6
+        },
+        "16": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "17": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "18": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "19": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "20": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "21": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "22": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "23": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "24": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "25": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "26": {
+          "capture_zone_id": "nacrene_city",
+          "zone_name": "Maillard",
+          "source_area_name": "Nacrene City",
+          "name_location_id": 7
+        },
+        "28": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "29": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "30": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "31": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "32": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "33": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "34": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "35": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "36": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "37": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "38": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "39": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "40": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "41": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "42": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "43": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "44": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "45": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "46": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "47": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "48": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "49": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "50": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "53": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "54": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "55": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "56": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "57": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "58": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "59": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "60": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "61": {
+          "capture_zone_id": "castelia_city",
+          "zone_name": "Volucité",
+          "source_area_name": "Castelia City",
+          "name_location_id": 8
+        },
+        "62": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "63": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "64": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "65": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "79": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "80": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "81": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "82": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "83": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "84": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "85": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "86": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "87": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "88": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "89": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "93": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "94": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "95": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "96": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "97": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "98": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "99": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "100": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "101": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "102": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "103": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "104": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "105": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "106": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "107": {
+          "capture_zone_id": "mistralton_city",
+          "zone_name": "Parsemille",
+          "source_area_name": "Mistralton City",
+          "name_location_id": 11
+        },
+        "108": {
+          "capture_zone_id": "mistralton_city",
+          "zone_name": "Parsemille",
+          "source_area_name": "Mistralton City",
+          "name_location_id": 11
+        },
+        "109": {
+          "capture_zone_id": "mistralton_city",
+          "zone_name": "Parsemille",
+          "source_area_name": "Mistralton City",
+          "name_location_id": 11
+        },
+        "110": {
+          "capture_zone_id": "mistralton_city",
+          "zone_name": "Parsemille",
+          "source_area_name": "Mistralton City",
+          "name_location_id": 11
+        },
+        "111": {
+          "capture_zone_id": "mistralton_city",
+          "zone_name": "Parsemille",
+          "source_area_name": "Mistralton City",
+          "name_location_id": 11
+        },
+        "112": {
+          "capture_zone_id": "mistralton_city",
+          "zone_name": "Parsemille",
+          "source_area_name": "Mistralton City",
+          "name_location_id": 11
+        },
+        "113": {
+          "capture_zone_id": "icirrus_city",
+          "zone_name": "Flocombe",
+          "source_area_name": "Icirrus City",
+          "name_location_id": 12
+        },
+        "114": {
+          "capture_zone_id": "icirrus_city",
+          "zone_name": "Flocombe",
+          "source_area_name": "Icirrus City",
+          "name_location_id": 12
+        },
+        "115": {
+          "capture_zone_id": "icirrus_city",
+          "zone_name": "Flocombe",
+          "source_area_name": "Icirrus City",
+          "name_location_id": 12
+        },
+        "116": {
+          "capture_zone_id": "icirrus_city",
+          "zone_name": "Flocombe",
+          "source_area_name": "Icirrus City",
+          "name_location_id": 12
+        },
+        "117": {
+          "capture_zone_id": "icirrus_city",
+          "zone_name": "Flocombe",
+          "source_area_name": "Icirrus City",
+          "name_location_id": 12
+        },
+        "118": {
+          "capture_zone_id": "icirrus_city",
+          "zone_name": "Flocombe",
+          "source_area_name": "Icirrus City",
+          "name_location_id": 12
+        },
+        "119": {
+          "capture_zone_id": "icirrus_city",
+          "zone_name": "Flocombe",
+          "source_area_name": "Icirrus City",
+          "name_location_id": 12
+        },
+        "120": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "121": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "122": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "123": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "124": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "125": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "126": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "127": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "128": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "129": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "130": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "134": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "135": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "136": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "137": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "138": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "139": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "140": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "141": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "142": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "143": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "144": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "145": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "146": {
+          "capture_zone_id": "pok_mon_league",
+          "zone_name": "Ligue Pokémon",
+          "source_area_name": "Pokémon League",
+          "name_location_id": 44
+        },
+        "150": {
+          "capture_zone_id": "",
+          "zone_name": "－－－－－－－－－－",
+          "source_area_name": "－－－－－－－－－－",
+          "name_location_id": 0
+        },
+        "151": {
+          "capture_zone_id": "",
+          "zone_name": "－－－－－－－－－－",
+          "source_area_name": "－－－－－－－－－－",
+          "name_location_id": 0
+        },
+        "152": {
+          "capture_zone_id": "dreamyard",
+          "zone_name": "Vestiges du Rêve",
+          "source_area_name": "Dreamyard",
+          "name_location_id": 32
+        },
+        "153": {
+          "capture_zone_id": "dreamyard",
+          "zone_name": "Vestiges du Rêve",
+          "source_area_name": "Dreamyard",
+          "name_location_id": 32
+        },
+        "154": {
+          "capture_zone_id": "pinwheel_forest",
+          "zone_name": "Forêt d'Empoigne",
+          "source_area_name": "Pinwheel Forest",
+          "name_location_id": 33
+        },
+        "155": {
+          "capture_zone_id": "pinwheel_forest",
+          "zone_name": "Forêt d'Empoigne",
+          "source_area_name": "Pinwheel Forest",
+          "name_location_id": 33
+        },
+        "156": {
+          "capture_zone_id": "rumination_field",
+          "zone_name": "Clairière Réflexion",
+          "source_area_name": "Rumination Field",
+          "name_location_id": 55
+        },
+        "157": {
+          "capture_zone_id": "desert_resort",
+          "zone_name": "Désert Délassant",
+          "source_area_name": "Desert Resort",
+          "name_location_id": 34
+        },
+        "158": {
+          "capture_zone_id": "desert_resort",
+          "zone_name": "Désert Délassant",
+          "source_area_name": "Desert Resort",
+          "name_location_id": 34
+        },
+        "160": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "161": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "162": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "163": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "164": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "165": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "166": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "167": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "168": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "169": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "170": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "171": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "172": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "173": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "174": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "175": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "176": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "177": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "178": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "179": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "180": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "181": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "182": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "183": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "184": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "185": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "186": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "187": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "188": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "189": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "190": {
+          "capture_zone_id": "relic_castle",
+          "zone_name": "Château Enfoui",
+          "source_area_name": "Relic Castle",
+          "name_location_id": 35
+        },
+        "191": {
+          "capture_zone_id": "cold_storage",
+          "zone_name": "Hangar Frigorifique",
+          "source_area_name": "Cold Storage",
+          "name_location_id": 84
+        },
+        "192": {
+          "capture_zone_id": "cold_storage",
+          "zone_name": "Hangar Frigorifique",
+          "source_area_name": "Cold Storage",
+          "name_location_id": 84
+        },
+        "193": {
+          "capture_zone_id": "cold_storage",
+          "zone_name": "Hangar Frigorifique",
+          "source_area_name": "Cold Storage",
+          "name_location_id": 84
+        },
+        "194": {
+          "capture_zone_id": "chargestone_cave",
+          "zone_name": "Grotte Électrolithe",
+          "source_area_name": "Chargestone Cave",
+          "name_location_id": 37
+        },
+        "195": {
+          "capture_zone_id": "chargestone_cave",
+          "zone_name": "Grotte Électrolithe",
+          "source_area_name": "Chargestone Cave",
+          "name_location_id": 37
+        },
+        "196": {
+          "capture_zone_id": "chargestone_cave",
+          "zone_name": "Grotte Électrolithe",
+          "source_area_name": "Chargestone Cave",
+          "name_location_id": 37
+        },
+        "197": {
+          "capture_zone_id": "chargestone_cave",
+          "zone_name": "Grotte Électrolithe",
+          "source_area_name": "Chargestone Cave",
+          "name_location_id": 37
+        },
+        "198": {
+          "capture_zone_id": "twist_mountain",
+          "zone_name": "Mont Foré",
+          "source_area_name": "Twist Mountain",
+          "name_location_id": 38
+        },
+        "199": {
+          "capture_zone_id": "twist_mountain",
+          "zone_name": "Mont Foré",
+          "source_area_name": "Twist Mountain",
+          "name_location_id": 38
+        },
+        "200": {
+          "capture_zone_id": "twist_mountain",
+          "zone_name": "Mont Foré",
+          "source_area_name": "Twist Mountain",
+          "name_location_id": 38
+        },
+        "201": {
+          "capture_zone_id": "twist_mountain",
+          "zone_name": "Mont Foré",
+          "source_area_name": "Twist Mountain",
+          "name_location_id": 38
+        },
+        "202": {
+          "capture_zone_id": "twist_mountain",
+          "zone_name": "Mont Foré",
+          "source_area_name": "Twist Mountain",
+          "name_location_id": 38
+        },
+        "203": {
+          "capture_zone_id": "twist_mountain",
+          "zone_name": "Mont Foré",
+          "source_area_name": "Twist Mountain",
+          "name_location_id": 38
+        },
+        "204": {
+          "capture_zone_id": "twist_mountain",
+          "zone_name": "Mont Foré",
+          "source_area_name": "Twist Mountain",
+          "name_location_id": 38
+        },
+        "205": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "206": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "207": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "208": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "209": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "210": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "211": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "212": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "213": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "214": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "215": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "216": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "217": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "218": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "219": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "220": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "221": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "222": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "223": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "224": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "225": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "226": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "227": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "228": {
+          "capture_zone_id": "victory_road",
+          "zone_name": "Route Victoire",
+          "source_area_name": "Victory Road",
+          "name_location_id": 40
+        },
+        "229": {
+          "capture_zone_id": "trial_chamber",
+          "zone_name": "Salle Épreuve",
+          "source_area_name": "Trial Chamber",
+          "name_location_id": 73
+        },
+        "230": {
+          "capture_zone_id": "giant_chasm",
+          "zone_name": "Grotte Cyclopéenne",
+          "source_area_name": "Giant Chasm",
+          "name_location_id": 61
+        },
+        "231": {
+          "capture_zone_id": "giant_chasm",
+          "zone_name": "Grotte Cyclopéenne",
+          "source_area_name": "Giant Chasm",
+          "name_location_id": 61
+        },
+        "232": {
+          "capture_zone_id": "giant_chasm",
+          "zone_name": "Grotte Cyclopéenne",
+          "source_area_name": "Giant Chasm",
+          "name_location_id": 61
+        },
+        "233": {
+          "capture_zone_id": "giant_chasm",
+          "zone_name": "Grotte Cyclopéenne",
+          "source_area_name": "Giant Chasm",
+          "name_location_id": 61
+        },
+        "234": {
+          "capture_zone_id": "giant_chasm",
+          "zone_name": "Grotte Cyclopéenne",
+          "source_area_name": "Giant Chasm",
+          "name_location_id": 61
+        },
+        "235": {
+          "capture_zone_id": "liberty_garden",
+          "zone_name": "Île Liberté",
+          "source_area_name": "Liberty Garden",
+          "name_location_id": 62
+        },
+        "236": {
+          "capture_zone_id": "liberty_garden",
+          "zone_name": "Île Liberté",
+          "source_area_name": "Liberty Garden",
+          "name_location_id": 62
+        },
+        "237": {
+          "capture_zone_id": "liberty_garden",
+          "zone_name": "Île Liberté",
+          "source_area_name": "Liberty Garden",
+          "name_location_id": 62
+        },
+        "238": {
+          "capture_zone_id": "p2_laboratory",
+          "zone_name": "Labo P2",
+          "source_area_name": "P2 Laboratory",
+          "name_location_id": 63
+        },
+        "239": {
+          "capture_zone_id": "p2_laboratory",
+          "zone_name": "Labo P2",
+          "source_area_name": "P2 Laboratory",
+          "name_location_id": 63
+        },
+        "240": {
+          "capture_zone_id": "undella_bay",
+          "zone_name": "Baie Vaguelone",
+          "source_area_name": "Undella Bay",
+          "name_location_id": 71
+        },
+        "241": {
+          "capture_zone_id": "abyssal_ruins",
+          "zone_name": "Ruines des Abysses",
+          "source_area_name": "Abyssal Ruins",
+          "name_location_id": 116
+        },
+        "242": {
+          "capture_zone_id": "abyssal_ruins",
+          "zone_name": "Ruines des Abysses",
+          "source_area_name": "Abyssal Ruins",
+          "name_location_id": 116
+        },
+        "243": {
+          "capture_zone_id": "abyssal_ruins",
+          "zone_name": "Ruines des Abysses",
+          "source_area_name": "Abyssal Ruins",
+          "name_location_id": 116
+        },
+        "244": {
+          "capture_zone_id": "abyssal_ruins",
+          "zone_name": "Ruines des Abysses",
+          "source_area_name": "Abyssal Ruins",
+          "name_location_id": 116
+        },
+        "245": {
+          "capture_zone_id": "abyssal_ruins",
+          "zone_name": "Ruines des Abysses",
+          "source_area_name": "Abyssal Ruins",
+          "name_location_id": 116
+        },
+        "246": {
+          "capture_zone_id": "abyssal_ruins",
+          "zone_name": "Ruines des Abysses",
+          "source_area_name": "Abyssal Ruins",
+          "name_location_id": 116
+        },
+        "247": {
+          "capture_zone_id": "abyssal_ruins",
+          "zone_name": "Ruines des Abysses",
+          "source_area_name": "Abyssal Ruins",
+          "name_location_id": 116
+        },
+        "248": {
+          "capture_zone_id": "abyssal_ruins",
+          "zone_name": "Ruines des Abysses",
+          "source_area_name": "Abyssal Ruins",
+          "name_location_id": 116
+        },
+        "249": {
+          "capture_zone_id": "skyarrow_bridge",
+          "zone_name": "Pont Sagiciel",
+          "source_area_name": "Skyarrow Bridge",
+          "name_location_id": 64
+        },
+        "253": {
+          "capture_zone_id": "driftveil_drawbridge",
+          "zone_name": "Pont Yoneuve",
+          "source_area_name": "Driftveil Drawbridge",
+          "name_location_id": 65
+        },
+        "254": {
+          "capture_zone_id": "tubeline_bridge",
+          "zone_name": "Pont Ferroviaire",
+          "source_area_name": "Tubeline Bridge",
+          "name_location_id": 66
+        },
+        "255": {
+          "capture_zone_id": "village_bridge",
+          "zone_name": "Pont du Hameau",
+          "source_area_name": "Village Bridge",
+          "name_location_id": 67
+        },
+        "256": {
+          "capture_zone_id": "village_bridge",
+          "zone_name": "Pont du Hameau",
+          "source_area_name": "Village Bridge",
+          "name_location_id": 67
+        },
+        "257": {
+          "capture_zone_id": "village_bridge",
+          "zone_name": "Pont du Hameau",
+          "source_area_name": "Village Bridge",
+          "name_location_id": 67
+        },
+        "258": {
+          "capture_zone_id": "village_bridge",
+          "zone_name": "Pont du Hameau",
+          "source_area_name": "Village Bridge",
+          "name_location_id": 67
+        },
+        "259": {
+          "capture_zone_id": "village_bridge",
+          "zone_name": "Pont du Hameau",
+          "source_area_name": "Village Bridge",
+          "name_location_id": 67
+        },
+        "260": {
+          "capture_zone_id": "village_bridge",
+          "zone_name": "Pont du Hameau",
+          "source_area_name": "Village Bridge",
+          "name_location_id": 67
+        },
+        "261": {
+          "capture_zone_id": "village_bridge",
+          "zone_name": "Pont du Hameau",
+          "source_area_name": "Village Bridge",
+          "name_location_id": 67
+        },
+        "262": {
+          "capture_zone_id": "village_bridge",
+          "zone_name": "Pont du Hameau",
+          "source_area_name": "Village Bridge",
+          "name_location_id": 67
+        },
+        "263": {
+          "capture_zone_id": "marvelous_bridge",
+          "zone_name": "Pont de l'Inconnu",
+          "source_area_name": "Marvelous Bridge",
+          "name_location_id": 68
+        },
+        "264": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "265": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "266": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "267": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "268": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "269": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "270": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "271": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "272": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "273": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "274": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "275": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "276": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "277": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "278": {
+          "capture_zone_id": "n_s_castle",
+          "zone_name": "Palais de N",
+          "source_area_name": "N's Castle",
+          "name_location_id": 45
+        },
+        "289": {
+          "capture_zone_id": "nimbasa_city",
+          "zone_name": "Méanville",
+          "source_area_name": "Nimbasa City",
+          "name_location_id": 9
+        },
+        "290": {
+          "capture_zone_id": "driftveil_city",
+          "zone_name": "Port Yoneuve",
+          "source_area_name": "Driftveil City",
+          "name_location_id": 10
+        },
+        "291": {
+          "capture_zone_id": "mistralton_city",
+          "zone_name": "Parsemille",
+          "source_area_name": "Mistralton City",
+          "name_location_id": 11
+        },
+        "292": {
+          "capture_zone_id": "icirrus_city",
+          "zone_name": "Flocombe",
+          "source_area_name": "Icirrus City",
+          "name_location_id": 12
+        },
+        "293": {
+          "capture_zone_id": "opelucid_city",
+          "zone_name": "Janusia",
+          "source_area_name": "Opelucid City",
+          "name_location_id": 13
+        },
+        "296": {
+          "capture_zone_id": "cold_storage",
+          "zone_name": "Hangar Frigorifique",
+          "source_area_name": "Cold Storage",
+          "name_location_id": 84
+        },
+        "297": {
+          "capture_zone_id": "chargestone_cave",
+          "zone_name": "Grotte Électrolithe",
+          "source_area_name": "Chargestone Cave",
+          "name_location_id": 37
+        },
+        "298": {
+          "capture_zone_id": "twist_mountain",
+          "zone_name": "Mont Foré",
+          "source_area_name": "Twist Mountain",
+          "name_location_id": 38
+        },
+        "299": {
+          "capture_zone_id": "dragonspiral_tower",
+          "zone_name": "Tour Dragospire",
+          "source_area_name": "Dragonspiral Tower",
+          "name_location_id": 39
+        },
+        "300": {
+          "capture_zone_id": "giant_chasm",
+          "zone_name": "Grotte Cyclopéenne",
+          "source_area_name": "Giant Chasm",
+          "name_location_id": 61
+        },
+        "301": {
+          "capture_zone_id": "driftveil_drawbridge",
+          "zone_name": "Pont Yoneuve",
+          "source_area_name": "Driftveil Drawbridge",
+          "name_location_id": 65
+        },
+        "302": {
+          "capture_zone_id": "tubeline_bridge",
+          "zone_name": "Pont Ferroviaire",
+          "source_area_name": "Tubeline Bridge",
+          "name_location_id": 66
+        },
+        "303": {
+          "capture_zone_id": "marvelous_bridge",
+          "zone_name": "Pont de l'Inconnu",
+          "source_area_name": "Marvelous Bridge",
+          "name_location_id": 68
+        },
+        "304": {
+          "capture_zone_id": "route_5",
+          "zone_name": "Route 5",
+          "source_area_name": "Route 5",
+          "name_location_id": 18
+        },
+        "305": {
+          "capture_zone_id": "route_6",
+          "zone_name": "Route 6",
+          "source_area_name": "Route 6",
+          "name_location_id": 19
+        },
+        "306": {
+          "capture_zone_id": "route_7",
+          "zone_name": "Route 7",
+          "source_area_name": "Route 7",
+          "name_location_id": 20
+        },
+        "307": {
+          "capture_zone_id": "route_8",
+          "zone_name": "Route 8",
+          "source_area_name": "Route 8",
+          "name_location_id": 21
+        },
+        "308": {
+          "capture_zone_id": "route_9",
+          "zone_name": "Route 9",
+          "source_area_name": "Route 9",
+          "name_location_id": 22
+        },
+        "309": {
+          "capture_zone_id": "route_11",
+          "zone_name": "Route 11",
+          "source_area_name": "Route 11",
+          "name_location_id": 24
+        },
+        "310": {
+          "capture_zone_id": "route_12",
+          "zone_name": "Route 12",
+          "source_area_name": "Route 12",
+          "name_location_id": 25
+        },
+        "311": {
+          "capture_zone_id": "route_13",
+          "zone_name": "Route 13",
+          "source_area_name": "Route 13",
+          "name_location_id": 26
+        },
+        "312": {
+          "capture_zone_id": "route_14",
+          "zone_name": "Route 14",
+          "source_area_name": "Route 14",
+          "name_location_id": 27
+        },
+        "313": {
+          "capture_zone_id": "route_15",
+          "zone_name": "Route 15",
+          "source_area_name": "Route 15",
+          "name_location_id": 28
+        },
+        "314": {
+          "capture_zone_id": "route_16",
+          "zone_name": "Route 16",
+          "source_area_name": "Route 16",
+          "name_location_id": 29
+        },
+        "315": {
+          "capture_zone_id": "lacunosa_town",
+          "zone_name": "Entrelasque",
+          "source_area_name": "Lacunosa Town",
+          "name_location_id": 41
+        },
+        "316": {
+          "capture_zone_id": "undella_town",
+          "zone_name": "Vaguelone",
+          "source_area_name": "Undella Town",
+          "name_location_id": 42
+        },
+        "317": {
+          "capture_zone_id": "route_1",
+          "zone_name": "Route 1",
+          "source_area_name": "Route 1",
+          "name_location_id": 14
+        },
+        "319": {
+          "capture_zone_id": "route_2",
+          "zone_name": "Route 2",
+          "source_area_name": "Route 2",
+          "name_location_id": 15
+        },
+        "321": {
+          "capture_zone_id": "route_3",
+          "zone_name": "Route 3",
+          "source_area_name": "Route 3",
+          "name_location_id": 16
+        },
+        "322": {
+          "capture_zone_id": "route_3",
+          "zone_name": "Route 3",
+          "source_area_name": "Route 3",
+          "name_location_id": 16
+        },
+        "323": {
+          "capture_zone_id": "route_3",
+          "zone_name": "Route 3",
+          "source_area_name": "Route 3",
+          "name_location_id": 16
+        },
+        "324": {
+          "capture_zone_id": "wellspring_cave",
+          "zone_name": "Veine Souterraine",
+          "source_area_name": "Wellspring Cave",
+          "name_location_id": 53
+        },
+        "325": {
+          "capture_zone_id": "wellspring_cave",
+          "zone_name": "Veine Souterraine",
+          "source_area_name": "Wellspring Cave",
+          "name_location_id": 53
+        },
+        "326": {
+          "capture_zone_id": "route_4",
+          "zone_name": "Route 4",
+          "source_area_name": "Route 4",
+          "name_location_id": 17
+        },
+        "327": {
+          "capture_zone_id": "route_4",
+          "zone_name": "Route 4",
+          "source_area_name": "Route 4",
+          "name_location_id": 17
+        },
+        "328": {
+          "capture_zone_id": "route_4",
+          "zone_name": "Route 4",
+          "source_area_name": "Route 4",
+          "name_location_id": 17
+        },
+        "329": {
+          "capture_zone_id": "route_5",
+          "zone_name": "Route 5",
+          "source_area_name": "Route 5",
+          "name_location_id": 18
+        },
+        "330": {
+          "capture_zone_id": "route_5",
+          "zone_name": "Route 5",
+          "source_area_name": "Route 5",
+          "name_location_id": 18
+        },
+        "331": {
+          "capture_zone_id": "route_6",
+          "zone_name": "Route 6",
+          "source_area_name": "Route 6",
+          "name_location_id": 19
+        },
+        "332": {
+          "capture_zone_id": "route_6",
+          "zone_name": "Route 6",
+          "source_area_name": "Route 6",
+          "name_location_id": 19
+        },
+        "333": {
+          "capture_zone_id": "mistralton_cave",
+          "zone_name": "Grotte Parsemille",
+          "source_area_name": "Mistralton Cave",
+          "name_location_id": 54
+        },
+        "334": {
+          "capture_zone_id": "mistralton_cave",
+          "zone_name": "Grotte Parsemille",
+          "source_area_name": "Mistralton Cave",
+          "name_location_id": 54
+        },
+        "335": {
+          "capture_zone_id": "guidance_chamber",
+          "zone_name": "Espace Guide",
+          "source_area_name": "Guidance Chamber",
+          "name_location_id": 74
+        },
+        "336": {
+          "capture_zone_id": "route_6",
+          "zone_name": "Route 6",
+          "source_area_name": "Route 6",
+          "name_location_id": 19
+        },
+        "337": {
+          "capture_zone_id": "route_7",
+          "zone_name": "Route 7",
+          "source_area_name": "Route 7",
+          "name_location_id": 20
+        },
+        "338": {
+          "capture_zone_id": "celestial_tower",
+          "zone_name": "Tour des Cieux",
+          "source_area_name": "Celestial Tower",
+          "name_location_id": 56
+        },
+        "339": {
+          "capture_zone_id": "celestial_tower",
+          "zone_name": "Tour des Cieux",
+          "source_area_name": "Celestial Tower",
+          "name_location_id": 56
+        },
+        "340": {
+          "capture_zone_id": "celestial_tower",
+          "zone_name": "Tour des Cieux",
+          "source_area_name": "Celestial Tower",
+          "name_location_id": 56
+        },
+        "341": {
+          "capture_zone_id": "celestial_tower",
+          "zone_name": "Tour des Cieux",
+          "source_area_name": "Celestial Tower",
+          "name_location_id": 56
+        },
+        "342": {
+          "capture_zone_id": "celestial_tower",
+          "zone_name": "Tour des Cieux",
+          "source_area_name": "Celestial Tower",
+          "name_location_id": 56
+        },
+        "343": {
+          "capture_zone_id": "route_7",
+          "zone_name": "Route 7",
+          "source_area_name": "Route 7",
+          "name_location_id": 20
+        },
+        "344": {
+          "capture_zone_id": "route_7",
+          "zone_name": "Route 7",
+          "source_area_name": "Route 7",
+          "name_location_id": 20
+        },
+        "345": {
+          "capture_zone_id": "route_8",
+          "zone_name": "Route 8",
+          "source_area_name": "Route 8",
+          "name_location_id": 21
+        },
+        "346": {
+          "capture_zone_id": "moor_of_icirrus",
+          "zone_name": "Tourbière Flocombe",
+          "source_area_name": "Moor of Icirrus",
+          "name_location_id": 57
+        },
+        "348": {
+          "capture_zone_id": "route_9",
+          "zone_name": "Route 9",
+          "source_area_name": "Route 9",
+          "name_location_id": 22
+        },
+        "352": {
+          "capture_zone_id": "challenger_s_cave",
+          "zone_name": "Antre d'Entraînement",
+          "source_area_name": "Challenger's Cave",
+          "name_location_id": 59
+        },
+        "353": {
+          "capture_zone_id": "challenger_s_cave",
+          "zone_name": "Antre d'Entraînement",
+          "source_area_name": "Challenger's Cave",
+          "name_location_id": 59
+        },
+        "354": {
+          "capture_zone_id": "challenger_s_cave",
+          "zone_name": "Antre d'Entraînement",
+          "source_area_name": "Challenger's Cave",
+          "name_location_id": 59
+        },
+        "355": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "356": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "357": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "358": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "359": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "360": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "361": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "362": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "363": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "364": {
+          "capture_zone_id": "route_10",
+          "zone_name": "Route 10",
+          "source_area_name": "Route 10",
+          "name_location_id": 23
+        },
+        "365": {
+          "capture_zone_id": "route_11",
+          "zone_name": "Route 11",
+          "source_area_name": "Route 11",
+          "name_location_id": 24
+        },
+        "367": {
+          "capture_zone_id": "route_11",
+          "zone_name": "Route 11",
+          "source_area_name": "Route 11",
+          "name_location_id": 24
+        },
+        "368": {
+          "capture_zone_id": "route_12",
+          "zone_name": "Route 12",
+          "source_area_name": "Route 12",
+          "name_location_id": 25
+        },
+        "370": {
+          "capture_zone_id": "route_13",
+          "zone_name": "Route 13",
+          "source_area_name": "Route 13",
+          "name_location_id": 26
+        },
+        "371": {
+          "capture_zone_id": "route_13",
+          "zone_name": "Route 13",
+          "source_area_name": "Route 13",
+          "name_location_id": 26
+        },
+        "373": {
+          "capture_zone_id": "route_13",
+          "zone_name": "Route 13",
+          "source_area_name": "Route 13",
+          "name_location_id": 26
+        },
+        "374": {
+          "capture_zone_id": "route_14",
+          "zone_name": "Route 14",
+          "source_area_name": "Route 14",
+          "name_location_id": 27
+        },
+        "376": {
+          "capture_zone_id": "abundant_shrine",
+          "zone_name": "Autel Abondance",
+          "source_area_name": "Abundant Shrine",
+          "name_location_id": 70
+        },
+        "377": {
+          "capture_zone_id": "abundant_shrine",
+          "zone_name": "Autel Abondance",
+          "source_area_name": "Abundant Shrine",
+          "name_location_id": 70
+        },
+        "378": {
+          "capture_zone_id": "route_15",
+          "zone_name": "Route 15",
+          "source_area_name": "Route 15",
+          "name_location_id": 28
+        },
+        "381": {
+          "capture_zone_id": "pok_transfer_lab",
+          "zone_name": "Laboratoire Fret",
+          "source_area_name": "Poké Transfer Lab",
+          "name_location_id": 60
+        },
+        "382": {
+          "capture_zone_id": "route_15",
+          "zone_name": "Route 15",
+          "source_area_name": "Route 15",
+          "name_location_id": 28
+        },
+        "383": {
+          "capture_zone_id": "route_16",
+          "zone_name": "Route 16",
+          "source_area_name": "Route 16",
+          "name_location_id": 29
+        },
+        "385": {
+          "capture_zone_id": "lostlorn_forest",
+          "zone_name": "Bois des Illusions",
+          "source_area_name": "Lostlorn Forest",
+          "name_location_id": 72
+        },
+        "386": {
+          "capture_zone_id": "lostlorn_forest",
+          "zone_name": "Bois des Illusions",
+          "source_area_name": "Lostlorn Forest",
+          "name_location_id": 72
+        },
+        "387": {
+          "capture_zone_id": "route_18",
+          "zone_name": "Route 18",
+          "source_area_name": "Route 18",
+          "name_location_id": 31
+        },
+        "388": {
+          "capture_zone_id": "route_18",
+          "zone_name": "Route 18",
+          "source_area_name": "Route 18",
+          "name_location_id": 31
+        },
+        "389": {
+          "capture_zone_id": "nuvema_town",
+          "zone_name": "Renouet",
+          "source_area_name": "Nuvema Town",
+          "name_location_id": 4
+        },
+        "390": {
+          "capture_zone_id": "nuvema_town",
+          "zone_name": "Renouet",
+          "source_area_name": "Nuvema Town",
+          "name_location_id": 4
+        },
+        "391": {
+          "capture_zone_id": "nuvema_town",
+          "zone_name": "Renouet",
+          "source_area_name": "Nuvema Town",
+          "name_location_id": 4
+        },
+        "392": {
+          "capture_zone_id": "nuvema_town",
+          "zone_name": "Renouet",
+          "source_area_name": "Nuvema Town",
+          "name_location_id": 4
+        },
+        "393": {
+          "capture_zone_id": "nuvema_town",
+          "zone_name": "Renouet",
+          "source_area_name": "Nuvema Town",
+          "name_location_id": 4
+        },
+        "394": {
+          "capture_zone_id": "nuvema_town",
+          "zone_name": "Renouet",
+          "source_area_name": "Nuvema Town",
+          "name_location_id": 4
+        },
+        "395": {
+          "capture_zone_id": "nuvema_town",
+          "zone_name": "Renouet",
+          "source_area_name": "Nuvema Town",
+          "name_location_id": 4
+        },
+        "396": {
+          "capture_zone_id": "nuvema_town",
+          "zone_name": "Renouet",
+          "source_area_name": "Nuvema Town",
+          "name_location_id": 4
+        },
+        "397": {
+          "capture_zone_id": "accumula_town",
+          "zone_name": "Arabelle",
+          "source_area_name": "Accumula Town",
+          "name_location_id": 5
+        },
+        "398": {
+          "capture_zone_id": "accumula_town",
+          "zone_name": "Arabelle",
+          "source_area_name": "Accumula Town",
+          "name_location_id": 5
+        },
+        "399": {
+          "capture_zone_id": "accumula_town",
+          "zone_name": "Arabelle",
+          "source_area_name": "Accumula Town",
+          "name_location_id": 5
+        },
+        "400": {
+          "capture_zone_id": "accumula_town",
+          "zone_name": "Arabelle",
+          "source_area_name": "Accumula Town",
+          "name_location_id": 5
+        },
+        "401": {
+          "capture_zone_id": "accumula_town",
+          "zone_name": "Arabelle",
+          "source_area_name": "Accumula Town",
+          "name_location_id": 5
+        },
+        "402": {
+          "capture_zone_id": "accumula_town",
+          "zone_name": "Arabelle",
+          "source_area_name": "Accumula Town",
+          "name_location_id": 5
+        },
+        "403": {
+          "capture_zone_id": "accumula_town",
+          "zone_name": "Arabelle",
+          "source_area_name": "Accumula Town",
+          "name_location_id": 5
+        },
+        "404": {
+          "capture_zone_id": "accumula_town",
+          "zone_name": "Arabelle",
+          "source_area_name": "Accumula Town",
+          "name_location_id": 5
+        },
+        "405": {
+          "capture_zone_id": "accumula_town",
+          "zone_name": "Arabelle",
+          "source_area_name": "Accumula Town",
+          "name_location_id": 5
+        },
+        "406": {
+          "capture_zone_id": "lacunosa_town",
+          "zone_name": "Entrelasque",
+          "source_area_name": "Lacunosa Town",
+          "name_location_id": 41
+        },
+        "407": {
+          "capture_zone_id": "lacunosa_town",
+          "zone_name": "Entrelasque",
+          "source_area_name": "Lacunosa Town",
+          "name_location_id": 41
+        },
+        "408": {
+          "capture_zone_id": "lacunosa_town",
+          "zone_name": "Entrelasque",
+          "source_area_name": "Lacunosa Town",
+          "name_location_id": 41
+        },
+        "409": {
+          "capture_zone_id": "lacunosa_town",
+          "zone_name": "Entrelasque",
+          "source_area_name": "Lacunosa Town",
+          "name_location_id": 41
+        },
+        "410": {
+          "capture_zone_id": "lacunosa_town",
+          "zone_name": "Entrelasque",
+          "source_area_name": "Lacunosa Town",
+          "name_location_id": 41
+        },
+        "411": {
+          "capture_zone_id": "lacunosa_town",
+          "zone_name": "Entrelasque",
+          "source_area_name": "Lacunosa Town",
+          "name_location_id": 41
+        },
+        "412": {
+          "capture_zone_id": "undella_town",
+          "zone_name": "Vaguelone",
+          "source_area_name": "Undella Town",
+          "name_location_id": 42
+        },
+        "413": {
+          "capture_zone_id": "undella_town",
+          "zone_name": "Vaguelone",
+          "source_area_name": "Undella Town",
+          "name_location_id": 42
+        },
+        "414": {
+          "capture_zone_id": "undella_town",
+          "zone_name": "Vaguelone",
+          "source_area_name": "Undella Town",
+          "name_location_id": 42
+        },
+        "415": {
+          "capture_zone_id": "undella_town",
+          "zone_name": "Vaguelone",
+          "source_area_name": "Undella Town",
+          "name_location_id": 42
+        },
+        "416": {
+          "capture_zone_id": "undella_town",
+          "zone_name": "Vaguelone",
+          "source_area_name": "Undella Town",
+          "name_location_id": 42
+        },
+        "417": {
+          "capture_zone_id": "undella_town",
+          "zone_name": "Vaguelone",
+          "source_area_name": "Undella Town",
+          "name_location_id": 42
+        },
+        "418": {
+          "capture_zone_id": "anville_town",
+          "zone_name": "Rotombourg",
+          "source_area_name": "Anville Town",
+          "name_location_id": 43
+        },
+        "419": {
+          "capture_zone_id": "anville_town",
+          "zone_name": "Rotombourg",
+          "source_area_name": "Anville Town",
+          "name_location_id": 43
+        },
+        "420": {
+          "capture_zone_id": "anville_town",
+          "zone_name": "Rotombourg",
+          "source_area_name": "Anville Town",
+          "name_location_id": 43
+        },
+        "421": {
+          "capture_zone_id": "anville_town",
+          "zone_name": "Rotombourg",
+          "source_area_name": "Anville Town",
+          "name_location_id": 43
+        },
+        "422": {
+          "capture_zone_id": "",
+          "zone_name": "－－－－－－－－－－",
+          "source_area_name": "－－－－－－－－－－",
+          "name_location_id": 0
+        },
+        "423": {
+          "capture_zone_id": "route_17",
+          "zone_name": "Chenal 17",
+          "source_area_name": "Route 17",
+          "name_location_id": 30
+        }
+      }
+    }
+  }
+}

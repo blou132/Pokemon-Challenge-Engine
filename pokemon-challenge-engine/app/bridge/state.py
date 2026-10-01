@@ -25,6 +25,10 @@ class BridgeState:
     last_event: str | None = None
     last_error: str | None = None
     sequence: int = 0
+    protocol_version: int = 1
+    session_id: str | None = None
+    observation: dict | None = None
+    observations: tuple[dict, ...] = ()
 
     @property
     def connected(self) -> bool:

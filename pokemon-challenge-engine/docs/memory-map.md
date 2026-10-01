@@ -1,4 +1,31 @@
-# Cartographie mémoire de la V0.2
+# Cartographie mémoire — équipe V0.2 et suivi V0.3
+
+## Lectures de suivi ajoutées en V0.3
+
+Les profils d'équipe ci-dessous sont conservés. Les nouvelles lectures utilisent
+des profils séparés dans `data/tracking_profiles.json` ; leur validation n'est
+pas héritée de celle de l'équipe Blanc.
+
+| Jeu FR rev0 | Lecture `map_id` uint16 LE | Combat/résultat | Statut |
+| --- | --- | --- | --- |
+| Noir, IRBF | `0x0224F88C` | Indisponible | Source documentée, RAM synthétique |
+| Blanc, IRAF | `0x0224F8AC` | Indisponible | Source documentée, RAM synthétique |
+| Noir 2, IREF | Indisponible | Indisponible | Aucune adresse retenue |
+| Blanc 2, IRDF | Indisponible | Indisponible | Aucune adresse retenue |
+
+PokeLua documente explicitement le décalage Blanc de `0x20` et l'accès uint16.
+La table `data/capture_zones.json` conserve la distinction entre ID de carte RAM
+et identifiant de zone de capture ; les ID de lieu PKHeX ne sont pas substitués
+aux ID RAM. Les sources épinglées, règles de regroupement et exclusions sont
+détaillées dans [Sources du suivi Gen V](tracking-sources.md).
+
+Aucun tampon ennemi n'est interprété comme preuve de combat sauvage. Les
+indicateurs de combat, capture et fuite n'ont pas encore de lecture suffisamment
+documentée pour les versions françaises ciblées. Il reste donc un travail
+d'implémentation, avant les essais de rencontre sur une partie réelle.
+Pour les lectures de carte : **En attente de validation sur la machine utilisateur.**
+
+## Lectures d'équipe conservées
 
 Le lecteur lit uniquement la RAM exposée par `memory.readbyte` dans DeSmuME.
 Il ne modifie ni cette RAM, ni une ROM, ni une sauvegarde. Les adresses d'équipe

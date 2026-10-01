@@ -13,6 +13,7 @@ from app.bridge.protocol import GAME_IDS, MAX_MESSAGE_BYTES, BridgeMessage, Prot
 from app.bridge.state import BridgeState
 
 _SNAPSHOT_NAME = re.compile(r"snapshot-([0-9]{1,64})\.json\Z")
+_OBSERVATION_NAME = re.compile(r"observation-([0-9]{10})\.json\Z")
 _MAX_DIRECTORY_ENTRIES = 512
 
 
@@ -129,7 +130,55 @@ class BridgeService:
             party=message.party if status in {"connected", "receiving"} else None,
             received_count=self._state.received_count + 1, last_received_at=now,
             last_timestamp=message.timestamp, last_event=message.event, last_error=error, sequence=message.sequence,
+            protocol_version=message.protocol_version, session_id=message.session_id,
+            observation=message.observation if status in {"connected", "receiving"} else None,
         )
+
+    def _read_observations(self) -> tuple[dict, ...]:
+        """Journal durable : une observation peut survivre à plusieurs snapshots."""
+        if self._session_dir is None or not (self._state.connected or self._state.last_event == "emulator_closing"):
+            return ()
+        pending = []
+        with os.scandir(self._session_dir) as entries:
+            for index, entry in enumerate(entries):
+                if index >= _MAX_DIRECTORY_ENTRIES:
+                    raise ProtocolError("Trop de fichiers dans la session locale ; redémarrez la passerelle.")
+                match = _OBSERVATION_NAME.fullmatch(entry.name)
+                if match and entry.is_file(follow_symlinks=False):
+                    pending.append((int(match[1]), Path(entry.path)))
+        if len(pending) > 256:
+            raise ProtocolError("Journal d'observations plein ; suivi suspendu sans supprimer les événements.")
+        observations = []
+        for sequence, path in sorted(pending):
+            # Le snapshot confirme la publication complète de cette observation.
+            if sequence > self._state.sequence:
+                continue
+            with path.open("rb") as handle:
+                message = parse_message(handle.read(MAX_MESSAGE_BYTES + 1))
+            self._validate_session(message)
+            if message.sequence != sequence or message.protocol_version != 2 or message.observation is None:
+                raise ProtocolError("Entrée du journal d'observations invalide.")
+            if (message.game_id, message.game_code, message.game_region, message.rom_revision) != (
+                self._state.game_id, self._state.game_code, self._state.game_region, self._state.rom_revision
+            ):
+                raise ProtocolError("L'identité du jeu a changé dans le journal ; nouvelle connexion requise.")
+            observations.append({"id": f"{message.session_id}:{sequence}", "session_id": message.session_id,
+                                 "sequence": sequence, "timestamp": message.timestamp,
+                                 "observation": message.observation})
+        return tuple(observations)
+
+    def acknowledge_observations(self, state: BridgeState) -> None:
+        """Appelé après persistance réussie (ou consultation sans profil actif)."""
+        if (self._session_dir is None or state.session_id != self._session_id
+                or not (state.connected or state.last_event == "emulator_closing") or state.protocol_version < 2):
+            return
+        for item in state.observations:
+            # Le nom provient exclusivement du numéro validé, jamais d'un chemin reçu.
+            path = self._session_dir / f"observation-{item['sequence']:010d}.json"
+            path.unlink(missing_ok=True)
+        temporary = self._session_dir / "ack.txt.tmp"
+        temporary.write_text(str(state.sequence), encoding="ascii")
+        temporary.replace(self._session_dir / "ack.txt")
 
     def poll(self) -> BridgeState:
         """Lit uniquement le dernier instantané complet, sans rafraîchir les doublons."""
@@ -147,18 +196,20 @@ class BridgeService:
                 self._validate_session(message)
                 if message.sequence > self._state.sequence:
                     self._accept(message, now)
+            self._state = replace(self._state, observations=self._read_observations())
         except FileNotFoundError:
             # Le producteur peut retirer l'ancien instantané pendant cette lecture.
             pass
         except (OSError, ProtocolError) as exc:
             detail = str(exc) if isinstance(exc, ProtocolError) else "Impossible de lire le dossier local de la passerelle."
-            self._state = replace(self._state, status="error", party_size=None, party=None, last_error=detail)
+            self._state = replace(self._state, status="error", party_size=None, party=None,
+                                  observation=None, observations=(), last_error=detail)
         last_activity = self._state.last_received_at
         if last_activity is None:
             last_activity = self._started_at
         if last_activity is not None and now - last_activity >= self.timeout_seconds:
             self._state = replace(
-                self._state, status="disconnected", party_size=None, party=None,
+                self._state, status="disconnected", party_size=None, party=None, observation=None, observations=(),
                 last_error="Aucun message Lua récent : connexion perdue ou script arrêté.",
             )
         return self._state

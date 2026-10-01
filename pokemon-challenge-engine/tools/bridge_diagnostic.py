@@ -107,6 +107,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 _display({"event": "state", "state": asdict(state), "heartbeat_messages": heartbeat_messages,
                           "reception_hz": rate}, args.json)
                 last_emitted = state
+            bridge.acknowledge_observations(state)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break

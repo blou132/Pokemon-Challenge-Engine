@@ -62,8 +62,13 @@ class EmulatorService:
                 raise ValueError("L'en-tête de ROM ne correspond pas au jeu sélectionné.")
             revision = header[30]
         profiles = json.loads((RESOURCE_DIR / "data/memory_profiles.json").read_text(encoding="utf-8"))
+        tracking_profiles = json.loads((RESOURCE_DIR / "data/tracking_profiles.json").read_text(encoding="utf-8"))
+        capture_zones = json.loads((RESOURCE_DIR / "data/capture_zones.json").read_text(encoding="utf-8"))
+        for profile in tracking_profiles:
+            table = capture_zones["tables"].get(profile.get("capture_zone_table"), {})
+            profile["capture_zones"] = table.get("entries", {})
         common = RESOURCE_DIR / "lua/common"
-        for name in ("bridge.lua", "protocol.lua", "gen5_reader.lua"):
+        for name in ("bridge.lua", "protocol.lua", "gen5_reader.lua", "gen5_tracking_reader.lua"):
             if not (common / name).is_file():
                 raise ValueError(f"Ressource Lua absente : {name}.")
         state = self.bridge.start(game_id, code, revision)
@@ -76,6 +81,7 @@ class EmulatorService:
             "session_id": self.bridge.session_id, "session_dir": session,
             "expected_game": game_id, "expected_code": code, "expected_revision": revision,
             "script_version": SCRIPT_VERSION, "common_dir": common, "profiles": profiles,
+            "tracking_profiles": tracking_profiles,
         }
         try:
             _atomic_text(config_path, "-- Configuration locale générée ; ne pas versionner.\nreturn " + lua_literal(config) + "\n")

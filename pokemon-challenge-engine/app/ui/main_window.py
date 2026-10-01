@@ -3,7 +3,8 @@
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QSignalBlocker, QTimer, Qt
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QMainWindow, QMessageBox, QPushButton, QStackedWidget, QVBoxLayout, QWidget
 
 from app import __version__
@@ -15,9 +16,11 @@ from app.models.profile import Profile
 from app.services.bridge_controller import BridgeController
 from app.services.config_service import AppConfig, ConfigService
 from app.services.launcher_service import LauncherService
+from app.services.game_mode_config import GameModeConfigStore
 from app.ui.bridge_page import BridgePage
 from app.ui.challenge_page import ChallengePage
 from app.ui.home_page import HomePage
+from app.ui.game_mode_window import GameModeWindow
 from app.ui.profile_page import ProfilePage
 from app.ui.rules_page import RulesPage
 from app.ui.settings_page import SettingsPage
@@ -36,6 +39,12 @@ class MainWindow(QMainWindow):
         self.config_service = ConfigService(base_dir / "config.json")
         self.config = self.config_service.load()
         self.profiles = ProfileManager(base_dir / "profiles")
+        self.base_dir = base_dir
+        self.game_mode_window: GameModeWindow | None = None
+        self._game_mode_shortcut = QShortcut(self)
+        self._game_mode_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
+        self._game_mode_shortcut.activated.connect(self.open_game_mode)
+        self._set_game_mode_shortcut(GameModeConfigStore(base_dir, self.config).load()["shortcuts"])
         center = QWidget()
         main = QHBoxLayout(center)
         main.setContentsMargins(0, 0, 0, 0)
@@ -59,6 +68,12 @@ class MainWindow(QMainWindow):
             self.nav_buttons.append(button)
             side.addWidget(button)
         self.nav_group.idClicked.connect(self.navigate)
+        self.game_mode_button = QPushButton("▷   Mode Jeu")
+        self.game_mode_button.setObjectName("primary")
+        self.game_mode_button.setToolTip("Ouvre les panneaux de jeu autour d'une fenêtre DeSmuME externe.")
+        self.game_mode_button.clicked.connect(self.open_game_mode)
+        side.addSpacing(12)
+        side.addWidget(self.game_mode_button)
         side.addStretch()
         side.addWidget(label("UN CHALLENGE À LA FOIS", "eyebrow"))
         side.addWidget(label("Préparez. Sauvegardez.\nPartez à l'aventure.", "muted"))
@@ -124,6 +139,56 @@ class MainWindow(QMainWindow):
         self.bridge_page.set_config(config)
         self.statusBar().showMessage("Paramètres enregistrés", 6000)
 
+    def open_game_mode(self) -> None:
+        if self.game_mode_window is None:
+            self.game_mode_window = GameModeWindow(self.catalog, self.base_dir, self.bridge_controller,
+                                                   self.profiles, self.config, self)
+            self.game_mode_window.bridge_requested.connect(self._show_bridge_for_game_mode)
+            self.game_mode_window.profile_selected.connect(self._game_mode_profile_selected)
+            self.game_mode_window.process_launched.connect(self.bridge_page.track_process)
+            self.game_mode_window.shortcuts_changed.connect(self._set_game_mode_shortcut)
+        self.game_mode_window.refresh_profiles()
+        self.game_mode_window.show()
+        self.game_mode_window.raise_()
+        self.game_mode_window.activateWindow()
+
+    def _set_game_mode_shortcut(self, values: dict) -> None:
+        value = values.get("game_mode", "")
+        self._game_mode_shortcut.setKey(QKeySequence(value))
+        self._game_mode_shortcut.setEnabled(bool(value))
+
+    def _show_bridge_for_game_mode(self) -> None:
+        self.navigate(5)
+        if self.game_mode_window is not None and self.bridge_controller.state.status == "stopped":
+            mode = self.game_mode_window
+            game_id = mode.page.game_combo.currentData()
+            options = mode.service.config["launch_profiles"][game_id]
+            self.bridge_page.set_config(AppConfig(
+                retrobat_path=self.config.retrobat_path,
+                desmume_path=options["emulator_path"],
+                rom_paths=self.config.rom_paths | {game_id: options["rom_path"]},
+                save_path=self.config.save_path,
+            ))
+            with QSignalBlocker(self.bridge_page.game_combo):
+                self.bridge_page.game_combo.setCurrentIndex(self.bridge_page.game_combo.findData(game_id))
+            with QSignalBlocker(self.bridge_page.profile_combo):
+                index = self.bridge_page.profile_combo.findData(mode.page.profile_combo.currentData())
+                self.bridge_page.profile_combo.setCurrentIndex(max(0, index))
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _game_mode_profile_selected(self, profile_id) -> None:
+        # Le Mode Jeu a déjà demandé la sélection au contrôleur. Synchroniser
+        # uniquement le choix visible pour conserver une association unique.
+        with QSignalBlocker(self.bridge_page.profile_combo):
+            index = self.bridge_page.profile_combo.findData(profile_id)
+            self.bridge_page.profile_combo.setCurrentIndex(max(index, 0))
+        if self.game_mode_window:
+            with QSignalBlocker(self.bridge_page.game_combo):
+                game_id = self.game_mode_window.page.game_combo.currentData()
+                self.bridge_page.game_combo.setCurrentIndex(self.bridge_page.game_combo.findData(game_id))
+
     def launch_challenge(self, challenge: Challenge) -> None:
         errors = ChallengeEngine(self.catalog).validate(challenge)
         launcher = LauncherService(self.config)
@@ -148,5 +213,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "DeSmuME s'est arrêté", "L'émulateur s'est arrêté après le lancement. Vérifiez votre installation et la ROM sélectionnée.")
 
     def closeEvent(self, event) -> None:
+        if self.game_mode_window is not None:
+            self.game_mode_window.close()
         self.bridge_controller.shutdown()
         super().closeEvent(event)

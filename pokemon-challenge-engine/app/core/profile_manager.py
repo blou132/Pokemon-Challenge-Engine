@@ -1,10 +1,14 @@
 """Persistance des profils dans trois fichiers JSON, sans accès aux sauvegardes du jeu."""
 
 import json
+from copy import deepcopy
+from functools import wraps
+from hashlib import sha256
 import logging
 import os
 from pathlib import Path
 import tempfile
+from threading import RLock
 from typing import Any
 import unicodedata
 from uuid import uuid4
@@ -15,6 +19,16 @@ from app.models.profile import (
 )
 
 logger = logging.getLogger(__name__)
+_locks: dict[Path, Any] = {}
+_locks_guard = RLock()
+
+
+def _locked(method):
+    @wraps(method)
+    def call(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return call
 
 
 def _strict_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -46,6 +60,8 @@ class ProfileManager:
     def __init__(self, root: Path) -> None:
         self.root = Path(root).resolve()
         self.warnings: list[str] = []
+        with _locks_guard:
+            self._lock = _locks.setdefault(self.root, RLock())
 
     def _directory(self, profile_id: str) -> Path:
         validate_profile_id(profile_id)
@@ -74,6 +90,7 @@ class ProfileManager:
         self.warnings.append(message)
         logger.warning(message)
 
+    @_locked
     def create(self, name: str, challenge: Challenge) -> Profile:
         """Crée un nouveau dossier unique ; ne remplace jamais un profil existant."""
         self.warnings.clear()
@@ -100,6 +117,7 @@ class ProfileManager:
         logger.info("Profil créé : %s", profile.id)
         return profile
 
+    @_locked
     def load(self, profile_id: str) -> Profile:
         """Charge le challenge ; un suivi absent ou corrompu est signalé et remis à zéro en mémoire."""
         self.warnings.clear()
@@ -107,6 +125,7 @@ class ProfileManager:
 
     def _load(self, profile_id: str) -> Profile:
         directory = self._directory(profile_id)
+        self._recover(directory, profile_id)
         data = _read_json(self._file(directory, "challenge.json"))
         if not isinstance(data, dict):
             raise ValueError("Le fichier challenge.json doit contenir un objet JSON.")
@@ -127,6 +146,7 @@ class ProfileManager:
             self._warning(f"Profil « {directory.name} » : {filename} absent ou invalide ; valeurs par défaut utilisées en mémoire.")
             return fallback
 
+    @_locked
     def list_profiles(self) -> list[Profile]:
         """Ignore les profils illisibles, tout en conservant leurs diagnostics."""
         self.warnings.clear()
@@ -151,11 +171,13 @@ class ProfileManager:
                 self._warning(f"Profil « {directory.name} » ignoré : {exc}")
         return profiles
 
+    @_locked
     def save(self, profile: Profile) -> None:
         """Met à jour explicitement un profil valide, sans écraser de fichier corrompu."""
         self.warnings.clear()
         profile.validate()
         directory = self._directory(profile.id)
+        self._recover(directory, profile.id)
         if not directory.is_dir():
             raise ValueError("Ce profil n'existe plus. Créez un nouveau profil pour le sauvegarder.")
         # Lire avant toute écriture protège les fichiers existants, même si un fallback a été chargé.
@@ -179,25 +201,86 @@ class ProfileManager:
             raise ValueError("Impossible de sauvegarder le profil : vérifiez les droits d'écriture.") from exc
         logger.info("Profil sauvegardé : %s", profile.id)
 
+    @_locked
+    def update(self, profile_id: str, callback: Any) -> Profile:
+        """Read/apply/write under the shared lock; never automate a fallback reset."""
+        profile = self.load(profile_id)
+        if self.warnings:
+            raise ValueError("Progression ou historique absent ou corrompu ; suivi automatique suspendu.")
+        original = deepcopy(profile)
+        callback(profile)
+        profile.validate()
+        if profile != original:
+            self.save(profile)
+        return profile
+
     def _write(self, profile: Profile, directory: Path) -> None:
         challenge_data = profile.challenge.to_dict() | {"profile_id": profile.id, "profile_name": profile.name}
         payloads = {"challenge.json": challenge_data, "progress.json": validate_progress(profile.progress),
                     "history.json": validate_history(profile.history)}
-        # Chaque remplacement est atomique ; tous les contenus sont préparés avant le premier remplacement.
-        prepared: list[tuple[Path, Path]] = []
+        # The durable journal is the commit point. Readers recover all three files
+        # before exposing them, including after interruption between replacements.
+        serialized = {name: self._serialize(value) for name, value in payloads.items()}
+        before = {}
+        for filename in payloads:
+            path = self._file(directory, filename)
+            before[filename] = sha256(path.read_bytes()).hexdigest() if path.exists() else None
+        journal = {"schema_version": 1, "profile_id": profile.id, "before": before, "payloads": payloads}
+        self._replace_json(self._file(directory, ".transaction.json"), self._serialize(journal))
+        for filename, content in serialized.items():
+            self._replace_json(self._file(directory, filename), content)
+        self._file(directory, ".transaction.json").unlink()
+
+    @staticmethod
+    def _serialize(data: Any) -> bytes:
+        return (json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+
+    def _replace_json(self, destination: Path, content: bytes) -> None:
+        temporary = None
         try:
-            for filename, data in payloads.items():
-                destination = self._file(directory, filename)
-                serialized = json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
-                with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=directory,
-                                                 prefix=".tmp_", suffix=".json", delete=False) as handle:
-                    temporary = Path(handle.name)
-                    prepared.append((temporary, destination))
-                    handle.write(serialized)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-            for temporary, destination in prepared:
-                temporary.replace(destination)
+            with tempfile.NamedTemporaryFile(mode="wb", dir=destination.parent,
+                                             prefix=".tmp_", suffix=".json", delete=False) as handle:
+                temporary = Path(handle.name)
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            temporary.replace(destination)
         finally:
-            for temporary, _ in prepared:
+            if temporary is not None:
                 temporary.unlink(missing_ok=True)
+
+    def _recover(self, directory: Path, profile_id: str) -> None:
+        path = self._file(directory, ".transaction.json")
+        if not path.exists():
+            return
+        journal = _read_json(path)
+        filenames = {"challenge.json", "progress.json", "history.json"}
+        if (not isinstance(journal, dict) or set(journal) != {"schema_version", "profile_id", "before", "payloads"}
+                or type(journal["schema_version"]) is not int or journal["schema_version"] != 1
+                or journal["profile_id"] != profile_id
+                or not isinstance(journal["before"], dict) or set(journal["before"]) != filenames
+                or not isinstance(journal["payloads"], dict) or set(journal["payloads"]) != filenames):
+            raise ValueError("Journal de transaction corrompu ; récupération refusée.")
+        payloads = journal["payloads"]
+        challenge_data = payloads["challenge.json"]
+        if not isinstance(challenge_data, dict) or challenge_data.get("profile_id") != profile_id:
+            raise ValueError("Identité du journal de transaction invalide.")
+        challenge = Challenge.from_dict({key: value for key, value in challenge_data.items()
+                                         if key not in {"profile_id", "profile_name"}})
+        Profile(profile_id, challenge_data.get("profile_name"), challenge,
+                payloads["progress.json"], payloads["history.json"]).validate()
+        prepared = []
+        for filename, payload in payloads.items():
+            destination = self._file(directory, filename)
+            content = self._serialize(payload)
+            previous = journal["before"][filename]
+            if previous is not None and (not isinstance(previous, str) or len(previous) != 64
+                                          or any(char not in "0123456789abcdef" for char in previous)):
+                raise ValueError("Empreinte du journal de transaction invalide.")
+            actual = sha256(destination.read_bytes()).hexdigest() if destination.exists() else None
+            if actual not in (previous, sha256(content).hexdigest()):
+                raise ValueError("Fichier modifié depuis la transaction ; récupération refusée pour le préserver.")
+            prepared.append((destination, content))
+        for destination, content in prepared:
+            self._replace_json(destination, content)
+        path.unlink()

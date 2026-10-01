@@ -1,6 +1,5 @@
 """Consultation des profils et suivi manuel explicitement local."""
 
-from copy import deepcopy
 from datetime import datetime, timezone
 
 from PySide6.QtCore import Qt, Signal
@@ -59,7 +58,7 @@ class ProfilePage(QWidget):
         box.addLayout(actions)
         layout.addWidget(detail)
         progress, progress_box = card("Progression manuelle")
-        progress_box.addWidget(label("Ces valeurs sont saisies par vous. La V0.1 ne lit pas les données de DeSmuME.", "muted"))
+        progress_box.addWidget(label("Ces valeurs sont saisies par vous. Le suivi automatique Nuzlocke reste conservé séparément dans ce profil.", "muted"))
         form = QFormLayout()
         self.badges = QSpinBox()
         self.badges.setRange(0, 8)
@@ -142,19 +141,25 @@ class ProfilePage(QWidget):
             return
         if QMessageBox.question(self, "Enregistrer la progression", "Remplacer la progression de ce profil par les valeurs affichées ?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
             return
-        profile = deepcopy(self.selected_profile)
-        progress = profile.progress
-        # Préserver les entrées détaillées existantes lors d'un simple ajustement.
-        for key, count in [("badges", self.badges.value()), ("captures", self.captures.value()), ("deaths", self.deaths.value())]:
-            values = progress[key][:count]
-            while len(values) < count:
-                values.append(f"Badge {len(values) + 1}" if key == "badges" else {"manual": True})
-            progress[key] = values
-        progress["zones"] = list(dict.fromkeys(zone.strip() for zone in self.zones.text().split(",") if zone.strip()))
-        progress["current_level_cap"] = self.level_cap.value() or None
-        profile.history.append({"event": "manual_progress_update", "at": datetime.now(timezone.utc).isoformat()})
+        counts = [("badges", self.badges.value()), ("captures", self.captures.value()), ("deaths", self.deaths.value())]
+        zones = list(dict.fromkeys(zone.strip() for zone in self.zones.text().split(",") if zone.strip()))
+        level_cap = self.level_cap.value() or None
+
+        def apply_progress(profile: Profile) -> None:
+            # Partir de la version courante sous verrou : le suivi peut avoir écrit
+            # depuis l'ouverture de cette page, son historique doit être préservé.
+            progress = profile.progress
+            for key, count in counts:
+                values = progress[key][:count]
+                while len(values) < count:
+                    values.append(f"Badge {len(values) + 1}" if key == "badges" else {"manual": True})
+                progress[key] = values
+            progress["zones"] = zones
+            progress["current_level_cap"] = level_cap
+            profile.history.append({"event": "manual_progress_update", "at": datetime.now(timezone.utc).isoformat()})
+
         try:
-            self.manager.save(profile)
+            self.manager.update(self.selected_profile.id, apply_progress)
         except (ValueError, OSError) as exc:
             QMessageBox.warning(self, "Progression non enregistrée", str(exc))
             return

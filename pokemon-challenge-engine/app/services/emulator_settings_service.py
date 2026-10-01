@@ -406,7 +406,8 @@ class ControlProfileStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = None
         try:
-            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.path.parent, delete=False) as handle:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.path.parent,
+                                             prefix=".controls.local.", suffix=".tmp", delete=False) as handle:
                 temporary = Path(handle.name)
                 json.dump({"schema_version": 1, "profiles": profiles}, handle, ensure_ascii=False, indent=2)
                 handle.flush()

@@ -22,6 +22,9 @@ PROBES = (
     "pokemon-challenge-engine/profiles/run_001/challenge.json",
     "backups/pce-backups.json", "nested/backups/index.json", "desmume.ini.pce-backup.1",
     "game-mode.local.json", "controls.local.json", ".game-mode.local.example.tmp",
+    "custom/.pce_ini_example", "custom/.pce-restore_example.tmp", "custom/.backup_example.tmp",
+    "custom/.manifest_example.tmp", "custom/.pce-backup.lock", "custom/pce-backups.json",
+    "custom/.controls.local.example.tmp",
 )
 SECRET_PATTERNS = (
     re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),

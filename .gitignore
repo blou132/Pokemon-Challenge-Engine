@@ -18,6 +18,13 @@ logs/
 runtime/
 backups/
 *.pce-backup*
+# Temporary local configuration/save files, including after an interrupted write.
+.pce_ini_*
+.pce-restore_*
+.backup_*
+.manifest_*
+.pce-backup.lock
+pce-backups.json
 roms/
 saves/
 savestates/

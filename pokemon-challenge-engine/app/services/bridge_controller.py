@@ -9,12 +9,14 @@ from PySide6.QtCore import QMetaObject, QObject, QThread, QTimer, Qt, Signal, Sl
 from app.bridge.state import BridgeState
 from app.services.bridge_service import BridgeService
 from app.services.emulator_service import EmulatorService
+from app.services.tracking_service import TrackingService, TrackingState
 
 LOGGER = logging.getLogger(__name__)
 
 
 class _BridgeWorker(QObject):
     state_changed = Signal(object)
+    tracking_changed = Signal(object)
     prepared = Signal(str)
     failed = Signal(str)
 
@@ -25,16 +27,45 @@ class _BridgeWorker(QObject):
         self.emulator: EmulatorService | None = None
         self._timer: QTimer | None = None
         self._last_state = BridgeState()
+        self.tracking: TrackingService | None = None
+        self._tracking_state = TrackingState()
+
+    def _tracking(self) -> TrackingService:
+        if self.tracking is None:
+            self.tracking = TrackingService(self.base_dir)
+        return self.tracking
+
+    def _publish_tracking(self, state: TrackingState) -> None:
+        if state != self._tracking_state:
+            self._tracking_state = state
+            self.tracking_changed.emit(state)
+
+    @Slot(object)
+    def select_profile(self, profile_id: str | None) -> None:
+        try:
+            self._publish_tracking(self._tracking().select_profile(profile_id))
+        except (OSError, ValueError) as exc:
+            self._publish_tracking(TrackingState(status="error", message=str(exc)))
 
     def _publish(self, state: BridgeState) -> None:
         if state != self._last_state:
             self._last_state = state
             self.state_changed.emit(state)
+            try:
+                tracking = self._tracking().consume(state)
+                self._publish_tracking(tracking)
+                if tracking.status != "error":
+                    self.bridge.acknowledge_observations(state)
+            except (OSError, ValueError) as exc:
+                LOGGER.exception("Suivi Nuzlocke suspendu ; observations conservées.")
+                self._publish_tracking(replace(self._tracking_state, status="error", message=str(exc)))
 
     @Slot(str, str)
     def start(self, game_id: str, rom_path: str) -> None:
         if self._timer is not None:
             self._timer.stop()
+        if self.bridge.session_id is not None:
+            self._publish(self.bridge.poll())
         self.bridge.stop()
         self._last_state = BridgeState()
         try:
@@ -76,6 +107,8 @@ class _BridgeWorker(QObject):
     def stop(self) -> None:
         if self._timer is not None:
             self._timer.stop()
+        if self.bridge.session_id is not None:
+            self._publish(self.bridge.poll())
         self.bridge.stop()
         self._publish(self.bridge.state)
 
@@ -84,16 +117,19 @@ class BridgeController(QObject):
     """Expose seulement des signaux à l'UI, sans I/O sur le thread graphique."""
 
     state_changed = Signal(object)
+    tracking_changed = Signal(object)
     prepared = Signal(str)
     failed = Signal(str)
     _start_requested = Signal(str, str)
     _stop_requested = Signal()
+    _profile_requested = Signal(object)
 
     def __init__(self, base_dir: Path, parent: QObject | None = None, *, bridge: BridgeService | None = None) -> None:
         super().__init__(parent)
         self.base_dir = Path(base_dir)
         self.bridge = bridge if bridge is not None else BridgeService(self.base_dir / "runtime" / "bridge")
         self.state = BridgeState()
+        self.tracking_state = TrackingState()
         self._thread: QThread | None = None
         self._worker: _BridgeWorker | None = None
         self._closed = False
@@ -107,12 +143,26 @@ class BridgeController(QObject):
         worker.moveToThread(thread)
         self._start_requested.connect(worker.start)
         self._stop_requested.connect(worker.stop)
+        self._profile_requested.connect(worker.select_profile)
         worker.state_changed.connect(self._receive_state)
+        worker.tracking_changed.connect(self._receive_tracking)
         worker.prepared.connect(self._receive_prepared)
         worker.failed.connect(self._receive_failure)
         thread.finished.connect(worker.deleteLater)
         self._thread, self._worker = thread, worker
         thread.start()
+
+    @Slot(object)
+    def _receive_tracking(self, state: TrackingState) -> None:
+        if not self._closed:
+            self.tracking_state = state
+            self.tracking_changed.emit(state)
+
+    @Slot(object)
+    def select_profile(self, profile_id: str | None) -> None:
+        if not self._closed:
+            self._ensure_worker()
+            self._profile_requested.emit(profile_id)
 
     @Slot(object)
     def _receive_state(self, state: BridgeState) -> None:

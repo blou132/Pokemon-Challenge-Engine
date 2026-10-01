@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, QSignalBlocker, Slot
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QFormLayout, QHeaderView, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QWidget,
@@ -11,8 +11,10 @@ from PySide6.QtWidgets import (
 from app.bridge.protocol import GAME_IDS, PROTOCOL_VERSION
 from app.bridge.state import BridgeState
 from app.core.catalog import Catalog
+from app.models.profile import Profile
 from app.services.bridge_controller import BridgeController
 from app.services.config_service import AppConfig
+from app.ui.tracking_panel import TrackingPanel
 from app.ui.widgets.common import card, label, page_layout
 
 UNAVAILABLE = "Non disponible"
@@ -37,9 +39,21 @@ class BridgePage(QWidget):
         self.catalog = catalog
         self.controller = controller
         self.config = config
+        self._profile_games: dict[str, str] = {}
         content = page_layout(self, "Connexion DeSmuME", "Connectez le script Lua pour consulter les données reçues du jeu.")
 
         connection_card, connection = card("Préparer la connexion")
+        self.profile_combo = QComboBox()
+        self.profile_combo.setAccessibleName("Profil de challenge actif pour le suivi Nuzlocke")
+        self.profile_combo.addItem("Aucun profil — diagnostic uniquement", None)
+        self.profile_combo.currentIndexChanged.connect(self._select_profile)
+        profile_form = QFormLayout()
+        profile_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        profile_form.addRow("Profil actif", self.profile_combo)
+        connection.addLayout(profile_form)
+        connection.addWidget(label(
+            "Choisissez le profil avant la connexion. Sans profil, aucune progression n'est enregistrée. "
+            "Arrêtez la connexion pour changer de profil.", "muted"))
         self.game_combo = QComboBox()
         self.game_combo.setAccessibleName("Jeu à connecter")
         for game in catalog.games.values():
@@ -56,7 +70,7 @@ class BridgePage(QWidget):
         actions.addWidget(self.stop_button)
         connection.addLayout(actions)
         self.instructions = label(
-            "1. Préparez la connexion pour le jeu choisi.\n"
+            "1. Choisissez un profil si vous souhaitez suivre un challenge, puis préparez la connexion pour le jeu choisi.\n"
             "2. Dans DeSmuME standalone compatible Lua, ouvrez votre jeu, puis Tools > Lua Scripting > New Lua Script.\n"
             "3. Choisissez le script indiqué ci-dessous, puis cliquez sur Run. Gardez le jeu en cours d'exécution.", "muted")
         connection.addWidget(self.instructions)
@@ -83,6 +97,9 @@ class BridgePage(QWidget):
         status.addLayout(identity)
         content.addWidget(status_card)
 
+        self.tracking_panel = TrackingPanel()
+        content.addWidget(self.tracking_panel)
+
         party_card, party = card("Équipe reçue")
         self.validation_note = label(
             "Lecture d'équipe expérimentale : les profils mémoire V0.2 reposent sur des sources documentaires. "
@@ -104,7 +121,7 @@ class BridgePage(QWidget):
         diagnostics_card, diagnostics = card("Diagnostic")
         fields = QFormLayout()
         fields.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        self.protocol_label = self._field(fields, "Protocole attendu")
+        self.protocol_label = self._field(fields, "Protocole reçu / attendu")
         self.protocol_label.setText(str(PROTOCOL_VERSION))
         self.script_version_label = self._field(fields, "Version du script reçue")
         self.memory_profile_label = self._field(fields, "Profil mémoire reçu")
@@ -121,6 +138,8 @@ class BridgePage(QWidget):
         controller.state_changed.connect(self.update_state)
         controller.prepared.connect(self._prepared)
         controller.failed.connect(self._failed)
+        controller.tracking_changed.connect(self.tracking_panel.update_state)
+        self.tracking_panel.update_state(controller.tracking_state)
         self.update_state(controller.state)
 
     @staticmethod
@@ -134,6 +153,38 @@ class BridgePage(QWidget):
     def set_config(self, config: AppConfig) -> None:
         self.config = config
 
+    def set_profiles(self, profiles: list[Profile]) -> None:
+        """Actualise les choix sans sélectionner implicitement un profil."""
+        previous = self.profile_combo.currentData()
+        previous_label = self.profile_combo.currentText()
+        with QSignalBlocker(self.profile_combo):
+            self.profile_combo.clear()
+            self.profile_combo.addItem("Aucun profil — diagnostic uniquement", None)
+            self._profile_games = {}
+            for profile in profiles:
+                game = self.catalog.games.get(profile.challenge.game_id)
+                game_name = game.name if game else profile.challenge.game_id
+                self.profile_combo.addItem(f"{profile.name} · {game_name}", profile.id)
+                self._profile_games[profile.id] = profile.challenge.game_id
+            index = self.profile_combo.findData(previous)
+            # Une session en cours conserve son association, même si la liste a changé.
+            if previous is not None and index < 0 and self.controller.state.status != "stopped":
+                self.profile_combo.addItem(previous_label + " (indisponible)", previous)
+                index = self.profile_combo.count() - 1
+            self.profile_combo.setCurrentIndex(max(0, index))
+        if self.profile_combo.currentData() != previous:
+            self.controller.select_profile(self.profile_combo.currentData())
+
+    @Slot(int)
+    def _select_profile(self, _index: int) -> None:
+        profile_id = self.profile_combo.currentData()
+        game_id = self._profile_games.get(profile_id)
+        if game_id is not None and self.controller.state.status == "stopped":
+            index = self.game_combo.findData(game_id)
+            if index >= 0:
+                self.game_combo.setCurrentIndex(index)
+        self.controller.select_profile(profile_id)
+
     def track_process(self, process: object) -> None:
         self.pid_label.setText(_display(getattr(process, "pid", None)))
 
@@ -144,6 +195,7 @@ class BridgePage(QWidget):
             return
         self.prepare_button.setEnabled(False)
         self.game_combo.setEnabled(False)
+        self.profile_combo.setEnabled(False)
         self.stop_button.setEnabled(True)
         self.script_path.clear()
         self.status_label.setText("Préparation en cours…")
@@ -169,6 +221,7 @@ class BridgePage(QWidget):
         self.prepare_button.setEnabled(not active)
         # Une session déconnectée peut encore recevoir un message tardif du même jeu.
         self.game_combo.setEnabled(state.status == "stopped")
+        self.profile_combo.setEnabled(state.status == "stopped")
         self.stop_button.setEnabled(state.status != "stopped")
         if state.status == "stopped":
             self.script_path.clear()
@@ -178,6 +231,7 @@ class BridgePage(QWidget):
         self.revision_label.setText(_display(state.rom_revision))
         self.party_size_label.setText(_display(state.party_size if state.connected else None))
         self.script_version_label.setText(_display(state.script_version))
+        self.protocol_label.setText(str(state.protocol_version if state.received_count else PROTOCOL_VERSION))
         self.memory_profile_label.setText(_display(state.memory_profile))
         self.capabilities_label.setText(", ".join(state.capabilities) if state.capabilities else UNAVAILABLE)
         self.received_label.setText(str(state.received_count))

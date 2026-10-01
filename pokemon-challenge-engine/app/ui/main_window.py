@@ -95,6 +95,8 @@ class MainWindow(QMainWindow):
     def navigate(self, index: int) -> None:
         if index == 3:
             self.profile_page.refresh()
+        if index == 5:
+            self.bridge_page.set_profiles(self.profiles.list_profiles())
         self.pages.setCurrentIndex(index)
         self.nav_buttons[index].setChecked(True)
 
@@ -108,7 +110,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Profil « {profile.name} » enregistré", 8000)
 
     def refresh_home(self) -> None:
-        count = len(self.profiles.list_profiles())
+        profiles = self.profiles.list_profiles()
+        self.bridge_page.set_profiles(profiles)
+        count = len(profiles)
         self.home_page.profile_count.setText(f"{count} profil(s) enregistré(s) · Retrouvez vos aventures dans Profils." if count else "Votre premier challenge vous attend. Commencez par choisir un jeu.")
 
     def open_profile(self, profile: Profile) -> None:

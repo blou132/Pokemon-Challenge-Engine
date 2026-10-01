@@ -1,4 +1,4 @@
-# Architecture V0.3
+# Architecture V0.3.5
 
 ## Séparation des responsabilités
 
@@ -34,7 +34,8 @@ Les autres jeux ont le statut `planned` et ne peuvent pas être générés ou la
 
 | Élément | Version | Rôle |
 | --- | --- | --- |
-| Application et scripts Lua | `0.3.0` | Version du logiciel livré |
+| Application | `0.3.5` | Version du frontend livré |
+| Scripts Lua | `0.3.0` | Lecteurs et transport conservés |
 | Format sérialisé des challenges/profils | `0.1.0` | Compatibilité des profils existants |
 | Progression | `2` | Migration additive conservant le suivi manuel |
 | Protocole de passerelle | `2` | Observations nullables ; réception v1 conservée |
@@ -174,3 +175,38 @@ distincts des essais réels.
 
 [Protocole, utilisation et dépannage](desmume-bridge.md) ·
 [Adresses et sources mémoire](memory-map.md) · [Preuves de vérification](verification.md)
+
+## Frontend V0.3.5
+
+`MainWindow` conserve ses six pages et ouvre `GameModeWindow`. Celui-ci partage
+le `BridgeController` existant : il ne crée pas un second consommateur de journal.
+`GameModePage` présente les instantanés ; la sélection de jeu/profil est verrouillée
+pendant une session. Les événements de suivi restent traités par le moteur V0.3.
+
+`GameModeConfigStore` migre les chemins historiques en mémoire dans quatre profils
+de lancement, conserve les choix d'interface et les raccourcis locaux, refuse les
+versions inconnues et détecte une modification externe avant toute sauvegarde.
+`GameModeService` détient le processus lancé, le temps de session PCE (pauses du jeu
+incluses), l'intention de vitesse et les options de backup figées pour cette session.
+Fermer PCE arrête ses automatismes sans tuer DeSmuME. Les backups de fermeture
+nécessitent donc que PCE observe réellement la fin du processus.
+
+`EmulatorCapabilities` identifie le binaire par SHA-256 ; `EmulatorSettingsService`
+parse l'INI réel, conserve commentaires/clés inconnues, refuse les conflits et
+l'écriture pendant l'exécution, puis crée un backup avant remplacement atomique.
+Les capacités documentées ne valent pas mesure des FPS ni validation visuelle de
+chaque option. Aucun argument CLI supplémentaire n'est inventé.
+
+`SaveManagerService` sépare métadonnées DSV, inventaire des slots et copies gérées.
+Un manifeste local avec empreintes SHA-256 identifie les seuls backups soumis à la
+rétention. La restauration explicite sauvegarde d'abord la destination existante.
+Les sauvegardes source et les ROM ne participent jamais à la rétention.
+
+`EmulatorWindowManager` isole les API Windows : énumération des processus, résolution
+de leur exécutable, recherche de fenêtre par PID + chemin exact et placement sans
+activation ni changement d'ordre des fenêtres. Aucune injection, saisie simulée,
+modification de RAM ou intégration native de DeSmuME. L'adaptateur pourra évoluer
+indépendamment des règles et du transport Lua. Sources :
+[Tool Help](https://learn.microsoft.com/windows/win32/api/tlhelp32/nf-tlhelp32-createtoolhelp32snapshot),
+[EnumWindows](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-enumwindows),
+[SetWindowPos](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-setwindowpos).

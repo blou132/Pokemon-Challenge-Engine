@@ -1,4 +1,79 @@
-# Vérification V0.3 et historique V0.2 / V0.1
+# Vérification V0.3.5 et historique V0.3 / V0.2 / V0.1
+
+## V0.3.5 Mode Jeu — 1er octobre 2026
+
+Base : `e7fc0c20afb899579ecf5d7e6558525b443c6d0d`, branche
+`feat/v0.3-nuzlocke-tracking`. Avant modification : **779 tests réussis, aucun
+ignoré, 117,93 s**. Nouvelle branche : `feat/v0.3.5-game-mode`, sans fusion.
+Application `0.3.5` ; scripts Lua `0.3.0`, protocole `2`, challenge `0.1.0` et
+progression `2` conservés.
+
+### Interface et non-régression
+
+Après les dernières corrections : **960 tests réussis, aucun ignoré, 111,90 s**
+avec Python 3.13.7, pytest 9.1.1, PySide6 6.11.2 et la DLL Lua 5.1 locale.
+Les **779 tests historiques sont conservés**, avec 181 nouveaux cas couvrant
+les réglages/contrôles (49), les sauvegardes (75), les services du Mode Jeu (32)
+et son interface (25). Les tests de données de jeu demeurent synthétiques.
+`python -m compileall -q app tools` réussit.
+
+Les tests nouveaux couvrent notamment les profils par jeu, la migration en
+mémoire, les conflits clavier, la conservation de l'INI et ses backups,
+les chemins invalides, fichiers verrouillés et permissions refusées,
+la copie vérifiée et la rétention, la confirmation de restauration et le refus
+si un émulateur est ouvert, les états de vitesse demandés, le verrouillage des
+profils pendant une session et la synchronisation des chemins vers Connexion Lua.
+L'audit Git vérifie les exclusions, y compris les fichiers temporaires locaux
+après interruption, et ne détecte aucun fichier interdit ni format de secret usuel.
+
+Le point d'entrée natif Windows `tools.verify_ui --entrypoint` a affiché la
+fenêtre, exécuté la boucle Qt puis fermé l'application proprement (code 0).
+Les rendus du Mode Jeu à **1366×768** et **1920×1080** ont été inspectés : trois
+colonnes accessibles, contrôles lisibles, équipe à six emplacements et panneaux
+latéraux défilables. Le grand rendu a également été inspecté en bas de panneau.
+Ces images utilisent exclusivement un profil et une passerelle **synthétiques** ;
+elles restent dans `runtime/game-mode-ui-review/`, ignoré par Git, et ne prouvent
+aucune lecture réelle d'équipe, de zone ou de capture.
+
+### Essais réels sur copies isolées
+
+Build observé : **DeSmuME 0.9.14 git#a779eb7 x64-JIT SSE2**.
+SHA-256 du binaire : `34fe290e387722f1b4320751bf0b0f50844079833c7dce57c273d6b054becac0`.
+La ROM Blanc, la sauvegarde et l'émulateur ont été copiés dans un dossier de
+validation ignoré. Les chemins INI de Lua, sauvegardes et save states pointaient
+exclusivement vers ce dossier. Aucun déplacement, combat, pression de touche
+ou modification de mémoire Pokémon n'a été automatisé.
+
+| Essai | Observation réelle | Limite de la preuve |
+| --- | --- | --- |
+| Lancement avec `LauncherService`, puis `GameModeService` | Lua 5.1 a répondu avec `IRAF`, compteur à 121 frames ; fenêtre retrouvée par PID + chemin, titre Pokémon Version Blanche | Ne revalide pas l'équipe ou les rencontres V0.3 |
+| Export INI contrôles/graphismes/MAX puis x1 | Backup égal à l'INI précédent ; valeurs relues ; deux relancements réels réussis | Aucun facteur FPS mesuré, aucune pression de la nouvelle touche, qualité visuelle non comparée |
+| Protection INI | Export refusé pendant que le processus de test s'exécutait | Pas une transaction avec un émulateur qu'un autre programme lancerait simultanément |
+| Fenêtre externe | Titre lu ; appel de placement sur son rectangle courant, géométrie conservée | Pas de validation multi-écrans/DPI ni d'embedding |
+| Save state | `savestate.save(0)` réel a créé `StateSlots/fixture.ds0` ; inventaire du slot 0 non vide et des neuf autres vides | Chargement du save state et miniatures non testés ; PCE n'injecte pas cette commande |
+| Backups | Copies DSV de 524 410 octets vérifiées, rétention de deux copies après trois créations, restauration confirmée d'une copie de test vérifiée octet par octet | Aucun fichier original utilisé comme cible |
+| Automatismes de session | Backups activés au lancement et à la fermeture produits par `GameModeService` après observation de l'arrêt de son processus | Timer périodique couvert par simulation, pas par attente réelle longue |
+
+Avant/après chaque lancement, empreinte SHA-256, taille et date de modification
+de l'INI et de la sauvegarde originaux ont été comparées : **inchangés**. Seuls
+les processus créés pour l'essai ont été arrêtés. Les traces, copies, configs et
+save states restent dans `runtime/v035-validation/`, exclus de Git ; aucun
+chemin utilisateur ou fichier de jeu n'est publié.
+
+### Ce qui reste préparé ou indisponible
+
+- Les boutons de vitesse du Mode Jeu changent l'**état demandé**. Aucune commande
+  directe ni mesure du facteur réel ; x1/MAX exportables au prochain lancement,
+  x2/x4 à régler manuellement dans DeSmuME. Fast-forward et hotkeys sont documentés.
+- Les options graphiques et le format clavier sont documentés pour le binaire
+  identifié ; leur effet visuel et chaque touche doivent encore être essayés
+  par l'utilisateur. Les builds inconnus restent sans export activé.
+- Manettes, shaders, embedding, contrainte de save states et randomisation réelle
+  ne sont pas implémentés. La conformité Monotype n'est pas déduite sans données.
+- Les rencontres, captures et fuites réelles V0.3 restent indisponibles faute de
+  lectures FR documentées. La V0.3.5 ne transforme pas les fixtures en preuve réelle.
+
+Pour ces essais utilisateur non réalisés : **En attente de validation sur la machine utilisateur.**
 
 ## V0.3 en cours — 1er octobre 2026
 

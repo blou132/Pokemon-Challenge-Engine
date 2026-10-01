@@ -5,9 +5,11 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 ## Situation actuelle
 
-La branche active est `feat/v0.3-nuzlocke-tracking`, issue de la V0.2 après
-confirmation de ses **598 tests réussis, aucun ignoré**. Application `0.3.0`,
-protocole `2` avec compatibilité de réception v1, progression schéma `2`.
+La branche active est `feat/v0.3.5-game-mode`, issue de
+`feat/v0.3-nuzlocke-tracking` au commit `e7fc0c20afb899579ecf5d7e6558525b443c6d0d`,
+après confirmation des **779 tests réussis, aucun ignoré, en 117,93 s**.
+Application `0.3.5`, scripts Lua `0.3.0`, protocole `2` avec compatibilité de
+réception v1 et progression schéma `2`.
 Le moteur d'événements, les clauses optionnelles, la persistance et le panneau
 de profil actif sont implémentés et testés sur événements synthétiques.
 Les cartes Noir/Blanc FR ont des lectures sourcées ; les lectures de combat,
@@ -54,6 +56,7 @@ dans `main` n'est effectuée**. `main` conserve la V0.1.
 | V0.1 | Interface, catalogue, règles, randomisation, roue Monotype, profils, suivi manuel, launcher | Tests métier et interface, lancement réel de l'application, intégrité des fichiers |
 | V0.2 | Communication DeSmuME/Lua en lecture seule, identité, équipe, espèces, niveaux et PV | Transport local versionné, déconnexion/reprise testées, comparaison de l'équipe avec une partie réelle pour chaque profil |
 | V0.3, en cours | Zones, rencontres, captures, Species Clause exacte optionnelle | Sources des combats FR, puis chaîne réelle zone → rencontre → résultat → profil vérifiée |
+| V0.3.5 | Mode Jeu, contrôles et graphismes documentés, backups, profils de lancement et panneaux | Non-régression V0.3, UI 1366/1920, lancement et copies isolées réels ; vitesse directe/manettes non disponibles |
 | V0.4 | Morts permanentes et extension des clauses | Identification fiable des Pokémon et traitement des familles évolutives |
 | V0.5 | Level Cap | Plafonds par progression, comportement strict testé |
 | V0.6 | Monotype appliqué | Modes Souple, Strict et Pur validés sur données réelles |
@@ -68,5 +71,14 @@ Une option visible ou un statut `future_strict` ne constitue jamais une fonction
 d'application en jeu. L'interface devra continuer à distinguer l'intention, la lecture
 réelle et la contrainte effectivement mise en œuvre.
 
-Le numéro d'application `0.3.0` ne change pas le format du challenge (`0.1.0`).
+Le numéro d'application `0.3.5` ne change pas le format du challenge (`0.1.0`).
 Le protocole Lua (`2`) et la progression (`schema_version: 2`) sont versionnés séparément.
+
+## Suite du Mode Jeu
+
+Le frontend V0.3.5 ne clôt pas les lectures de combat encore manquantes de la V0.3.
+Restent à vérifier avant activation : pilotage et mesure de vitesse en direct,
+commandes manette réelles, qualité visuelle de chaque option, autres builds DeSmuME,
+scénarios multi-écrans/DPI et éventuel embedding. Les formats et limites retenus
+sont décrits dans [Réglages DeSmuME](emulator-settings.md). Aucune fusion automatique
+dans `main` n'est prévue.

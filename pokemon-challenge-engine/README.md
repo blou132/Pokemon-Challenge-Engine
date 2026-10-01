@@ -1,4 +1,4 @@
-# Pokemon Challenge Engine — V0.3 en cours
+# Pokemon Challenge Engine — V0.3.5
 
 Application Windows en français pour préparer des challenges **Pokémon Noir**,
 **Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, enregistrer des profils,
@@ -13,7 +13,47 @@ pour les versions suivantes. La règle Randomizer est uniquement prévue et conf
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)
 
-## État de la V0.3
+## Mode Jeu — V0.3.5
+
+Le **Mode Jeu** ouvre un frontend autour de la fenêtre externe de DeSmuME.
+Les panneaux affichent le challenge, la seed, les compteurs du profil, l'équipe
+reçue par Lua et le suivi Nuzlocke V0.3. Les données absentes restent « Non
+disponible ». Les dispositions compacte, standard et large, la visibilité des
+blocs et leur côté gauche/droit sont configurables ; le plein écran concerne PCE.
+
+Les réglages regroupent cinq onglets :
+
+- **Lancement** : un profil par jeu avec ROM, émulateur, challenge, contrôles,
+  graphismes et vitesse demandée ; export INI uniquement sur activation explicite.
+- **Contrôles** : clavier, profils locaux, conflits et raccourcis de l'application.
+  Le format DeSmuME est vérifié avant tout export, précédé d'un backup.
+- **Graphismes** : options documentées et presets composés de réglages existants,
+  réservés au binaire DeSmuME identifié ; leur effet visuel n'est pas garanti.
+- **Sauvegardes** : fichier `.dsv` choisi explicitement, inventaire des slots,
+  backups manuels ou automatiques activés par l'utilisateur, rétention et
+  restauration avec confirmation. Aucun original n'est supprimé par la rétention.
+- **Interface en jeu** : blocs visibles, disposition, écran mémorisé et
+  organisation facultative des fenêtres.
+
+Les préférences sont locales : `game-mode.local.json`, `controls.local.json` et
+le dossier des backups restent exclus de Git. Les chemins RetroBat existants
+sont conservés. Les boutons x1/x2/x4/MAX affichent un **état demandé**, sans
+pilotage direct ni mesure de vitesse réelle. L'export vérifié de x1/MAX prépare
+le prochain lancement ; x2/x4 se règlent dans DeSmuME. Les manettes, shaders,
+contraintes sur les save states et randomisation réelle ne sont pas implémentés.
+
+Branche : `feat/v0.3.5-game-mode`, issue de
+`e7fc0c20afb899579ecf5d7e6558525b443c6d0d` après les **779 tests de référence
+réussis en 117,93 s**, sans fusion automatique.
+
+[Guide du Mode Jeu](docs/game-mode.md) · [Réglages DeSmuME](docs/emulator-settings.md) ·
+[Sauvegardes et backups](docs/save-manager.md) · [Vérifications](docs/verification.md)
+
+Validation de cette livraison : **960 tests réussis, aucun ignoré** ; compilation
+et démarrage natif Windows vérifiés, rendus Qt inspectés à 1366×768 et 1920×1080.
+Les essais DeSmuME réels sur copies isolées sont détaillés séparément dans le rapport.
+
+## État conservé de la V0.3
 
 Le panneau **Suivi Nuzlocke**, dans **Connexion DeSmuME**, associe le suivi au
 profil choisi avant la connexion. Sans profil, la connexion reste un diagnostic.
@@ -58,7 +98,7 @@ machine utilisateur.** Noir 2 ne disposait pas d'une équipe chargée lors de so
 essai de transport. Noir et Blanc 2 n'ont pas été validés en émulateur.
 Voir le [rapport de vérification](docs/verification.md) pour les preuves et les limites exactes.
 
-Les versions sont distinctes : application et scripts **`0.3.0`**, challenge
+Les versions sont distinctes : application **`0.3.5`**, scripts Lua **`0.3.0`**, challenge
 **`0.1.0`** conservé, progression **schéma `2`**, protocole **`2`**. Python accepte
 aussi les messages v1 des scripts `0.2.0`, sans observations Nuzlocke.
 Les anciens suivis sont migrés en mémoire à la lecture, puis persistés seulement

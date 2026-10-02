@@ -50,6 +50,14 @@ class ChallengeEngine:
             final_settings.update(deepcopy(settings))
         if not isinstance(final_settings["rule_parameters"], dict):
             raise ValueError("Les paramètres des règles doivent être un objet JSON.")
+        unknown = set(final_settings["rule_parameters"]) - self.catalog.rules.keys()
+        if unknown:
+            raise ValueError("Paramètres associés à une règle inconnue : " + ", ".join(sorted(unknown)))
+        # Les valeurs de l'éditeur sont des brouillons. Seules les règles du
+        # résultat final portent des contraintes (Possible ne signifie pas Active).
+        final_settings["rule_parameters"] = {
+            rule_id: values for rule_id, values in final_settings["rule_parameters"].items() if rule_id in active
+        }
         for rule_id in active:
             specs = self.catalog.rules[rule_id].parameters
             if specs:
@@ -112,6 +120,8 @@ class ChallengeEngine:
             if rule is None or not isinstance(params, dict):
                 errors.append(f"Paramètres invalides pour la règle {rule_id}.")
                 continue
+            if rule_id not in active:
+                continue  # Ancien brouillon inactif : supprimé à la sérialisation.
             for key, value in params.items():
                 spec = rule.parameters.get(key)
                 if spec is None:

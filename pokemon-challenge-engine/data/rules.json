@@ -25,7 +25,7 @@
   {
     "id": "permanent_death",
     "name": "Mort permanente",
-    "description": "Tout Pokémon K.O. est retiré de l'équipe et ne peut plus être utilisé. Suivi manuel uniquement en V0.1.",
+    "description": "Tout Pokémon K.O. doit être retiré de l'équipe et ne plus être utilisé. Suivi manuel ; aucune exclusion imposée directement dans le jeu.",
     "difficulty": 4,
     "category": "Équipe",
     "requires": [],

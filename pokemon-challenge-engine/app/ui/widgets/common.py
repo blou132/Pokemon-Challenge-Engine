@@ -5,8 +5,8 @@ from PySide6.QtWidgets import QFrame, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 STATUS_LABELS = {
     "ui_only": "Configuration uniquement",
-    "planned": "Prévu",
-    "partial": "Partiel • préparation",
+    "planned": "Application prévue · configuration uniquement",
+    "partial": "Configuration et suivi disponible selon le jeu",
     "future_strict": "Application stricte prévue",
 }
 MODE_LABELS = {"normal": "Partie normale", "custom": "Challenge personnalisé", "random": "Challenge aléatoire"}

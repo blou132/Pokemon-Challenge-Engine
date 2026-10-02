@@ -103,4 +103,13 @@ class Challenge:
                 raise ValueError("Le mode Monotype ou l'option de relance est invalide.")
             if type(config["roll_index"]) is not int or config["roll_index"] < 0:
                 raise ValueError("L'index de relance Monotype est invalide.")
-        return cls(**deepcopy(data))
+        normalized = deepcopy(data)
+        # Compatibilité des profils historiques : leurs champs d'éditeur inactifs
+        # ne deviennent pas des contraintes. La lecture ne réécrit aucun fichier.
+        normalized["settings"]["rule_parameters"] = {
+            rule_id: values for rule_id, values in normalized["settings"]["rule_parameters"].items()
+            if rule_id in rules
+        }
+        if "monotype" not in rules:
+            normalized["monotype"] = None
+        return cls(**normalized)

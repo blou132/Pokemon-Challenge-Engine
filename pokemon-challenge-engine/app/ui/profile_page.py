@@ -13,7 +13,7 @@ from app.core.challenge_engine import ChallengeEngine
 from app.core.profile_manager import ProfileManager
 from app.models.profile import Profile
 from app.ui.challenge_page import challenge_summary
-from app.ui.widgets.common import card, label, page_layout
+from app.ui.widgets.common import MODE_LABELS, card, label, page_layout
 
 
 class ProfilePage(QWidget):
@@ -26,7 +26,7 @@ class ProfilePage(QWidget):
         self.catalog = catalog
         self.manager = manager
         self.selected_profile: Profile | None = None
-        layout = page_layout(self, "Vos profils", "Reprenez vos réglages et gardez une trace de votre progression.")
+        layout = page_layout(self, "Vos profils", "Configurations réutilisables de challenges. Le suivi historique reste associé à chaque profil.")
         top = QHBoxLayout()
         self.summary = label("", "subtitle")
         top.addWidget(self.summary, 1)
@@ -73,6 +73,7 @@ class ProfilePage(QWidget):
         self.zones.setPlaceholderText("Route 1, Arabelle… (séparer par des virgules)")
         for title, field in [("Badges", self.badges), ("Captures", self.captures), ("Morts", self.deaths), ("Level cap courant", self.level_cap), ("Zones", self.zones)]:
             form.addRow(title, field)
+        self.progress_form = form
         progress_box.addLayout(form)
         self.progress_button = QPushButton("Enregistrer la progression")
         self.progress_button.clicked.connect(self.save_progress)
@@ -81,8 +82,11 @@ class ProfilePage(QWidget):
         layout.addStretch()
         self.refresh()
 
-    def refresh(self, *_args: object) -> None:
-        previous = self.selected_profile.id if self.selected_profile else None
+    def refresh(self, *_args: object, select_profile_id: str | None = None) -> None:
+        # Saving creates a distinct ID, even when its name and seed match an
+        # existing profile. Select that new ID explicitly instead of retaining
+        # the previous normal profile and displaying its zero rules.
+        previous = select_profile_id or (self.selected_profile.id if self.selected_profile else None)
         self.list_widget.clear()
         profiles = self.manager.list_profiles()
         self.summary.setText(f"{len(profiles)} profil(s) enregistré(s)" if profiles else "Aucun profil pour le moment. Créez et sauvegardez votre premier challenge.")
@@ -91,7 +95,10 @@ class ProfilePage(QWidget):
         chosen = 0
         for index, profile in enumerate(profiles):
             game = self.catalog.games.get(profile.challenge.game_id)
-            item = QListWidgetItem(f"{profile.name}   ·   {game.name if game else profile.challenge.game_id}   ·   Seed {profile.challenge.seed}")
+            mode = MODE_LABELS.get(profile.challenge.mode, profile.challenge.mode)
+            item = QListWidgetItem(f"{profile.name}   ·   {game.name if game else profile.challenge.game_id}"
+                                   f"   ·   {mode}   ·   {len(profile.challenge.active_rules)} règle(s)"
+                                   f"   ·   Seed {profile.challenge.seed}")
             item.setData(Qt.ItemDataRole.UserRole, profile.id)
             item.setToolTip(f"Créé le {profile.challenge.created_at}\n{profile.id}")
             self.list_widget.addItem(item)
@@ -104,6 +111,8 @@ class ProfilePage(QWidget):
 
     def select_profile(self, current: QListWidgetItem | None, _previous: QListWidgetItem | None = None) -> None:
         self.selected_profile = None
+        self.progress_form.setRowVisible(self.level_cap, False)
+        self.level_cap.setEnabled(False)
         for button in (self.open_button, self.launch_button, self.progress_button):
             button.setEnabled(False)
         if current is None:
@@ -124,6 +133,9 @@ class ProfilePage(QWidget):
         self.captures.setValue(len(progress["captures"]))
         self.deaths.setValue(len(progress["deaths"]))
         self.level_cap.setValue(progress["current_level_cap"] or 0)
+        cap_active = "level_cap" in profile.challenge.active_rules
+        self.progress_form.setRowVisible(self.level_cap, cap_active)
+        self.level_cap.setEnabled(cap_active)
         self.zones.setText(", ".join(progress["zones"]))
         for button in (self.open_button, self.launch_button, self.progress_button):
             button.setEnabled(True)
@@ -155,7 +167,8 @@ class ProfilePage(QWidget):
                     values.append(f"Badge {len(values) + 1}" if key == "badges" else {"manual": True})
                 progress[key] = values
             progress["zones"] = zones
-            progress["current_level_cap"] = level_cap
+            if "level_cap" in profile.challenge.active_rules:
+                progress["current_level_cap"] = level_cap
             profile.history.append({"event": "manual_progress_update", "at": datetime.now(timezone.utc).isoformat()})
 
         try:

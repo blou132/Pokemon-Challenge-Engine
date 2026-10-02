@@ -120,7 +120,7 @@ class MainWindow(QMainWindow):
         self.navigate(1)
 
     def profile_saved(self, profile: Profile) -> None:
-        self.profile_page.refresh()
+        self.profile_page.refresh(select_profile_id=profile.id)
         self.refresh_home()
         self.statusBar().showMessage(f"Profil « {profile.name} » enregistré", 8000)
 

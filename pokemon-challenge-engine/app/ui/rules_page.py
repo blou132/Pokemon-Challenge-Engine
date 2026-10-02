@@ -22,7 +22,7 @@ class RulesPage(QWidget):
         bar.addWidget(self.search, 1)
         bar.addWidget(self.game)
         layout.addLayout(bar)
-        layout.addWidget(label("V0.1 • Toutes les règles sont déclaratives. Aucun blocage ni modification du jeu.", "badge"))
+        layout.addWidget(label("Niveau de support : configuration et suivi selon les données disponibles. Aucune règle n'est imposée directement dans le jeu.", "badge"))
         self.entries: list[tuple[QWidget, str, tuple[str, ...]]] = []
         for rule in catalog.rules.values():
             frame, box = card(rule.name)

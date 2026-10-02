@@ -50,11 +50,11 @@ def test_strict_intention_can_be_saved_without_enforcement(catalog):
     assert result.settings["enforcement"] == "strict"
 
 
-def test_parameters_for_inactive_rules_are_accepted(catalog):
+def test_parameters_for_inactive_rules_are_excluded_from_final_challenge(catalog):
     result = ChallengeEngine(catalog).generate("black", "normal", {}, 0, 1, settings={
         "rule_parameters": {"level_cap": {"max_level": 40}},
     })
-    assert result.settings["rule_parameters"]["level_cap"]["max_level"] == 40
+    assert result.settings["rule_parameters"] == {}
 
 
 @pytest.mark.parametrize("parameters", [{"max_level": 0}, {"max_level": 101}, {"max_level": True}, {"unknown": 3}])

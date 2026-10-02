@@ -32,7 +32,7 @@ def challenge_summary(challenge: Challenge, catalog: Catalog) -> str:
     for rule_id in challenge.active_rules:
         rule = catalog.rules.get(rule_id)
         lines.append("• " + (rule.name if rule else rule_id))
-    if challenge.monotype:
+    if challenge.monotype and "monotype" in challenge.active_rules:
         config = challenge.monotype
         type_name = next((t["name"] for t in catalog.types if t["id"] == config["type_id"]), config["type_id"])
         mode = {"soft": "Souple", "strict": "Strict", "pure": "Pur"}[config["mode"]]
@@ -45,8 +45,11 @@ def challenge_summary(challenge: Challenge, catalog: Catalog) -> str:
                 name = rule.parameters.get(key, {}).get("label", key) if rule else key
                 lines.append(f"{name} : {value}")
     enforcement = challenge.settings.get("enforcement", "soft")
-    lines.extend(["", "Suivi SOFT" if enforcement == "soft" else "STRICT demandé • application en jeu prévue",
-                  "V0.1 : aucune règle n'est imposée dans le jeu."])
+    lines.extend(["", "Mode de suivi : Suivi uniquement" if enforcement == "soft" else
+                  "Mode de suivi : Application stricte demandée, non disponible",
+                  f"Règles configurées : {len(challenge.active_rules)}",
+                  "Règles détectées automatiquement : selon les données disponibles ; détection des captures non disponible",
+                  "Règles imposées directement dans le jeu : aucune"])
     return "\n".join(lines)
 
 
@@ -65,6 +68,8 @@ class ChallengePage(QWidget):
         self._building = True
         self.state_controls: dict[str, QComboBox] = {}
         self.parameter_controls: dict[str, dict[str, QSpinBox]] = {}
+        self._generated_parameter_rules = set()
+        self._generated_parameter_signature = None
         layout = page_layout(self, "Nouveau challenge", "Choisissez votre jeu. Composez les contraintes. Lancez votre aventure.")
         layout.addWidget(self._build_options())
         layout.addWidget(self._build_rules())
@@ -97,8 +102,8 @@ class ChallengePage(QWidget):
         for preset in self.catalog.presets:
             self.preset_combo.addItem(preset["name"], preset["id"])
         self.enforcement_combo = QComboBox()
-        self.enforcement_combo.addItem("SOFT • suivi uniquement", "soft")
-        self.enforcement_combo.addItem("STRICT • prévu, non appliqué", "strict")
+        self.enforcement_combo.addItem("Suivi uniquement", "soft")
+        self.enforcement_combo.addItem("Application stricte prévue · non appliquée", "strict")
         self.count_spin = QSpinBox()
         self.count_spin.setRange(0, len(self.catalog.rules))
         self.count_spin.setValue(5)
@@ -135,7 +140,7 @@ class ChallengePage(QWidget):
         rules_box.addWidget(self.state_summary)
         rules_box.addWidget(label("Personnalisé : seules les obligations et leurs dépendances sont retenues. Aléatoire : les règles possibles complètent le total.", "muted"))
         self.rules_table = QTableWidget(len(self.catalog.rules), 3)
-        self.rules_table.setHorizontalHeaderLabels(["Règle", "Disponibilité V0.1", "Votre choix"])
+        self.rules_table.setHorizontalHeaderLabels(["Règle", "Niveau de support", "Votre choix"])
         self.rules_table.verticalHeader().hide()
         self.rules_table.setShowGrid(False)
         self.rules_table.setAlternatingRowColors(True)
@@ -171,15 +176,19 @@ class ChallengePage(QWidget):
     def _build_extras(self) -> QWidget:
         """Construire la roue Monotype et les paramètres décrits par le catalogue."""
         extras, extras_box = card("03  /  Affiner le challenge")
-        mono_row = QHBoxLayout()
+        self.extras_card = extras
+        self.monotype_row = QWidget()
+        mono_row = QHBoxLayout(self.monotype_row)
+        mono_row.setContentsMargins(0, 0, 0, 0)
         self.monotype_label = label("Monotype · 17 types de la génération V", "subtitle")
         self.wheel_button = QPushButton("Ouvrir la roue des types")
         self.wheel_button.clicked.connect(self.open_wheel)
         mono_row.addWidget(self.monotype_label, 1)
         mono_row.addWidget(self.wheel_button)
-        extras_box.addLayout(mono_row)
-        extras_box.addWidget(label("La roue configure le type si la règle Monotype est active. Sans tirage manuel, le type est déterminé par la seed.", "muted"))
-        form = QFormLayout()
+        extras_box.addWidget(self.monotype_row)
+        self.monotype_note = label("La roue configure le type de la règle Monotype active. Sans tirage manuel, le type est déterminé par la seed.", "muted")
+        extras_box.addWidget(self.monotype_note)
+        form = self.parameter_form = QFormLayout()
         for rule in self.catalog.rules.values():
             if not rule.parameters:
                 continue
@@ -189,6 +198,8 @@ class ChallengePage(QWidget):
                 spin.setRange(schema["min"], schema["max"])
                 spin.setValue(schema["default"])
                 spin.valueChanged.connect(self.invalidate)
+                # per_zone appartient exclusivement à catch_limit, pas à Nuzlocke.
+                spin.setToolTip(f"Paramètre de la règle {rule.name}, utilisé seulement lorsqu'elle est active.")
                 form.addRow(f"{rule.name} · {schema['label']}", spin)
                 self.parameter_controls[rule.id][key] = spin
         extras_box.addLayout(form)
@@ -213,7 +224,7 @@ class ChallengePage(QWidget):
         result_box.addWidget(self.preview)
         action_row = QHBoxLayout()
         self.name_edit = QLineEdit()
-        self.name_edit.setPlaceholderText("Nom du profil, par exemple Noir 2 · Run 01")
+        self.name_edit.setPlaceholderText("Nom du profil, par exemple Classic Nuzlocke")
         self.name_edit.setMaxLength(100)
         self.save_button = QPushButton("Sauvegarder le profil")
         self.save_button.clicked.connect(self.save_profile)
@@ -223,7 +234,7 @@ class ChallengePage(QWidget):
         action_row.addWidget(self.save_button)
         action_row.addWidget(self.launch_button)
         result_box.addLayout(action_row)
-        result_box.addWidget(label("V0.1 • Préparation et suivi local. Aucune règle n'est imposée dans Pokémon.", "muted"))
+        result_box.addWidget(label("Configuration réutilisable et suivi local. Aucune règle n'est imposée directement dans Pokémon.", "muted"))
         return result
 
     def states(self) -> dict[str, str]:
@@ -237,6 +248,7 @@ class ChallengePage(QWidget):
         self.launch_button.setEnabled(False)
         self.feedback.hide()
         self.preview.setPlainText("Réglages modifiés. Générez le challenge pour obtenir un aperçu à jour.")
+        self.update_rule_parameter_visibility()
 
     def _seed_changed(self, *_args: object) -> None:
         """Une nouvelle seed conserve les préférences, mais exige un nouveau type."""
@@ -256,7 +268,6 @@ class ChallengePage(QWidget):
         game_id = self.game_combo.currentData()
         normal = self.mode_combo.currentData() == "normal"
         self.rules_table.setEnabled(not normal)
-        self.wheel_button.setEnabled(not normal)
         for rule_id, combo in self.state_controls.items():
             games = self.catalog.rules[rule_id].supported_games
             supported = not games or game_id in games
@@ -273,6 +284,7 @@ class ChallengePage(QWidget):
         states = self.states()
         self.state_summary.setText(f"{list(states.values()).count('required')} obligatoires   ·   {list(states.values()).count('possible')} possibles   ·   {list(states.values()).count('forbidden')} interdites")
         self.count_spin.setEnabled(self.mode_combo.currentData() == "random")
+        self.update_rule_parameter_visibility()
         if normal:
             self.capacity_label.setText("Partie normale : aucune règle active.")
             return
@@ -315,6 +327,8 @@ class ChallengePage(QWidget):
         self.feedback.show()
 
     def open_wheel(self) -> None:
+        if "monotype" not in self._editor_active_rules():
+            return
         try:
             seed = self.seed_value()
         except ValueError as exc:
@@ -327,15 +341,49 @@ class ChallengePage(QWidget):
             self.update_monotype_label()
 
     def update_monotype_label(self) -> None:
+        if "monotype" not in self._editor_active_rules():
+            self.monotype_label.setText("Monotype non actif")
+            return
         if self.monotype_config:
             selected_id = self.monotype_config.get("type_id")
             if selected_id is None:
                 self.monotype_label.setText("Monotype · Seed modifiée · nouveau tirage requis")
             else:
                 selected = next(t["name"] for t in self.catalog.types if t["id"] == selected_id)
-                self.monotype_label.setText(f"Monotype · {selected} · tirage {self.monotype_config['roll_index'] + 1}")
+                mode = {"soft": "Souple", "strict": "Strict", "pure": "Pur"}[self.monotype_config["mode"]]
+                self.monotype_label.setText(f"Monotype · {selected} · {mode} · tirage {self.monotype_config['roll_index'] + 1}")
         else:
             self.monotype_label.setText("Monotype · 17 types de la génération V")
+
+    def _parameter_signature(self):
+        return (self.game_combo.currentData(), self.mode_combo.currentData(), tuple(self.states().items()),
+                self.count_spin.value(), self.seed_edit.text())
+
+    def _editor_active_rules(self):
+        if self.challenge is not None:
+            return set(self.challenge.active_rules)
+        if self.mode_combo.currentData() == "normal":
+            return set()
+        if self._generated_parameter_signature == self._parameter_signature():
+            return self._generated_parameter_rules
+        return self.engine.rule_engine.dependency_closure(
+            rule_id for rule_id, state in self.states().items() if state == "required")
+
+    def update_rule_parameter_visibility(self):
+        active = self._editor_active_rules()
+        if self.challenge is not None:
+            self._generated_parameter_rules = active
+            self._generated_parameter_signature = self._parameter_signature()
+        monotype_active = "monotype" in active
+        self.monotype_row.setVisible(monotype_active)
+        self.monotype_note.setVisible(monotype_active)
+        self.wheel_button.setEnabled(monotype_active)
+        for rule_id, controls in self.parameter_controls.items():
+            for control in controls.values():
+                self.parameter_form.setRowVisible(control, rule_id in active)
+                control.setEnabled(rule_id in active)
+        self.extras_card.setVisible(monotype_active or bool(active & self.parameter_controls.keys()))
+        self.update_monotype_label()
 
     def generate(self) -> None:
         try:
@@ -347,7 +395,8 @@ class ChallengePage(QWidget):
             self.challenge = self.engine.generate(
                 self.game_combo.currentData(), self.mode_combo.currentData(), self.states(),
                 self.count_spin.value(), seed,
-                settings={"enforcement": self.enforcement_combo.currentData(), "rule_parameters": parameters},
+                settings={"enforcement": self.enforcement_combo.currentData(), "rule_parameters": parameters,
+                          "preset_id": self._current_preset_id()},
                 monotype=monotype,
             )
         except ValueError as exc:
@@ -358,9 +407,24 @@ class ChallengePage(QWidget):
         if self.challenge.monotype:
             self.monotype_config = dict(self.challenge.monotype)
             self.update_monotype_label()
+        self.update_rule_parameter_visibility()
         self.save_button.setEnabled(True)
         self.launch_button.setEnabled(True)
-        self.show_feedback("Challenge prêt. Vous pouvez le sauvegarder ou lancer le jeu.", success=True)
+        self.show_feedback("Aperçu non enregistré. Sauvegardez pour créer un profil avec ces règles ; les profils existants restent inchangés.", success=True)
+
+    def _current_preset_id(self) -> str:
+        """A modified starting preset becomes custom; no preset is reapplied on restore."""
+        selected = self.preset_combo.currentData()
+        preset = next((item for item in self.catalog.presets if item["id"] == selected), None)
+        if preset is None or self.mode_combo.currentData() != preset["mode"]:
+            return "custom"
+        expected_states = {rule_id: "required" if rule_id in preset["required"] else "possible"
+                           for rule_id in self.state_controls}
+        if self.states() != expected_states:
+            return "custom"
+        if preset["mode"] == "random" and self.count_spin.value() != preset["count"]:
+            return "custom"
+        return selected
 
     def save_profile(self) -> None:
         if self.challenge is None:
@@ -371,13 +435,23 @@ class ChallengePage(QWidget):
             self.name_edit.setFocus()
             return
         try:
-            profile = self.profiles.create(name, self.challenge)
+            # Serialize the displayed challenge once, then verify exactly that
+            # payload after the write. Never regenerate a normal default here.
+            expected = self.challenge.to_dict()
+            profile = self.profiles.create(name, Challenge.from_dict(expected))
+            verified = self.profiles.load(profile.id)
+            if verified.challenge.to_dict() != expected:
+                raise ValueError("La relecture du profil ne correspond pas à l'aperçu. Vérifiez le profil créé avant de continuer.")
         except (ValueError, OSError) as exc:
             LOGGER.warning("Impossible de sauvegarder un profil : %s", type(exc).__name__)
             self.show_feedback(str(exc))
             return
-        self.show_feedback(f"Profil « {profile.name} » sauvegardé. Chaque sauvegarde crée un profil distinct.", success=True)
-        self.saved.emit(profile)
+        self.show_feedback(f"Profil « {verified.name} » sauvegardé et relu : "
+                           f"{MODE_LABELS.get(verified.challenge.mode, verified.challenge.mode)}, "
+                           f"{len(verified.challenge.active_rules)} règle(s). Chaque sauvegarde crée un profil distinct.", success=True)
+        LOGGER.info("Profil vérifié après sauvegarde : id=%s, jeu=%s, mode=%s, règles=%d",
+                    verified.id, verified.challenge.game_id, verified.challenge.mode, len(verified.challenge.active_rules))
+        self.saved.emit(verified)
 
     def request_launch(self) -> None:
         if self.challenge is not None:
@@ -390,9 +464,14 @@ class ChallengePage(QWidget):
             self.show_feedback("\n".join(errors))
             return
         self._building = True
-        # Le profil repris conserve ses règles, même si un autre preset était affiché.
+        # Optional provenance in settings keeps the V0.1 challenge schema intact.
+        # Older profiles or customized presets keep the Custom label; their exact
+        # states remain authoritative, never replaced by a catalog preset.
+        saved_preset = challenge.settings.get("preset_id", "custom")
+        if not isinstance(saved_preset, str) or self.preset_combo.findData(saved_preset) < 0:
+            saved_preset = "custom"
         with QSignalBlocker(self.preset_combo):
-            self.preset_combo.setCurrentIndex(self.preset_combo.findData("custom"))
+            self.preset_combo.setCurrentIndex(self.preset_combo.findData(saved_preset))
         self.game_combo.setCurrentIndex(self.game_combo.findData(challenge.game_id))
         self.mode_combo.setCurrentIndex(self.mode_combo.findData(challenge.mode))
         for rule_id, combo in self.state_controls.items():
@@ -410,6 +489,7 @@ class ChallengePage(QWidget):
         self._constraints_changed()
         self.update_monotype_label()
         self.challenge = challenge
+        self.update_rule_parameter_visibility()
         self.preview.setPlainText(challenge_summary(challenge, self.catalog))
         self.save_button.setEnabled(True)
         self.launch_button.setEnabled(True)

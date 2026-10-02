@@ -114,6 +114,7 @@ def test_reopened_challenge_displays_custom_and_preserves_its_options(window):
     choose(page.state_controls["no_items"], "required")
     choose(page.state_controls["shiny_only"], "forbidden")
     choose(page.enforcement_combo, "strict")
+    choose(page.state_controls["level_cap"], "required")
     page.parameter_controls["level_cap"]["max_level"].setValue(37)
     page.seed_edit.setText("482193")
     page.generate_button.click()
@@ -263,7 +264,12 @@ def test_corrupt_progress_uses_visible_fallback_and_preserves_file(window, tmp_p
 
 
 def test_progress_save_updates_storage_and_history(window, monkeypatch):
-    profile = save_classic(window)
+    page = generate_classic(window)
+    choose(page.state_controls["level_cap"], "required")
+    page.generate_button.click()
+    page.name_edit.setText("Nuzlocke avec Level Cap")
+    page.save_button.click()
+    profile = window.profile_page.selected_profile
     window.navigate(3)
     page = window.profile_page
     monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes)

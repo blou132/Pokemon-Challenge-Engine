@@ -2,10 +2,13 @@
 
 from datetime import datetime
 
-from PySide6.QtCore import Qt, QSignalBlocker, Slot
+from pathlib import Path
+
+from PySide6.QtCore import Qt, QSignalBlocker, Slot, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QFormLayout, QHeaderView, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QWidget,
+    QApplication, QLabel, QLineEdit, QMessageBox, QPushButton, QTableWidget, QTableWidgetItem, QToolButton, QWidget,
 )
 
 from app.bridge.protocol import GAME_IDS, PROTOCOL_VERSION
@@ -69,6 +72,16 @@ class BridgePage(QWidget):
         self.stop_button.clicked.connect(controller.stop)
         actions.addWidget(self.stop_button)
         connection.addLayout(actions)
+        recovery = QHBoxLayout()
+        self.session_notice = label("", "muted")
+        recovery.addWidget(self.session_notice, 1)
+        self.reconnect_button = QPushButton("Reconnecter")
+        self.reconnect_button.clicked.connect(self._start)
+        recovery.addWidget(self.reconnect_button)
+        self.change_game_button = QPushButton("Arrêter et changer de jeu")
+        self.change_game_button.clicked.connect(self._stop_for_change)
+        recovery.addWidget(self.change_game_button)
+        connection.addLayout(recovery)
         self.instructions = label(
             "1. Choisissez un profil si vous souhaitez suivre un challenge, puis préparez la connexion pour le jeu choisi.\n"
             "2. Dans DeSmuME standalone compatible Lua, ouvrez votre jeu, puis Tools > Lua Scripting > New Lua Script.\n"
@@ -78,6 +91,20 @@ class BridgePage(QWidget):
         self.script_path.setReadOnly(True)
         self.script_path.setPlaceholderText("Le chemin du script apparaîtra après la préparation")
         self.script_path.setAccessibleName("Chemin exact du script Lua à ouvrir")
+        self.script_path.hide()
+        script_actions = QHBoxLayout()
+        self.copy_script_button = QPushButton("Copier le chemin du script")
+        self.copy_script_button.clicked.connect(self.copy_script_path)
+        self.folder_script_button = QPushButton("Ouvrir le dossier du script")
+        self.folder_script_button.clicked.connect(self.open_script_folder)
+        script_actions.addWidget(self.copy_script_button)
+        script_actions.addWidget(self.folder_script_button)
+        connection.addLayout(script_actions)
+        self.script_details_button = QToolButton()
+        self.script_details_button.setText("Détails techniques de connexion")
+        self.script_details_button.setCheckable(True)
+        self.script_details_button.toggled.connect(self.script_path.setVisible)
+        connection.addWidget(self.script_details_button)
         connection.addWidget(self.script_path)
         connection.addWidget(label("Les capacités Lua varient selon le build de DeSmuME. La connexion ne modifie aucune règle dans le jeu.", "muted"))
         content.addWidget(connection_card)
@@ -206,6 +233,30 @@ class BridgePage(QWidget):
     def _prepared(self, path: str) -> None:
         self.script_path.setText(path)
         self.script_path.setCursorPosition(0)
+        self.copy_script_button.setEnabled(True)
+        self.folder_script_button.setEnabled(True)
+        self.instructions.setText("Dans DeSmuME : Tools > Lua Scripting > New Lua Script. "
+            "Copiez le chemin ci-dessous, collez-le dans Browse, puis cliquez sur Run. "
+            "Cette dernière action reste manuelle ; la connexion sera confirmée par les données reçues.")
+
+    def copy_script_path(self):
+        if self.script_path.text():
+            QApplication.clipboard().setText(self.script_path.text())
+            self.session_notice.setText("Chemin copié. Dans DeSmuME, collez-le dans Browse puis cliquez sur Run.")
+
+    def open_script_folder(self):
+        if self.script_path.text():
+            path = Path(self.script_path.text())
+            if path.is_file() and not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent))):
+                self.session_notice.setText("Le dossier n'a pas pu être ouvert. Utilisez Copier le chemin du script.")
+
+    def _stop_for_change(self):
+        answer = QMessageBox.question(self, "Arrêter la session Lua ?",
+            "L'ancienne session sera arrêtée. Vous pourrez ensuite choisir un autre jeu et préparer une nouvelle connexion. "
+            "DeSmuME restera ouvert. Continuer ?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if answer == QMessageBox.StandardButton.Yes:
+            self.controller.stop()
 
     @Slot(str)
     def _failed(self, message: str) -> None:
@@ -223,6 +274,13 @@ class BridgePage(QWidget):
         self.game_combo.setEnabled(state.status == "stopped")
         self.profile_combo.setEnabled(state.status == "stopped")
         self.stop_button.setEnabled(state.status != "stopped")
+        self.reconnect_button.setVisible(state.status in {"disconnected", "error"})
+        self.change_game_button.setVisible(state.status != "stopped")
+        self.session_notice.setText("La session Lua est déconnectée. Reconnectez-la ou arrêtez-la pour changer de jeu."
+            if state.status == "disconnected" else "Le jeu reste verrouillé tant que cette session Lua n'est pas arrêtée."
+            if state.status != "stopped" else "")
+        self.copy_script_button.setEnabled(bool(self.script_path.text()) and state.status != "stopped")
+        self.folder_script_button.setEnabled(bool(self.script_path.text()) and state.status != "stopped")
         if state.status == "stopped":
             self.script_path.clear()
         game = self.catalog.games.get(state.game_id)

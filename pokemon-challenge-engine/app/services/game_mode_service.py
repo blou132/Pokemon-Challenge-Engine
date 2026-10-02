@@ -42,6 +42,11 @@ class GameModeService:
         self._run_options = None
         self.state = RunState(message="\n".join(self.store.warnings) or RunState().message)
 
+    def reload_preferences(self):
+        """Refresh explicit setup changes without changing a running session's pinned options."""
+        self.config = self.store.load()
+        return deepcopy(self.config)
+
     def save_launch_profile(self, game_id: str, updates: dict) -> dict:
         if game_id not in GAME_IDS or not isinstance(updates, dict):
             raise ValueError("Profil de lancement inconnu.")

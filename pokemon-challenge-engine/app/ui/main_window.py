@@ -41,6 +41,8 @@ class MainWindow(QMainWindow):
         self.profiles = ProfileManager(base_dir / "profiles")
         self.base_dir = base_dir
         self.game_mode_window: GameModeWindow | None = None
+        self.installation_dialog = None
+        self._setup_service = None
         self._game_mode_shortcut = QShortcut(self)
         self._game_mode_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
         self._game_mode_shortcut.activated.connect(self.open_game_mode)
@@ -100,6 +102,7 @@ class MainWindow(QMainWindow):
         self.profile_page.launch_requested.connect(self.launch_challenge)
         self.profile_page.changed.connect(self.refresh_home)
         self.settings_page.config_changed.connect(self.config_changed)
+        self.settings_page.installation_requested.connect(self.open_installation)
         self.navigate(0)
         self.refresh_home()
         self.statusBar().showMessage(f"Prêt  ·  V{__version__} : préparation et lecture Lua, règles à respecter manuellement")
@@ -147,10 +150,53 @@ class MainWindow(QMainWindow):
             self.game_mode_window.profile_selected.connect(self._game_mode_profile_selected)
             self.game_mode_window.process_launched.connect(self.bridge_page.track_process)
             self.game_mode_window.shortcuts_changed.connect(self._set_game_mode_shortcut)
+            self.game_mode_window.installation_requested.connect(self.open_installation)
         self.game_mode_window.refresh_profiles()
         self.game_mode_window.show()
         self.game_mode_window.raise_()
         self.game_mode_window.activateWindow()
+
+    def setup_service(self):
+        if self._setup_service is None:
+            from app.services.auto_setup_service import AutoSetupService
+            self._setup_service = AutoSetupService(self.base_dir, self.config)
+        return self._setup_service
+
+    def start_first_run(self) -> None:
+        try:
+            if not self.setup_service().first_run_done:
+                self.open_installation(first_run=True)
+        except (OSError, ValueError) as exc:
+            self.statusBar().showMessage("Installation à vérifier : " + str(exc))
+
+    def open_installation(self, *, first_run=False) -> None:
+        from app.ui.setup_dialog import InstallationDialog
+        if self.installation_dialog is None:
+            self.installation_dialog = InstallationDialog(self.setup_service(), self, first_run=first_run,
+                active_session=lambda: self.bridge_controller.bridge.session_id or "")
+            self.installation_dialog.configuration_ready.connect(self._installation_ready)
+            self.installation_dialog.play_requested.connect(self._play_installed_game)
+        self.installation_dialog.show()
+        self.installation_dialog.raise_()
+        self.installation_dialog.activateWindow()
+        self.installation_dialog.start()
+
+    def _installation_ready(self, game_id):
+        if self.game_mode_window is not None:
+            self.game_mode_window.service.reload_preferences()
+            if not self.game_mode_window.service.state.running:
+                self.game_mode_window._game_changed(self.game_mode_window.page.game_combo.currentData())
+        self.statusBar().showMessage("Installation du jeu préparée sur cet ordinateur.", 8000)
+
+    def _play_installed_game(self, game_id):
+        self.open_game_mode()
+        mode = self.game_mode_window
+        if mode.service.state.running or self.bridge_controller.state.status != "stopped":
+            mode.page.status_label.setText("Terminez la session actuelle avant de lancer un autre jeu.")
+            return
+        mode.service.reload_preferences()
+        mode.page.game_combo.setCurrentIndex(mode.page.game_combo.findData(game_id))
+        mode.launch_game(game_id)
 
     def _set_game_mode_shortcut(self, values: dict) -> None:
         value = values.get("game_mode", "")
@@ -213,6 +259,13 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "DeSmuME s'est arrêté", "L'émulateur s'est arrêté après le lancement. Vérifiez votre installation et la ROM sélectionnée.")
 
     def closeEvent(self, event) -> None:
+        if ((self.installation_dialog is not None and self.installation_dialog.is_busy)
+                or (self.game_mode_window is not None and self.game_mode_window.play_runner.is_busy)):
+            self.statusBar().showMessage("Attendez la fin de la préparation avant de fermer PCE.")
+            event.ignore()
+            return
+        if self.installation_dialog is not None:
+            self.installation_dialog.close()
         if self.game_mode_window is not None:
             self.game_mode_window.close()
         self.bridge_controller.shutdown()

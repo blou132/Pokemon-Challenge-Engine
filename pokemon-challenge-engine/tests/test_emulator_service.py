@@ -47,6 +47,27 @@ def test_lua_literal_does_not_execute_string_content(lua51):
     assert lua51.run(f"return {lua_literal(value)}") == value
 
 
+def test_reconnect_keeps_stopped_script_bound_to_its_original_session(tmp_path, lua51):
+    bridge = BridgeService(tmp_path / "runtime/bridge")
+    service = EmulatorService(tmp_path, bridge)
+    first = service.prepare("white")
+    first_id = bridge.session_id
+    original = first.read_bytes()
+    bridge.stop()
+    second = service.prepare("white")
+    assert (first.parent / "stop").exists()
+    assert first.read_bytes() == original
+    for script, session_id in ((first, first_id), (second, bridge.session_id)):
+        # Run the generated entrypoint with a bridge spy: verify which config
+        # it actually supplies, not just the spelling of a path in its source.
+        code = ("local original=dofile; local selected; "
+                "dofile=function(path) if path:match('bridge.lua$') then "
+                "return {run=function(config) selected=original(config) end} "
+                "end return original(path) end; dofile(" + lua_literal(script) + "); "
+                "return selected.session_id")
+        assert lua51.run(code) == session_id
+
+
 def test_missing_rom_is_read_only_error(tmp_path):
     bridge = BridgeService(tmp_path / "runtime/bridge")
     with pytest.raises(OSError):

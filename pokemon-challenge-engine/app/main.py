@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from app import __version__
@@ -61,6 +62,7 @@ def main() -> int:
         QMessageBox.critical(None, "Démarrage impossible", f"Les données de l'application ne peuvent pas être chargées.\n\n{exc}\n\nVérifiez les fichiers JSON et les droits d'accès au dossier.")
         return 1
     window.show()
+    QTimer.singleShot(0, window.start_first_run)
     return app.exec()
 
 

@@ -18,6 +18,7 @@ class SettingsPage(QWidget):
     """Saisit et teste les chemins ; le lancement reste une action explicite ailleurs."""
 
     config_changed = Signal(object)
+    installation_requested = Signal()
 
     def __init__(self, config_service: ConfigService, config: AppConfig, games: Iterable[Game],
                  parent: QWidget | None = None) -> None:
@@ -47,6 +48,12 @@ class SettingsPage(QWidget):
         subtitle.setObjectName("subtitle")
         content.addWidget(subtitle)
 
+        self.installation_button = QPushButton("Installation & diagnostic")
+        self.installation_button.setObjectName("primary")
+        self.installation_button.setToolTip("Détecter les jeux locaux, préparer les archives et vérifier le support Lua.")
+        self.installation_button.clicked.connect(self.installation_requested)
+        content.addWidget(self.installation_button)
+
         self.warning_label = QLabel("\n".join(config_service.warnings))
         self.warning_label.setWordWrap(True)
         self.warning_label.setObjectName("muted")
@@ -74,7 +81,7 @@ class SettingsPage(QWidget):
         saves_card, saves_layout = self._card("Sauvegardes")
         content.addWidget(saves_card)
         self.save_edit = self._path_row(saves_layout, "Dossier des sauvegardes (facultatif)", config.save_path,
-                                       "Repère informatif. La V0.1 ne lit, ne déplace et n'écrit aucune sauvegarde du jeu.", "directory")
+                                       "Dossier utilisé par le diagnostic. Les copies et restaurations passent par le gestionnaire de sauvegardes et ses confirmations.", "directory")
         note = QLabel("Ce dossier est informatif : DeSmuME conserve ses propres réglages de sauvegarde.")
         note.setWordWrap(True)
         note.setObjectName("muted")

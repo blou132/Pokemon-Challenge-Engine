@@ -76,7 +76,7 @@ class EmulatorService:
             raise ValueError(state.last_error)
         session = self.bridge.session_dir
         assert session is not None
-        config_path = self.bridge.root / f"current-{game_id}.lua"
+        config_path = session / "config.lua"
         config = {
             "session_id": self.bridge.session_id, "session_dir": session,
             "expected_game": game_id, "expected_code": code, "expected_revision": revision,
@@ -84,7 +84,11 @@ class EmulatorService:
             "tracking_profiles": tracking_profiles,
         }
         try:
-            _atomic_text(config_path, "-- Configuration locale générée ; ne pas versionner.\nreturn " + lua_literal(config) + "\n")
+            config_text = "-- Configuration locale générée ; ne pas versionner.\nreturn " + lua_literal(config) + "\n"
+            _atomic_text(config_path, config_text)
+            # Legacy entrypoints keep their current-game lookup. A session's own
+            # connect.lua must always retain its original ID and stop marker.
+            _atomic_text(self.bridge.root / f"current-{game_id}.lua", config_text)
             script = session / "connect.lua"
             _atomic_text(script, "-- Charger ce fichier dans DeSmuME > Tools > Lua Scripting.\n"
                          + "dofile(" + lua_literal(common / "bridge.lua") + ").run("

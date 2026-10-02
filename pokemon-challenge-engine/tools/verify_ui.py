@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 
@@ -105,25 +106,40 @@ def main() -> None:
 
 
 def verify_entrypoint() -> None:
-    """Exécute app.main et son event loop Windows, puis ferme notre fenêtre."""
+    """Exécute app.main sur données isolées, sans parcourir les disques utilisateur."""
     import app.main as application
+    from app.services.retrobat_discovery_service import RetroBatDiscoveryService
+    import logging
 
     original_show = MainWindow.show
+    original_project = application.PROJECT_DIR
+    original_drives = RetroBatDiscoveryService._drives
     opened: list[bool] = []
 
     def show_and_close(window: MainWindow) -> None:
         original_show(window)
         opened.append(window.isVisible())
-        QTimer.singleShot(500, window.close)
+        def close_after_setup():
+            window.close()
+            if window.isVisible():
+                QTimer.singleShot(200, close_after_setup)
+        QTimer.singleShot(500, close_after_setup)
 
     MainWindow.show = show_and_close
     sys.argv = sys.argv[:1]
-    try:
-        code = application.main()
-        assert code == 0 and opened == [True]
-        print("Point d'entrée app.main : fenêtre Windows affichée, boucle Qt exécutée, fermeture propre (code 0).")
-    finally:
-        MainWindow.show = original_show
+    with tempfile.TemporaryDirectory(prefix="pce-entrypoint-") as temporary:
+        try:
+            application.PROJECT_DIR = Path(temporary)
+            shutil.copytree(original_project / "data", application.PROJECT_DIR / "data")
+            RetroBatDiscoveryService._drives = staticmethod(lambda: ())
+            code = application.main()
+            assert code == 0 and opened == [True]
+            print("Point d'entrée app.main : fenêtre Windows affichée, boucle Qt exécutée, fermeture propre (code 0), données isolées.")
+        finally:
+            logging.shutdown()
+            MainWindow.show = original_show
+            application.PROJECT_DIR = original_project
+            RetroBatDiscoveryService._drives = staticmethod(original_drives)
 
 
 if __name__ == "__main__":

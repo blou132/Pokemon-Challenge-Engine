@@ -17,6 +17,7 @@ from app.ui.game_mode_page import GAME_MODE_STYLE, GameModePage
 from app.ui.game_mode_settings import InterfaceInGamePage, LaunchProfilePage
 from app.ui.graphics_page import GraphicsPage
 from app.ui.save_manager_page import SaveManagerPage
+from app.ui.setup_tasks import SetupTaskRunner
 
 
 class GameModeWindow(QMainWindow):
@@ -24,6 +25,7 @@ class GameModeWindow(QMainWindow):
     profile_selected = Signal(object)
     process_launched = Signal(object)
     shortcuts_changed = Signal(dict)
+    installation_requested = Signal()
 
     def __init__(self, catalog: Catalog, base_dir: Path, bridge_controller, profiles: ProfileManager,
                  config: AppConfig, parent=None, *, service: GameModeService | None = None):
@@ -34,6 +36,13 @@ class GameModeWindow(QMainWindow):
         self.setStyleSheet(GAME_MODE_STYLE)
         self.catalog, self.base_dir, self.controller, self.profiles = catalog, Path(base_dir), bridge_controller, profiles
         self.service = service if service is not None else GameModeService(base_dir, config)
+        self._legacy_config = config
+        self._setup_service = None
+        self._preparing_game = None
+        self.play_runner = SetupTaskRunner(self)
+        self.play_runner.succeeded.connect(self._play_prepared)
+        self.play_runner.failed.connect(self._play_failed)
+        self.play_runner.busy_changed.connect(self._play_busy)
         self.page = GameModePage(catalog)
         self.setCentralWidget(self.page)
         self.settings_dialog = None
@@ -50,6 +59,8 @@ class GameModeWindow(QMainWindow):
         self.page.backup_requested.connect(self.backup_now)
         self.page.fullscreen_requested.connect(self.toggle_fullscreen)
         self.page.arrange_requested.connect(self.arrange_windows)
+        self.page.reconnect_requested.connect(self.reconnect_lua)
+        self.page.stop_session_requested.connect(self.stop_lua_for_change)
         self.controller.state_changed.connect(self.page.set_bridge_state)
         self.controller.tracking_changed.connect(self._tracking_changed)
         self.page.set_bridge_state(self.controller.state)
@@ -132,6 +143,51 @@ class GameModeWindow(QMainWindow):
             self.page.set_profile(None)
 
     def launch_game(self, game_id):
+        if self.play_runner.is_busy:
+            return
+        if self._setup_service is None:
+            from app.services.auto_setup_service import AutoSetupService
+            self._setup_service = AutoSetupService(self.base_dir, self._legacy_config)
+        if self._setup_service.is_configured(game_id):
+            self._preparing_game = game_id
+            self.page.status_label.setText("Vérification de votre installation avant le lancement…")
+            self.play_runner.start(lambda: self._setup_service.prepare_play(game_id))
+            return
+        self._launch_process(game_id)
+
+    def _play_busy(self, busy):
+        if busy:
+            self.page.launch_button.setEnabled(False)
+            self.page.game_combo.setEnabled(False)
+            self.page.profile_combo.setEnabled(False)
+        else:
+            self.page.set_run_state(self.service.state)
+
+    def _play_prepared(self, result):
+        health = result.get("health", {})
+        if not health.get("ready"):
+            self.page.status_label.setText("Installation à vérifier : " + "\n".join(health.get("issues", [])))
+            self.installation_requested.emit()
+            return
+        self.service.reload_preferences()
+        self._launch_process(self._preparing_game, prepare_lua=True)
+
+    def _play_failed(self, message):
+        self.page.status_label.setText("Préparation impossible : " + message + " · Ouvrez Installation & diagnostic.")
+
+    def reconnect_lua(self):
+        game_id = self.page.game_combo.currentData()
+        self.controller.start(game_id, self.service.config["launch_profiles"][game_id]["rom_path"])
+        self.bridge_requested.emit()
+
+    def stop_lua_for_change(self):
+        answer = QMessageBox.question(self, "Arrêter la session Lua ?",
+            "L'ancienne session Lua sera arrêtée. DeSmuME restera ouvert : fermez sa fenêtre avant de lancer un autre jeu. Continuer ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        if answer == QMessageBox.StandardButton.Yes:
+            self.controller.stop()
+
+    def _launch_process(self, game_id, *, prepare_lua=False):
         try:
             profile_id = self.page.profile_combo.currentData()
             # Le choix visible est l'association explicite du lancement suivant.
@@ -142,6 +198,9 @@ class GameModeWindow(QMainWindow):
             QMessageBox.warning(self, "Lancement impossible", str(exc))
             return
         self.process_launched.emit(process)
+        if prepare_lua:
+            self.controller.start(game_id, self.service.config["launch_profiles"][game_id]["rom_path"])
+            self.bridge_requested.emit()
         self.page.set_run_state(self.service.state)
         self._arrange_pending = self.service.config["interface"]["auto_arrange"]
         self._arrange_attempts = 0
@@ -168,6 +227,8 @@ class GameModeWindow(QMainWindow):
             self.page.status_label.setText("Backup non créé : " + str(exc))
 
     def refresh_run(self):
+        if self.play_runner.is_busy:
+            return
         try:
             state = self.service.tick()
             self.page.set_run_state(state)
@@ -240,6 +301,10 @@ class GameModeWindow(QMainWindow):
         self.settings_dialog.resize(930, 710)
         self.settings_dialog.setMinimumSize(760, 580)
         layout = QVBoxLayout(self.settings_dialog)
+        from PySide6.QtWidgets import QPushButton
+        self.installation_button = QPushButton("Installation & diagnostic")
+        self.installation_button.clicked.connect(self.installation_requested)
+        layout.addWidget(self.installation_button)
         self.settings_tabs = QTabWidget()
         layout.addWidget(self.settings_tabs)
         game_id = self.page.game_combo.currentData()
@@ -283,6 +348,9 @@ class GameModeWindow(QMainWindow):
         self.save_settings.set_emulator_running(self.service.state.running)
 
     def open_settings(self, tab="interface"):
+        if tab == "installation":
+            self.installation_requested.emit()
+            return
         if tab == "bridge":
             self.bridge_requested.emit()
             return
@@ -329,6 +397,10 @@ class GameModeWindow(QMainWindow):
         super().showEvent(event)
 
     def closeEvent(self, event):
+        if self.play_runner.is_busy:
+            event.ignore()
+            self.page.status_label.setText("Attendez la fin de la préparation avant de fermer le Mode Jeu.")
+            return
         self.timer.stop()
         self.service.stop_tracking()
         if self.settings_dialog:

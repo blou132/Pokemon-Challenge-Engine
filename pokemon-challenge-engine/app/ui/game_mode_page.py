@@ -90,6 +90,8 @@ class GameModePage(QWidget):
     backup_requested = Signal()
     fullscreen_requested = Signal()
     arrange_requested = Signal()
+    reconnect_requested = Signal()
+    stop_session_requested = Signal()
 
     def __init__(self, catalog: Catalog, parent=None):
         super().__init__(parent)
@@ -138,6 +140,18 @@ class GameModePage(QWidget):
         self.launch_profile_button.clicked.connect(lambda: self.settings_requested.emit("launch"))
         selection.addWidget(self.launch_profile_button)
         outer.addLayout(selection)
+        self.recovery_row = QWidget()
+        recovery = QHBoxLayout(self.recovery_row)
+        recovery.setContentsMargins(0, 0, 0, 0)
+        self.session_notice = label("", "muted")
+        recovery.addWidget(self.session_notice, 1)
+        self.reconnect_button = QPushButton("Reconnecter Lua")
+        self.reconnect_button.clicked.connect(self.reconnect_requested)
+        recovery.addWidget(self.reconnect_button)
+        self.change_game_button = QPushButton("Arrêter et changer de jeu")
+        self.change_game_button.clicked.connect(self.stop_session_requested)
+        recovery.addWidget(self.change_game_button)
+        outer.addWidget(self.recovery_row)
 
         columns = QHBoxLayout()
         columns.setSpacing(14)
@@ -167,7 +181,7 @@ class GameModePage(QWidget):
             screens.addWidget(text, 1)
         center.addWidget(screen, 1, Qt.AlignmentFlag.AlignHCenter)
         center.addStretch(1)
-        self.launch_button = QPushButton("Lancer DeSmuME  →")
+        self.launch_button = QPushButton("Jouer  →")
         self.launch_button.setObjectName("primary")
         self.launch_button.clicked.connect(lambda: self.launch_requested.emit(self.game_combo.currentData()))
         center.addWidget(self.launch_button)
@@ -180,6 +194,9 @@ class GameModePage(QWidget):
         actions.addWidget(self.connect_button)
         actions.addWidget(self.arrange_button)
         center.addLayout(actions)
+        self.installation_button = QPushButton("Installation & diagnostic")
+        self.installation_button.clicked.connect(lambda: self.settings_requested.emit("installation"))
+        center.addWidget(self.installation_button)
         self.status_label = label("Choisissez un jeu et un profil, puis lancez votre session.", "muted")
         center.addWidget(self.status_label)
         columns.addWidget(self.center, 1)
@@ -377,6 +394,7 @@ class GameModePage(QWidget):
         self.profile_combo.setToolTip("Terminez la session et arrêtez la connexion Lua avant de changer de profil."
                                      if state.status != "stopped" or self._run.running else "Profil suivi lors de la prochaine connexion Lua.")
         self.game_combo.setEnabled(state.status == "stopped" and not self._run.running)
+        self._refresh_recovery()
         matching = state.game_id == self.game_combo.currentData() and (
             self._profile is None or state.game_id == self._profile.challenge.game_id)
         party = state.party if state.connected and matching else None
@@ -410,6 +428,7 @@ class GameModePage(QWidget):
         self.arrange_button.setEnabled(state.running)
         self.game_combo.setEnabled(not state.running and self._bridge.status == "stopped")
         self.profile_combo.setEnabled(not state.running and self._bridge.status == "stopped")
+        self._refresh_recovery()
         self.speed_label.setText(f"État demandé : {state.requested_speed}\nÉtat réel : {state.confirmed_speed or UNAVAILABLE}")
         for speed, button in self.speed_buttons.items():
             button.setChecked(speed == state.requested_speed)
@@ -417,6 +436,15 @@ class GameModePage(QWidget):
         self.time_label.setText(f"Session PCE : {seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02}"
                                if state.game_id else "Session PCE : " + UNAVAILABLE)
         self.time_label.setToolTip("Temps écoulé depuis le lancement suivi par PCE ; distinct du temps de jeu enregistré dans Pokémon.")
+
+    def _refresh_recovery(self):
+        active = self._bridge.status != "stopped"
+        self.recovery_row.setVisible(active or self._run.running)
+        self.reconnect_button.setVisible(self._bridge.status in {"disconnected", "error"})
+        self.change_game_button.setVisible(active)
+        self.session_notice.setText("Fermez DeSmuME pour changer de jeu. La session Lua peut être arrêtée séparément."
+            if self._run.running else "Session Lua déconnectée : reconnectez-la ou arrêtez-la pour choisir un autre jeu."
+            if self._bridge.status == "disconnected" else "Le jeu reste verrouillé tant que la session Lua n'est pas arrêtée.")
 
     def set_controls(self, mapping: dict[str, str], source: str, *, controller=None):
         for key, widget in self.control_labels.items():

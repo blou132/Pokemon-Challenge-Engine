@@ -1,5 +1,21 @@
 # Connexion DeSmuME / Lua — V0.3 en cours
 
+La V0.3.6 ajoute [Installation & diagnostic](first-run.md), les ZIP locaux et la
+réparation Lua confirmée. **Jouer** prépare la session pour les jeux configurés ;
+le chargement du script et **Run** restent manuels. **Copier le chemin** et
+**Ouvrir le dossier** donnent accès au script courant.
+
+**Reconnecter** arrête la session précédente puis génère un nouveau script lié
+à une configuration immuable. Un ancien script marqué stop ne récupère jamais
+silencieusement la nouvelle session. Le verrouillage du jeu explique désormais
+son origine et propose l'arrêt confirmé de Lua ; un DeSmuME encore lancé doit
+être fermé séparément pour changer de jeu.
+
+Sur Blanc FR rev0, le test utilisateur confirme équipe, soins et zones hors combat.
+Les valeurs d'équipe sont garanties après synchronisation de la structure principale,
+notamment en fin de combat. Les PV en temps réel pendant le combat restent hors
+périmètre ; aucun offset d'équipe ou de combat n'est changé en V0.3.6.
+
 La V0.3 ajoute un sélecteur de profil actif et le panneau **Suivi Nuzlocke**.
 Choisir ce profil avant de préparer la connexion ; arrêter la connexion avant
 d'en changer. Sans profil, les observations restent un diagnostic sans écriture

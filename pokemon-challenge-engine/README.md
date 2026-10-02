@@ -1,4 +1,4 @@
-# Pokemon Challenge Engine — V0.3.5
+# Pokemon Challenge Engine — V0.3.6
 
 Application Windows en français pour préparer des challenges **Pokémon Noir**,
 **Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, enregistrer des profils,
@@ -12,6 +12,37 @@ pour les versions suivantes. La règle Randomizer est uniquement prévue et conf
 ![Accueil de l'application — capture V0.1](docs/screenshots/accueil-1920.png)
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)
+
+## Premier démarrage — V0.3.6
+
+Ouvrez **Installation & diagnostic** au premier lancement ou depuis Paramètres.
+PCE recherche les installations locales et propose les jeux et sauvegardes trouvés.
+Choisissez un candidat lorsque plusieurs existent, puis **Préparer et enregistrer**,
+ou **Réparer l'installation** si le support Lua manque. Le téléchargement Lua
+provient exclusivement de l'archive officielle épinglée ; un remplacement de DLL
+différente exige une seconde confirmation et crée un backup.
+
+Les ROM ZIP sont préparées dans un cache vérifié, sans changer l'archive source.
+**Jouer** revérifie l'installation, lance DeSmuME et prépare une nouvelle session
+Lua. Copiez le chemin du script avec le bouton prévu, puis chargez-le et cliquez
+**Run** dans DeSmuME. Cette dernière étape reste manuelle. Le diagnostic distingue
+les fichiers vérifiés de la connexion réellement reçue. Le nettoyage confirmé ne
+concerne que les caches et sessions arrêtées reconnus comme appartenant à PCE.
+
+[Guide du premier démarrage](docs/first-run.md) · [Détection et cache](docs/auto-setup.md) ·
+[Sources et installation Lua](docs/lua-runtime.md).
+
+Validation finale : **1 167 tests réussis, aucun ignoré**, compilation et démarrage
+Qt Windows vérifiés, rendus 1366×768 et 1920×1080 inspectés. Les tests synthétiques
+et les essais réels sur copies isolées sont distingués dans le
+[rapport de vérification](docs/verification.md).
+
+Les profils sauvegardés affichent leur mode et leur nombre exact de règles ;
+la sauvegarde sélectionne le nouvel identifiant puis relit ses données.
+**Possible** et **Interdite** ne sont pas des règles actives. Les options Monotype,
+Level Cap et Catch Limit sont exclues du challenge final si leurs règles ne sont
+pas actives. « Niveau de support » et « Suivi uniquement » décrivent les capacités
+actuelles : aucune règle n'est imposée dans le jeu.
 
 ## Mode Jeu — V0.3.5
 
@@ -42,14 +73,14 @@ pilotage direct ni mesure de vitesse réelle. L'export vérifié de x1/MAX prép
 le prochain lancement ; x2/x4 se règlent dans DeSmuME. Les manettes, shaders,
 contraintes sur les save states et randomisation réelle ne sont pas implémentés.
 
-Branche : `feat/v0.3.5-game-mode`, issue de
-`e7fc0c20afb899579ecf5d7e6558525b443c6d0d` après les **779 tests de référence
-réussis en 117,93 s**, sans fusion automatique.
+Branche : `feat/v0.3.6-auto-setup`, issue de
+`ce8d888629f613b84d3bac3a9831b27cfbea1845` après les **960 tests de référence
+réussis, aucun ignoré**, sans fusion automatique.
 
 [Guide du Mode Jeu](docs/game-mode.md) · [Réglages DeSmuME](docs/emulator-settings.md) ·
 [Sauvegardes et backups](docs/save-manager.md) · [Vérifications](docs/verification.md)
 
-Validation de cette livraison : **960 tests réussis, aucun ignoré** ; compilation
+Validation de la base V0.3.5 : **960 tests réussis, aucun ignoré** ; compilation
 et démarrage natif Windows vérifiés, rendus Qt inspectés à 1366×768 et 1920×1080.
 Les essais DeSmuME réels sur copies isolées sont détaillés séparément dans le rapport.
 
@@ -98,7 +129,7 @@ machine utilisateur.** Noir 2 ne disposait pas d'une équipe chargée lors de so
 essai de transport. Noir et Blanc 2 n'ont pas été validés en émulateur.
 Voir le [rapport de vérification](docs/verification.md) pour les preuves et les limites exactes.
 
-Les versions sont distinctes : application **`0.3.5`**, scripts Lua **`0.3.0`**, challenge
+Les versions sont distinctes : application **`0.3.6`**, scripts Lua **`0.3.0`**, challenge
 **`0.1.0`** conservé, progression **schéma `2`**, protocole **`2`**. Python accepte
 aussi les messages v1 des scripts `0.2.0`, sans observations Nuzlocke.
 Les anciens suivis sont migrés en mémoire à la lecture, puis persistés seulement
@@ -147,9 +178,9 @@ pour éviter une console Python supplémentaire :
 1. Ouvrir **Nouveau challenge** et choisir Noir, Blanc, Noir 2 ou Blanc 2.
 2. Choisir un preset ou régler les états : obligatoire, possible, interdite.
 3. En mode aléatoire, choisir le total exact de règles et une seed facultative.
-4. Pour Monotype, ouvrir la roue, exclure des types si souhaité, tirer puis confirmer.
+4. Si Monotype est actif, ouvrir la roue, exclure des types si souhaité, tirer puis confirmer.
 5. Générer le challenge, lui donner un nom et sauvegarder le profil.
-6. Renseigner les chemins dans **Paramètres**, tester, puis lancer DeSmuME.
+6. Préparer le jeu dans **Installation & diagnostic**, puis cliquer **Jouer**.
 
 Le mode personnalisé inclut les obligations et leurs dépendances. Le mode aléatoire
 complète le total avec les règles possibles ; une combinaison impossible est expliquée.
@@ -168,9 +199,11 @@ toujours un nouveau profil ; la modification du suivi existant demande confirmat
 
 ## RetroBat et DeSmuME
 
-Les chemins sont choisis par l'utilisateur : aucun chemin RetroBat n'est présumé.
-Les paramètres enregistrent le dossier ou l'exécutable RetroBat, l'exécutable DeSmuME,
-une ROM `.nds` par jeu parmi les quatre jeux Gen V et un dossier de sauvegardes facultatif.
+Le diagnostic recherche des structures RetroBat réelles aux racines de disques et
+dans les chemins déjà configurés, sans scanner tout le disque. Les chemins proposés
+sont vérifiés ; plusieurs candidats restent à choisir. Les paramètres historiques
+permettent toujours de saisir les chemins manuellement. `.nds` et `.zip` sont pris
+en charge par l'assistant ; les ROM `.7z` ne le sont pas.
 
 Le launcher lance **directement DeSmuME standalone** avec la ROM configurée, même si cet
 émulateur est aussi utilisé depuis RetroBat. Elle ne modifie pas la configuration de
@@ -207,6 +240,11 @@ Les données absentes sont affichées **Non disponible**. Une ROM, région ou r�
 sans profil mémoire compatible ne donne pas lieu à une lecture d'équipe supposée.
 Une mémoire d'équipe non initialisée ne produit pas de fausse équipe vide. Les
 données d'équipe sont retirées de l'affichage en cas de déconnexion ou d'erreur.
+
+Sur Blanc FR rev0, le test utilisateur confirme les changements de route, soins,
+équipe et PV après combat. **Les valeurs d'équipe sont garanties après synchronisation
+de la structure principale, notamment en fin de combat.** Les PV en temps réel
+pendant le combat restent hors périmètre. Ce constat ne valide pas les autres jeux.
 
 La préparation peut se faire sans chemin de ROM pour un jeu déjà ouvert manuellement.
 Si un chemin est configuré, son en-tête est lu en lecture seule pour vérifier le jeu

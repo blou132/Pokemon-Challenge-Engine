@@ -135,6 +135,13 @@ l'original reste conservé. Fermez également les outils externes qui éditent c
 fichier pendant l'export. Une relecture du fichier après export confirme les
 valeurs enregistrées, pas l'état matériel du rendu en cours.
 
+Depuis la V0.3.6, l'import et l'export exigent ANSI sans BOM ou UTF-16 LE avec BOM.
+Un essai de l'API Windows `GetPrivateProfileIntW` sur fichiers jetables a confirmé
+qu'UTF-8 avec BOM et UTF-16 BE ne restituent pas les mêmes valeurs. Ces fichiers
+restent intacts et provoquent une erreur explicite ; aucune conversion silencieuse
+n'est effectuée. L'éditeur interne conserve sa capacité à préserver ces encodages,
+sans en déduire une compatibilité avec DeSmuME.
+
 ## Tests et limites
 
 Les tests synthétiques couvrent les encodages ANSI et UTF avec BOM, commentaires,

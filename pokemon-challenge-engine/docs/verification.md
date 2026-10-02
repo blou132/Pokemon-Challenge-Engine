@@ -1,4 +1,129 @@
-# Vérification V0.3.5 et historique V0.3 / V0.2 / V0.1
+# Vérification V0.3.6 et historique V0.3.5 / V0.3 / V0.2 / V0.1
+
+## V0.3.6 — installation et corrections de profils, 2 octobre 2026
+
+Base exacte : `ce8d888629f613b84d3bac3a9831b27cfbea1845`, V0.3.5.
+Les **960 tests de référence ont réussi, aucun ignoré**, avant modification,
+ainsi que la compilation et le démarrage Qt. Le temps affiché lors de ce premier
+passage inclut une longue interruption de session et ne mesure pas les performances.
+Travail sur `feat/v0.3.6-auto-setup`, sans fusion dans `main`.
+
+Application `0.3.6` ; scripts `0.3.0`, protocole `2`, challenge `0.1.0` et
+progression `2` conservés. Les lecteurs Lua d'équipe et de carte n'ont pas changé.
+
+**Résultat final : 1 167 tests réussis, aucun ignoré, 200,09 s**, avec Python
+3.13.7, pytest 9.1.1, PySide6 6.11.2 et Lua 5.1 local. Les 960 cas historiques
+sont conservés, avec deux attentes adaptées à la demande sur les règles inactives,
+et 207 nouveaux cas. Un passage précédent interrompu avait atteint 1 166 réussites
+et un dépassement du délai Qt de déconnexion ; ce test a repassé isolément, puis
+le passage complet ci-dessus a réussi sans modifier son délai ni sa logique.
+
+### Régressions de profils et paramètres
+
+L'inspection locale en lecture seule du cas signalé a trouvé un profil déjà
+enregistré en mode normal avec zéro règle. Les traces disponibles situaient la
+génération de l'aperçu personnalisé à trois règles après cette création, sans
+nouvelle sauvegarde correspondante. Cette observation ne prouve pas une perte
+de règles pendant la désérialisation ; aucun profil utilisateur n'a été réécrit.
+
+Un défaut d'interface distinct a été reproduit : après création d'un nouveau
+profil, la page pouvait conserver l'ancien identifiant sélectionné, même avec
+le même nom et la même seed. La sauvegarde relit désormais son résultat exact
+et sélectionne le nouvel ID. L'aperçu non enregistré est signalé explicitement.
+
+Les régressions parcourent génération → modèle → fichier → nouvelle instance →
+affichage → reprise. Blanc 2 + Classic Nuzlocke conserve exactement Nuzlocke,
+Mort permanente et Species Clause, ainsi que jeu, mode, seed et preset. Les
+profils personnalisés, paramètres actifs et profils normaux sont également couverts.
+Les états Possible/Interdite n'activent aucun paramètre final. Monotype, Level Cap
+et Catch Limit sont masqués ou exclus lorsqu'inactifs ; le type et le mode Monotype
+restent visibles et persistés lorsqu'actifs. Deux attentes historiques ont été
+adaptées à cette nouvelle spécification, sans supprimer les tests concernés.
+
+### Vérifications synthétiques et interface
+
+Les nouveaux tests couvrent découverte bornée, en-têtes des quatre jeux, ZIP et
+collision du cache, installation Lua x86/x64 avec réseau simulé, confirmations,
+rollback, erreurs de permissions, provenance locale, diagnostic avant lancement,
+nettoyage, reconnexion et exclusion des scripts arrêtés. Une présence de DLL
+n'est jamais assimilée à une console Lua testée.
+
+Les rendus Qt Windows ont été inspectés à **1366×768 et 1920×1080**, avec rendu
+hors écran aux dimensions exactes. L'assistant a aussi été inspecté à 980×720 :
+Lua absent, installation prête, réparation partielle, détails et stockage. Le
+contraste des panneaux et onglets a été corrigé après inspection. Les parcours
+A–E des profils ont été exécutés sur des données synthétiques isolées, avec
+fermeture/réouverture et reprise. Les captures restent sous `runtime/`, ignorées.
+Elles ne prouvent aucune lecture de jeu réelle.
+
+`compileall` réussit. Le vrai point d'entrée `app.main` affiche une fenêtre sous
+Windows, exécute Qt et se ferme avec code 0. Le test de démarrage utilise un
+catalogue copié dans un dossier temporaire et une découverte de disques vide ;
+il attend la fin de la préparation avant de fermer.
+
+### Essais réels sur copies isolées
+
+Build : **DeSmuME 0.9.14 git#a779eb7 x64-JIT SSE2**, empreinte
+`34fe290e387722f1b4320751bf0b0f50844079833c7dce57c273d6b054becac0`.
+ROM Blanc locale, émulateur et sauvegarde copiés dans un RetroBat de test.
+L'INI créé pour l'essai confine Battery, Lua, StateSlots et les autres sorties
+dans ce dossier. Aucun clavier, déplacement ou combat n'a été automatisé.
+
+| Étape | Résultat observé | Limite |
+| --- | --- | --- |
+| Jeu uniquement en ZIP dans le RetroBat de test | Détection `white / IRAF / FR / 0`, extraction contrôlée et profil enregistré | ZIP créé depuis une ROM locale, aucun téléchargement de jeu |
+| DeSmuME sans DLL Lua | Diagnostic manquant, lancement non prêt | Diagnostic sur disque |
+| Réparation réelle | Archive officielle téléchargée ; deux DLL x64 installées et empreintes/PE vérifiés | x86 examiné dans l'archive, pas exécuté dans DeSmuME |
+| Cache | Réutilisation sans modification de date du `.nds`, archive inchangée | Chemin réel de 241 caractères ; les chemins >259 sont refusés avant extraction |
+| Lancement par `GameModeService` | Processus et fenêtre du jeu identifiés par PID/chemin | Fenêtre externe, pas d'intégration ni mesure FPS |
+| APIs Lua et protocole | Lua 5.1, `memory.readbyte`, `emu.frameadvance`, heartbeat et identité `IRAF / FR / 0`, profil `white_fr_rev0`, protocole 2 reçus | Chargement par autoload configuré uniquement dans l'INI de test |
+| Équipe | Deux entrées réellement reçues ; second essai : espèce 499, niveau 19, PV 67/67 ; espèce 511, niveau 17, PV 46/46 | Lecture de la structure principale ; pas de comparaison visuelle de combat pendant cet essai |
+| Zone | Valeurs brutes de carte reçues, zone nommée absente à l'écran de démarrage | Ne constitue pas une revalidation de la Route 3 |
+
+Les deux essais locaux sont conservés dans `runtime/v036/01` et `02`. Le premier
+rapport utilisait un champ `zone_received` trop large : il signifiait seulement
+qu'un ID brut existait. Le second sépare `map_value_received=true` et
+`named_zone_received=false` ; aucune zone nommée n'est revendiquée pour cet essai.
+Le scénario de jeu utilisateur ci-dessous constitue une preuve distincte.
+
+L'autoload officiel a été vérifié sur ces copies. Il utilise `[Scripting] AutoLoad`
+et le script nommé comme la ROM dans `[PathSettings] Lua` ; voir les
+[sources et limites](lua-runtime.md). Le produit ne change pas silencieusement
+cette politique globale ni les scripts personnels : **Run reste manuel dans le
+parcours livré**. La création de session, le chemin à copier et l'ouverture du
+dossier sont assistés. Aucun argument CLI Lua n'est inventé.
+
+À la fin de chaque essai, SHA-256, taille et date des ROM, sauvegarde, INI,
+exécutable et DLL originaux ont été comparés : **inchangés**. Les archives de
+test sont également inchangées. Seuls les processus créés pour l'essai ont été
+arrêtés ; aucune donnée de jeu, DLL, configuration ou trace locale n'est publiée.
+
+Un dernier essai d'installation, sous `runtime/v036-installer-final/`, vérifie le
+chemin final du cache : téléchargement officiel de 166 260 octets, installation
+x64, second appel sans écriture, inventaire d'une archive dans le stockage, puis
+nettoyage confirmé de cette seule archive. DLL et journal restent présents ;
+exécutable original et copie gardent leurs empreintes et dates. Cet essai ne lance
+pas l'émulateur et ne prétend donc pas valider à nouveau les APIs en exécution.
+
+### Validation rapportée par l'utilisateur et limites acceptées
+
+L'utilisateur confirme sur **Blanc FR rev0 / IRAF**, avec ce build DeSmuME,
+identité, équipe, espèces, niveaux, PV et zone, dont Feuillajou, Gruikui et Route 3.
+Il rapporte des changements immédiats de route, de soins et d'équipe hors combat.
+Les PV ne suivent pas le combat en temps réel, puis se synchronisent à sa fin,
+y compris un Pokémon à zéro PV. Ce comportement est accepté pour cette version.
+
+**Les valeurs d'équipe sont garanties après synchronisation de la structure
+principale, notamment en fin de combat.** Il s'agit de la limite fonctionnelle
+observée sur ce jeu ; elle ne promet pas une compatibilité universelle. Noir,
+Noir 2 et Blanc 2 conservent leurs propres statuts de validation. Les captures
+réelles, structures de combat, application stricte, vitesse directe x2/x4 et
+gestionnaire complet de parties restent hors périmètre.
+
+Un profil reste une configuration réutilisable. Le suivi V0.3 continue de
+persister automatiquement les événements applicables ; l'équipe affichée et
+la durée de session ne sont pas encore un historique durable de run. Cela est
+distinct de la sauvegarde Pokémon `.dsv` et du futur « Mes parties ».
 
 ## V0.3.5 Mode Jeu — 1er octobre 2026
 

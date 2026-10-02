@@ -1,7 +1,24 @@
-# Pokemon Challenge Engine — V0.3.5
+# Pokemon Challenge Engine — V0.3.6
 
 Le code de l'application, les tests et la documentation sont dans
 [`pokemon-challenge-engine/`](pokemon-challenge-engine/README.md).
+
+La V0.3.6 ajoute **Installation & diagnostic** : découverte RetroBat/DeSmuME,
+préparation des ZIP locaux dans un cache, installation Lua officielle confirmée,
+proposition des sauvegardes et contrôle avant **Jouer**. L'étape **Run** du script
+dans DeSmuME reste manuelle. Les ambiguïtés demandent un choix explicite.
+
+Les corrections de profils sélectionnent le profil effectivement sauvegardé,
+conservent ses règles à la reprise et masquent les paramètres des règles inactives.
+Un profil décrit un challenge ; le futur gestionnaire de parties reste distinct.
+
+[Premier démarrage](pokemon-challenge-engine/docs/first-run.md) ·
+[Préparation automatique](pokemon-challenge-engine/docs/auto-setup.md) ·
+[Installation Lua vérifiée](pokemon-challenge-engine/docs/lua-runtime.md).
+
+**1 167 tests réussis, aucun ignoré**. Compilation, démarrage Windows et rendus
+Qt vérifiés. ZIP, installation Lua, lancement de Blanc et réception d'équipe
+testés sur copies isolées ; les limites sont détaillées dans le rapport.
 
 Pour lancer avec l'environnement déjà préparé dans cet espace de travail :
 
@@ -31,8 +48,9 @@ séparément et des tests synthétiques. Le profil `white_fr_rev0` porte le stat
 `source_documented`. Noir et Blanc 2 n'ont pas été validés dans un émulateur.
 La V0.2 reste sur `feat/v0.2-desmume-bridge` et la V0.3 sur
 `feat/v0.3-nuzlocke-tracking`. La branche de travail est désormais
-`feat/v0.3.5-game-mode`, créée depuis `e7fc0c20afb899579ecf5d7e6558525b443c6d0d`
-après vérification des **779 tests existants, tous réussis en 117,93 s**.
+`feat/v0.3.6-auto-setup`, créée depuis la V0.3.5
+`ce8d888629f613b84d3bac3a9831b27cfbea1845`
+après vérification des **960 tests existants, tous réussis et aucun ignoré**.
 Aucune fusion dans `main`.
 
 La V0.3 ajoute le moteur d'événements Nuzlocke, la Species Clause optionnelle,
@@ -43,7 +61,7 @@ documentées** : cette livraison ne détecte pas encore les captures réelles.
 La chaîne réelle zone → rencontre → résultat n'est donc pas validée et la V0.3
 n'est pas terminée. **En attente de validation sur la machine utilisateur.**
 
-Application : `0.3.5` ; scripts Lua : `0.3.0` ; challenge conservé : `0.1.0` ; progression :
+Application : `0.3.6` ; scripts Lua : `0.3.0` ; challenge conservé : `0.1.0` ; progression :
 schéma `2` avec migration des anciens suivis ; protocole Lua : `2`, lecteur
 Python compatible avec les messages v1 des scripts `0.2.0`.
 
@@ -64,3 +82,9 @@ pas implémentés. Les essais réels et synthétiques sont séparés dans le rap
 [Guide du Mode Jeu](pokemon-challenge-engine/docs/game-mode.md) ·
 [Réglages DeSmuME](pokemon-challenge-engine/docs/emulator-settings.md) ·
 [Sauvegardes](pokemon-challenge-engine/docs/save-manager.md).
+
+Le test utilisateur récent confirme équipe, soins et changements de route sur
+Blanc FR rev0, dont la Route 3. **Les valeurs d'équipe sont garanties après
+synchronisation de la structure principale, notamment en fin de combat.**
+Les PV pendant le combat ne sont pas suivis en temps réel. Cette validation
+concerne Blanc uniquement ; aucune capture réelle ni règle imposée n'est annoncée.

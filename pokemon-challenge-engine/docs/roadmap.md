@@ -5,10 +5,10 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 ## Situation actuelle
 
-La branche active est `feat/v0.3.5-game-mode`, issue de
-`feat/v0.3-nuzlocke-tracking` au commit `e7fc0c20afb899579ecf5d7e6558525b443c6d0d`,
-après confirmation des **779 tests réussis, aucun ignoré, en 117,93 s**.
-Application `0.3.5`, scripts Lua `0.3.0`, protocole `2` avec compatibilité de
+La branche active est `feat/v0.3.6-auto-setup`, issue de
+`feat/v0.3.5-game-mode` au commit `ce8d888629f613b84d3bac3a9831b27cfbea1845`,
+après confirmation des **960 tests réussis, aucun ignoré**.
+Application `0.3.6`, scripts Lua `0.3.0`, protocole `2` avec compatibilité de
 réception v1 et progression schéma `2`.
 Le moteur d'événements, les clauses optionnelles, la persistance et le panneau
 de profil actif sont implémentés et testés sur événements synthétiques.
@@ -16,6 +16,15 @@ Les cartes Noir/Blanc FR ont des lectures sourcées ; les lectures de combat,
 capture et fuite restent à documenter, puis à implémenter et à valider.
 **La V0.3 n'est pas terminée. En attente de validation sur la machine utilisateur.**
 Un test utilisateur ne remplace pas les adresses de combat manquantes.
+
+V0.3.6 ajoute premier démarrage, détection locale, ZIP non destructif, installation
+Lua officielle confirmée, diagnostic avant Jouer, reconnexion et stockage géré.
+Elle corrige aussi la sélection du profil sauvegardé et les options inactives.
+Le test utilisateur de Blanc FR rev0 confirme équipe et zone, soins hors combat
+et PV après combat ; le lecteur principal et ses offsets restent inchangés.
+Les valeurs d'équipe sont garanties après synchronisation de la structure
+principale, notamment en fin de combat. Aucun travail de mémoire de combat n'est
+engagé dans cette version.
 
 La **V0.1 est conservée** : préparation, génération par seed, Monotype, profils,
 suivi manuel, paramètres et launcher. La **V0.2 ajoute une passerelle locale en
@@ -57,6 +66,7 @@ dans `main` n'est effectuée**. `main` conserve la V0.1.
 | V0.2 | Communication DeSmuME/Lua en lecture seule, identité, équipe, espèces, niveaux et PV | Transport local versionné, déconnexion/reprise testées, comparaison de l'équipe avec une partie réelle pour chaque profil |
 | V0.3, en cours | Zones, rencontres, captures, Species Clause exacte optionnelle | Sources des combats FR, puis chaîne réelle zone → rencontre → résultat → profil vérifiée |
 | V0.3.5 | Mode Jeu, contrôles et graphismes documentés, backups, profils de lancement et panneaux | Non-régression V0.3, UI 1366/1920, lancement et copies isolées réels ; vitesse directe/manettes non disponibles |
+| V0.3.6 | Premier démarrage, installation Lua, ZIP, diagnostic, reconnexion et fiabilité des profils | Tests de régression, interface et essais réels isolés distingués dans le rapport |
 | V0.4 | Morts permanentes et extension des clauses | Identification fiable des Pokémon et traitement des familles évolutives |
 | V0.5 | Level Cap | Plafonds par progression, comportement strict testé |
 | V0.6 | Monotype appliqué | Modes Souple, Strict et Pur validés sur données réelles |
@@ -71,7 +81,7 @@ Une option visible ou un statut `future_strict` ne constitue jamais une fonction
 d'application en jeu. L'interface devra continuer à distinguer l'intention, la lecture
 réelle et la contrainte effectivement mise en œuvre.
 
-Le numéro d'application `0.3.5` ne change pas le format du challenge (`0.1.0`).
+Le numéro d'application `0.3.6` ne change pas le format du challenge (`0.1.0`).
 Le protocole Lua (`2`) et la progression (`schema_version: 2`) sont versionnés séparément.
 
 ## Suite du Mode Jeu
@@ -82,3 +92,13 @@ commandes manette réelles, qualité visuelle de chaque option, autres builds De
 scénarios multi-écrans/DPI et éventuel embedding. Les formats et limites retenus
 sont décrits dans [Réglages DeSmuME](emulator-settings.md). Aucune fusion automatique
 dans `main` n'est prévue.
+
+## Profils et futures parties
+
+Un profil est une configuration réutilisable ; une partie sera une progression
+liée à une sauvegarde et à une copie figée de cette configuration. La future page
+**Mes parties** devra fonctionner pour plusieurs jeux d'une génération et toutes
+les générations, avec des identifiants de partie indépendants des identifiants de
+profil. Elle n'est pas implémentée dans cette version. La progression V0.3 existante
+continue d'être persistée automatiquement pour les événements pris en charge ;
+durée durable, équipe observée et statut de partie sont des extensions futures.

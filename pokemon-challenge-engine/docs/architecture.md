@@ -1,4 +1,4 @@
-# Architecture V0.3.5
+# Architecture V0.3.6
 
 ## Séparation des responsabilités
 
@@ -34,7 +34,7 @@ Les autres jeux ont le statut `planned` et ne peuvent pas être générés ou la
 
 | Élément | Version | Rôle |
 | --- | --- | --- |
-| Application | `0.3.5` | Version du frontend livré |
+| Application | `0.3.6` | Version du frontend livré |
 | Scripts Lua | `0.3.0` | Lecteurs et transport conservés |
 | Format sérialisé des challenges/profils | `0.1.0` | Compatibilité des profils existants |
 | Progression | `2` | Migration additive conservant le suivi manuel |
@@ -67,6 +67,12 @@ unique du profil.
 Le moteur choisit le type avant l'animation ; `QPropertyAnimation` ne fait que présenter
 ce choix. Le pointeur final est calculé à partir du même index de secteur. La seed, le
 pool autorisé et l'index de relance sont conservés.
+
+Les paramètres finaux sont filtrés par `active_rules`, indépendamment des états
+« possible » et « interdit ». Monotype appartient à `monotype`, le niveau maximum
+à `level_cap` et le nombre de captures par zone à `catch_limit`. Les valeurs de
+brouillon des règles inactives ne constituent pas des contraintes. Les anciens
+fichiers sont normalisés en mémoire sans réécriture à la consultation.
 
 ## Données locales
 
@@ -210,3 +216,48 @@ indépendamment des règles et du transport Lua. Sources :
 [Tool Help](https://learn.microsoft.com/windows/win32/api/tlhelp32/nf-tlhelp32-createtoolhelp32snapshot),
 [EnumWindows](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-enumwindows),
 [SetWindowPos](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-setwindowpos).
+
+## Installation et diagnostic V0.3.6
+
+`AutoSetupService` compose la découverte RetroBat, l'inspection PE DeSmuME, les
+en-têtes de jeux, les sauvegardes et le cache ZIP. `RomPreparationService` garde
+l'archive originale et publie une copie seulement après contrôles CRC, identité
+et SHA-256. `TrustedDownloadService` ne télécharge qu'une archive Lua officielle
+épinglée ; `LuaRuntimeInstaller` vérifie architecture et empreintes, avec backup
+et confirmation distincte pour remplacer un fichier différent.
+
+`SetupStateStore` conserve la provenance dans `setup.local.json`, séparément des
+formats de challenge et des préférences historiques. `InstallationJournal` écrit
+des événements locaux sans contenu ROM/save. `LocalStorageService` ne supprime
+qu'après confirmation des fichiers reconnus dans les répertoires PCE, en excluant
+les sessions actives et les observations non acquittées. Ces données sont ignorées
+par Git. Les recherches, téléchargements et empreintes s'exécutent dans un worker
+Qt ; l'interface reste disponible et attend la fin avant fermeture.
+
+Pour les jeux préparés, `Jouer` réutilise ou prépare le cache, contrôle l'identité,
+l'émulateur, l'INI, Lua et l'association réelle Battery/nom de ROM de la sauvegarde.
+Il lance le processus puis prépare la connexion. Chaque `connect.lua` pointe vers
+son `config.lua` de session immuable : relancer un ancien script arrêté ne peut
+pas récupérer silencieusement l'identifiant de la nouvelle session. Les entrées
+Lua historiques `current-<game>.lua` restent compatibles.
+
+## Profil réutilisable et partie réelle
+
+Le modèle historique `Profile` regroupe encore configuration de challenge et
+progression. V0.3.6 conserve ses fichiers et identifiants pour compatibilité.
+Conceptuellement, le **profil** est la configuration réutilisable (règles, options,
+preset, seed) ; la **partie** est la progression d'une sauvegarde Pokémon. Les
+profils de lancement sont des préférences locales par jeu, pas un catalogue de runs.
+
+Le futur Run Manager devra créer un `run_id` indépendant, référencer le jeu et
+le profil, figer la configuration au début de partie, puis associer séparément
+le chemin de sauvegarde local, les dates, l'état et les observations. Une migration
+explicite pourra reprendre les suivis existants sans les remettre à zéro. Aucune
+clé unique par génération, par jeu ou par nom de profil ne devra limiter le nombre
+de parties. Cette architecture est prévue, sans page « Mes parties » annoncée ici.
+
+Le suivi actuel écrit automatiquement progression et historique pour les événements
+applicables au profil actif, avec journal durable et déduplication avant acquittement.
+Cela n'écrit pas la sauvegarde `.dsv`. L'équipe affichée et le temps de session PCE
+ne constituent pas encore une progression de run persistée. Les captures et morts
+automatiques ne deviennent pas disponibles sans lectures mémoire documentées.

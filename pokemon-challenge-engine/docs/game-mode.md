@@ -1,4 +1,24 @@
-# Mode Jeu — V0.3.5
+# Mode Jeu — V0.3.6
+
+## Parcours simplifié
+
+**Installation & diagnostic** détecte les jeux locaux, prépare les ZIP, propose
+la sauvegarde et installe Lua après confirmation. Une fois le jeu préparé, **Jouer**
+revérifie l'environnement puis lance DeSmuME et crée la session Lua. Le script est
+accessible par les boutons de copie du chemin et d'ouverture du dossier ; son
+chargement et **Run** restent manuels dans DeSmuME. Les profils de lancement
+historiques conservent leur parcours, avec accès à ce diagnostic.
+
+En cas de déconnexion, **Reconnecter Lua** arrête l'ancienne session et crée un
+nouveau script. **Arrêter et changer de jeu** demande confirmation et libère le
+choix après l'arrêt de Lua ; si DeSmuME est toujours lancé, son verrouillage est
+expliqué et sa fermeture reste à l'utilisateur. PCE ne tue pas ce processus.
+
+Les valeurs d'équipe sont garanties après synchronisation de la structure
+principale, notamment en fin de combat. Le test utilisateur de Blanc FR rev0
+confirme soins et zones hors combat, PV et Pokémon à 0 PV après combat. Le suivi
+instantané des PV de combat, les captures réelles et les règles strictes ne sont
+pas ajoutés par cette version.
 
 Le bouton **Mode Jeu** ouvre une fenêtre dédiée, en conservant les six pages existantes de PCE. DeSmuME reste une application séparée : le centre du Mode Jeu réserve un emplacement visuel à sa fenêtre. Il ne contient ni vidéo du jeu, ni émulateur intégré, ni injection de commandes DS.
 

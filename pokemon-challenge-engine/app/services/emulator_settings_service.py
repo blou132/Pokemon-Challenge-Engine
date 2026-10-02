@@ -161,6 +161,12 @@ class IniDocument:
     def to_bytes(self) -> bytes:
         return self.bom + "".join(self.lines).encode(self.encoding)
 
+    def require_windows_profile_encoding(self):
+        # Confirmed with GetPrivateProfileIntW on temporary files: UTF-8 BOM
+        # and UTF-16 BE are not read as the same INI by this Windows frontend.
+        if self.bom not in (b"", b"\xff\xfe"):
+            raise ValueError("Encodage INI non pris en charge par DeSmuME : ANSI ou UTF-16 LE requis. Fichier conservé.")
+
 
 @dataclass(frozen=True)
 class SettingsSnapshot:
@@ -211,6 +217,7 @@ class EmulatorSettingsService:
             return SettingsSnapshot(capabilities)
         path = self._path()
         document = IniDocument(path.read_bytes())
+        document.require_windows_profile_encoding()
         controls = {key: document.get_int("Controls", key, value) for key, value in DEFAULT_CONTROLS.items()}
         validate_controls(controls)
         hotkeys = {key: document.get_int("Hotkeys", key, value)
@@ -284,6 +291,7 @@ class EmulatorSettingsService:
         path = snapshot.ini_path
         raw = path.read_bytes()
         document = IniDocument(raw)
+        document.require_windows_profile_encoding()
         if controls is not None:
             controls = validate_controls(controls)
             if any(value > 255 for value in controls.values()):

@@ -107,6 +107,20 @@ def test_import_uses_documented_defaults_and_preserves_gamepad_codes(service):
         service.apply(controls=snapshot.controls)
 
 
+@pytest.mark.parametrize("encoding,bom", [("utf-8", b"\xef\xbb\xbf"), ("utf-16-be", b"\xfe\xff")])
+def test_service_refuses_ini_encoding_windows_does_not_read(service, encoding, bom):
+    path = Path(service.executable).with_name("desmume.ini")
+    original = bom + "[Controls]\nA=67\n".encode(encoding)
+    path.write_bytes(original)
+    assert IniDocument(original).to_bytes() == original
+    with pytest.raises(ValueError, match="Encodage INI"):
+        service.import_controls()
+    with pytest.raises(ValueError, match="Encodage INI"):
+        service.apply(controls=DEFAULT_CONTROLS)
+    assert path.read_bytes() == original
+    assert not list(path.parent.glob("*.pce-backup*"))
+
+
 def test_export_backs_up_each_version_and_preserves_unknown_data(service):
     path = Path(service.executable).with_name("desmume.ini")
     original = path.read_bytes()

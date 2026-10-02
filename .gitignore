@@ -20,6 +20,8 @@ backups/
 *.pce-backup*
 # Temporary local configuration/save files, including after an interrupted write.
 .pce_ini_*
+.pce_lua_*
+.lua_download_*
 .pce-restore_*
 .backup_*
 .manifest_*

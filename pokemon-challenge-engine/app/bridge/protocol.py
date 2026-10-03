@@ -8,11 +8,12 @@ from typing import Any
 from app.core.game_detector import GAME_CODE_PREFIXES
 
 PROTOCOL_VERSION = 2
-SCRIPT_VERSION = "0.3.0"
+SCRIPT_VERSION = "0.4.0"
+SUPPORTED_SCRIPT_VERSIONS = {1: frozenset({"0.2.0"}), 2: frozenset({"0.3.0", SCRIPT_VERSION})}
 MAX_MESSAGE_BYTES = 65_536
 GAME_IDS = frozenset(GAME_CODE_PREFIXES.values())
 GAME_REGIONS = frozenset({"FR", "EN", "DE", "IT", "ES", "JP", "KO"})
-CAPABILITIES = frozenset({"heartbeat", "game_identity", "party_size", "party_level", "party_hp", "party_species", "tracking"})
+CAPABILITIES = frozenset({"heartbeat", "game_identity", "party_size", "party_level", "party_hp", "party_species", "tracking", "party_identity"})
 EVENTS = frozenset({"hello", "heartbeat", "party_update", "bridge_error", "emulator_closing"})
 MESSAGE_FIELDS = frozenset({
     "protocol_version", "session_id", "sequence", "event", "timestamp", "emulator",
@@ -20,6 +21,7 @@ MESSAGE_FIELDS = frozenset({
     "memory_profile", "party_size", "party", "error",
 })
 PARTY_FIELDS = frozenset({"slot", "level", "species_id", "hp", "max_hp"})
+PARTY_IDENTITY_FIELDS = frozenset({"personality_id", "original_trainer_id"})
 OBSERVATION_FIELDS = frozenset({
     "map_id", "capture_zone_id", "zone_name", "battle_active", "battle_type",
     "encounter_kind", "battle_id", "species_id", "level", "hp", "max_hp",
@@ -152,8 +154,7 @@ def parse_message(payload: bytes) -> BridgeMessage:
     if not isinstance(data["session_id"], str) or re.fullmatch(r"[0-9a-f]{32}", data["session_id"]) is None:
         raise ProtocolError("Identifiant de session invalide.")
     _choice(data["event"], "event", EVENTS)
-    expected_script = "0.2.0" if version == 1 else SCRIPT_VERSION
-    if data["emulator"] != "desmume" or data["script_version"] != expected_script:
+    if data["emulator"] != "desmume" or not isinstance(data["script_version"], str) or data["script_version"] not in SUPPORTED_SCRIPT_VERSIONS[version]:
         raise ProtocolError("Émulateur ou version du script incompatible.")
     _choice(data["game_id"], "game_id", GAME_IDS, nullable=True)
     _choice(data["game_region"], "game_region", GAME_REGIONS, nullable=True)
@@ -173,6 +174,8 @@ def parse_message(payload: bytes) -> BridgeMessage:
     capabilities = tuple(capabilities)
     if version == 1 and "tracking" in capabilities:
         raise ProtocolError("Le suivi nécessite le protocole v2.")
+    if "party_identity" in capabilities and (version != 2 or data["script_version"] != SCRIPT_VERSION):
+        raise ProtocolError("L'identité individuelle nécessite le script Lua 0.4.0 et le protocole v2.")
     _text(data["memory_profile"], "memory_profile", 120, nullable=True)
     _text(data["error"], "error", 500, nullable=True)
     _integer(data["party_size"], "party_size", 0, 6, nullable=True)
@@ -189,8 +192,13 @@ def parse_message(payload: bytes) -> BridgeMessage:
         if not isinstance(party, list) or len(party) > 6 or len(party) != data["party_size"]:
             raise ProtocolError("La liste d'équipe ne correspond pas à party_size.")
         for index, pokemon in enumerate(party, start=1):
-            if not isinstance(pokemon, dict) or set(pokemon) != PARTY_FIELDS:
+            if not isinstance(pokemon, dict) or not PARTY_FIELDS <= set(pokemon) or set(pokemon) - PARTY_FIELDS - PARTY_IDENTITY_FIELDS:
                 raise ProtocolError("Champs invalides dans un Pokémon de l'équipe.")
+            for field in PARTY_IDENTITY_FIELDS & pokemon.keys():
+                if version != 2 or data["script_version"] != SCRIPT_VERSION:
+                    raise ProtocolError("L'identité individuelle nécessite le script Lua 0.4.0 et le protocole v2.")
+                _integer(pokemon[field], field, 0, 0xFFFFFFFF, nullable=True)
+                _requires(capabilities, "party_identity", pokemon[field] is not None)
             _integer(pokemon["slot"], "slot", index, index)
             _integer(pokemon["level"], "level", 1, 100, nullable=True)
             _integer(pokemon["species_id"], "species_id", 1, 649, nullable=True)

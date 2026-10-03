@@ -1,6 +1,6 @@
 -- Passerelle locale, exclusivement en lecture de la mémoire du jeu.
 -- Les seuls fichiers écrits appartiennent à la session créée par Python.
-local M = {}
+local M = {SCRIPT_VERSION = '0.4.0'}
 
 local function load_config(path)
     local ok, config = pcall(dofile, path)
@@ -68,7 +68,7 @@ function M.run(config_path)
         local region = identity.game_region ~= 'unknown' and identity.game_region or nil
         local result = {
             protocol_version = 2, session_id = config.session_id, sequence = sequence + 1,
-            event = event, timestamp = os.time(), emulator = 'desmume', script_version = config.script_version,
+            event = event, timestamp = os.time(), emulator = 'desmume', script_version = M.SCRIPT_VERSION,
             game_id = identity.game_id or json.null, game_code = code or json.null,
             game_region = region or json.null, rom_revision = identity.rom_revision or json.null,
             capabilities = json.array({'heartbeat', 'game_identity'}), memory_profile = json.null,
@@ -112,7 +112,7 @@ function M.run(config_path)
         local data = reader.read_party(memory, profile)
         if data.status ~= 'ok' then result.error = data.message; return result end
         result.party_size, result.party = data.party_size, json.array(data.party)
-        for _, capability in ipairs({'party_size', 'party_species', 'party_level', 'party_hp'}) do
+        for _, capability in ipairs({'party_size', 'party_species', 'party_level', 'party_hp', 'party_identity'}) do
             table.insert(result.capabilities, capability)
         end
         return result

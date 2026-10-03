@@ -1,4 +1,13 @@
-# Cartographie mémoire — équipe V0.2 et suivi V0.3
+# Cartographie mémoire — équipe, suivi et identité V0.4
+
+## Identité individuelle ajoutée en V0.4
+
+Le script Lua 0.4.0 expose le PID et l'ID32 du dresseur d'origine dans chaque
+Pokémon valide. Aucun offset absolu d'équipe ne change. Le PID vient de `0x00`
+et l'ID32 du bloc A + 4 (offset canonique `0x0C` après remise en ordre).
+Leur provenance et leurs limites, ainsi que les familles évolutives Gen V,
+sont détaillées dans [Sources de l'identité](pokemon-identity-sources.md).
+Le protocole reste 2 et les anciens scripts restent acceptés.
 
 ## Lectures de suivi ajoutées en V0.3
 
@@ -126,6 +135,7 @@ Les offsets ci-dessous sont relatifs au premier octet d'un Pokémon. `u16` et
 | `0x06` | Somme de contrôle, `u16` | Initialise le flux des blocs |
 | `0x08` à `0x87` | Quatre blocs de 32 octets | Déchiffrement et permutation |
 | Premier `u16` du bloc A | Identifiant d'espèce | De 1 à 649 |
+| Bloc A + 4, `u32` | ID32 du dresseur d'origine | Après déchiffrement, position issue de la permutation |
 | `0x88` à `0xDB` | Extension d'équipe | Flux séparé, initialisé par le PID |
 | `0x8C` | Niveau, 1 octet | De 1 à 100 après déchiffrement |
 | `0x8E` | PV actuels, `u16` | De zéro aux PV maximaux |

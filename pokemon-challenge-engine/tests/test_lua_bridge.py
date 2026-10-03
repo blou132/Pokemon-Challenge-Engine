@@ -50,7 +50,8 @@ def test_lua_reads_synthetic_party_then_python_validates(tmp_path, lua51):
     run_producer(lua51, script, slots=[synthetic_slot(5, hp=0)])
     state = bridge.poll()
     assert state.status == "receiving"
-    assert state.party == [{"slot": 1, "species_id": 501, "level": 5, "hp": 0, "max_hp": 21}]
+    assert state.party == [{"slot": 1, "species_id": 501, "level": 5, "hp": 0, "max_hp": 21,
+                            "personality_id": 0xA3000555 | (5 << 13), "original_trainer_id": 0x10EBC6A1}]
     assert state.memory_profile == "black2_fr_rev0"
 
 
@@ -62,7 +63,8 @@ def test_all_profiles_cross_the_lua_python_boundary_without_aliases(tmp_path, lu
     state = bridge.poll()
     assert state.game_id == profile["game_id"] and state.game_code == profile["game_code"]
     assert state.memory_profile == profile["id"] and state.status == "receiving"
-    assert state.party == [{"slot": 1, "species_id": 501, "level": 5, "hp": 19, "max_hp": 21}]
+    assert state.party == [{"slot": 1, "species_id": 501, "level": 5, "hp": 19, "max_hp": 21,
+                            "personality_id": 0xA3000555 | (7 << 13), "original_trainer_id": 0x10EBC6A1}]
 
 
 @pytest.mark.parametrize("code,revision", [("IREO", 0), ("IREF", 1), ("IREK", 0)])

@@ -95,14 +95,19 @@ local function decode_slot(readbyte, address, slot)
     -- La permutation des blocs ne change pas la somme de contrôle. L'espèce
     -- provient du bloc A ; les statistiques utilisent un flux initialisé par le PID.
     local permutation = math.floor(pid / 8192) % 32 % 24 + 1
-    local species = word(bytes, 8 + GROWTH_POSITIONS[permutation] * 32)
+    local growth = 8 + GROWTH_POSITIONS[permutation] * 32
+    local species = word(bytes, growth)
+    -- PKHeX PK5: PID at 0x00; ID32 at canonical 0x0C (block A + 4).
+    -- Both stay independent of species, slot, level and current HP.
+    local trainer_id = dword(bytes, growth + 4)
     decrypt(bytes, STORED_BYTES, PARTY_BYTES - 2, pid)
     local level, hp, maximum = bytes[0x8C], word(bytes, 0x8E), word(bytes, 0x90)
     if not integer(species, 1, 649) or not integer(level, 1, 100)
         or not integer(maximum, 1, 9999) or hp > maximum then
         return nil, "Valeurs Pokemon incoherentes"
     end
-    return {slot = slot, species_id = species, level = level, hp = hp, max_hp = maximum}
+    return {slot = slot, species_id = species, level = level, hp = hp, max_hp = maximum,
+        personality_id = pid, original_trainer_id = trainer_id}
 end
 
 function M.read_party(memory, profile)

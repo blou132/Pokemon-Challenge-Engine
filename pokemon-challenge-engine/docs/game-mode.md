@@ -1,4 +1,36 @@
-# Mode Jeu — V0.3.6
+# Mode Jeu — V0.4.0
+
+## Partie persistante
+
+Depuis **Mes parties**, créez ou reprenez une partie ; depuis **Profils**, utilisez
+**Commencer une partie**. Le Mode Jeu affiche son nom, ses règles figées, son temps
+cumulé, sa dernière équipe, sa zone et son autosave PCE. Les boutons **Capture**,
+**Mort**, **Badge +/−** et **Note** ouvrent les saisies manuelles. Une première
+saisie de badges demande le total ; une donnée absente reste « Non renseigné ».
+
+Les références de lancement/sauvegarde appartiennent à cette partie ; les changer
+dans ses réglages ne réécrit pas les préférences globales d'un autre lancement.
+Reprendre vérifie l'environnement, sans créer une nouvelle partie ni lancer le
+jeu automatiquement. Un changement de partie exige de fermer DeSmuME et arrêter
+Lua. Les choix de jeu/profil restent verrouillés dans le Mode Jeu lié à une partie.
+
+Le compteur durable avance seulement lorsque DeSmuME lancé ici tourne et que
+des messages valides du jeu associé arrivent. Il s'arrête à la déconnexion et
+ne compte pas les heures hors ligne après crash. Il n'est pas le compteur interne
+Pokémon ; sans drapeau fiable, PCE ne distingue pas les menus et pauses du jeu.
+Fermer seulement la fenêtre Mode Jeu conserve ce suivi en arrière-plan tant que
+PCE reste ouvert. Fermer PCE termine la session suivie sans fermer DeSmuME.
+
+L'équipe conservée hors ligne est explicitement présentée comme **dernière équipe
+observée**. « ☠ Mort dans cette partie » peut accompagner des PV positifs après
+soin : le statut virtuel est durable. Les observations à confirmer sont signalées
+dans Morts ; les détails de la partie permettent confirmation et correction.
+L'autosave PCE ne sauvegarde jamais la partie Pokémon. Le bouton de backup et
+l'onglet Sauvegardes réutilisent SaveManagerService et ses confirmations.
+
+Voir [Run Manager](run-manager.md), [autosave](run-autosave.md) et
+[mort permanente](permanent-death.md). Le parcours historique sans partie décrit
+ci-dessous conserve son compteur de processus non persistant et son suivi de profil.
 
 ## Parcours simplifié
 
@@ -60,7 +92,11 @@ L'organisation des fenêtres nécessite un écran choisi explicitement dans Inte
 
 Les neuf raccourcis applicatifs se configurent dans **Contrôles** : vitesses, plein écran, ouverture du Mode Jeu, backup manuel, changement de panneau et affichage des panneaux. Ils sont vides par défaut et actifs uniquement dans la fenêtre PCE concernée. Le raccourci d'ouverture du Mode Jeu fonctionne également depuis la fenêtre principale. Ce ne sont pas des raccourcis globaux : ils n'interceptent pas les touches lorsque DeSmuME a le focus.
 
-Fermer le Mode Jeu arrête son suivi du processus et ses backups automatiques ; cela ne ferme pas DeSmuME. Masquer les panneaux ou utiliser la préférence de masquage après lancement conserve le suivi. La passerelle Lua dispose de son propre bouton d'arrêt.
+Sans partie persistante sélectionnée, fermer le Mode Jeu arrête le suivi historique
+du processus et ses backups automatiques ; cela ne ferme pas DeSmuME. Avec une
+partie V0.4, le suivi continue en arrière-plan jusqu'à fermeture de PCE, déconnexion
+ou fermeture du processus. Masquer les panneaux conserve le suivi. La passerelle
+Lua dispose de son propre bouton d'arrêt.
 
 ## Vérification
 

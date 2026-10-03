@@ -5,11 +5,16 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 ## Situation actuelle
 
-La branche active est `feat/v0.3.6-auto-setup`, issue de
-`feat/v0.3.5-game-mode` au commit `ce8d888629f613b84d3bac3a9831b27cfbea1845`,
-après confirmation des **960 tests réussis, aucun ignoré**.
-Application `0.3.6`, scripts Lua `0.3.0`, protocole `2` avec compatibilité de
-réception v1 et progression schéma `2`.
+La branche active est `feat/v0.4-runs-permadeath`, issue de
+`feat/v0.3.6-auto-setup` au commit `58395b4607cc38270dd68b8a31d5a0fd44a880ea`,
+après confirmation des **1 167 tests réussis, aucun ignoré**.
+Application et scripts Lua `0.4.0`, protocole `2` avec compatibilité des anciens
+messages v1/v2, progression historique schéma `2` et nouveau Run schéma `1`.
+La V0.4 ajoute les parties indépendantes, leur bibliothèque, les sessions durables,
+l'autosave, l'identité PID/OT, les familles et la mort permanente virtuelle.
+Le prochain cycle V0.4.1 traitera les retours des essais utilisateur : reprise,
+reconnexion, plusieurs parties, crash, K.O./soin, évolutions et ergonomie.
+Les captures et badges restent manuels ; aucune règle stricte n'agit dans le jeu.
 Le moteur d'événements, les clauses optionnelles, la persistance et le panneau
 de profil actif sont implémentés et testés sur événements synthétiques.
 Les cartes Noir/Blanc FR ont des lectures sourcées ; les lectures de combat,
@@ -67,7 +72,8 @@ dans `main` n'est effectuée**. `main` conserve la V0.1.
 | V0.3, en cours | Zones, rencontres, captures, Species Clause exacte optionnelle | Sources des combats FR, puis chaîne réelle zone → rencontre → résultat → profil vérifiée |
 | V0.3.5 | Mode Jeu, contrôles et graphismes documentés, backups, profils de lancement et panneaux | Non-régression V0.3, UI 1366/1920, lancement et copies isolées réels ; vitesse directe/manettes non disponibles |
 | V0.3.6 | Premier démarrage, installation Lua, ZIP, diagnostic, reconnexion et fiabilité des profils | Tests de régression, interface et essais réels isolés distingués dans le rapport |
-| V0.4 | Morts permanentes et extension des clauses | Identification fiable des Pokémon et traitement des familles évolutives |
+| V0.4 | Parties persistantes, sessions, bibliothèque, identité, familles et mort permanente virtuelle | Tests synthétiques et lectures réelles séparés ; parcours réel K.O./soin et évolution à valider par l'utilisateur |
+| V0.4.1 / V0.4.x | Corrections issues des essais utilisateur | Reproductions documentées, régressions et nouvelle vérification réelle lorsque nécessaire |
 | V0.5 | Level Cap | Plafonds par progression, comportement strict testé |
 | V0.6 | Monotype appliqué | Modes Souple, Strict et Pur validés sur données réelles |
 | V0.7 | Restrictions en combat | Objets et soins détectés puis contraintes effectivement appliquées |
@@ -81,8 +87,9 @@ Une option visible ou un statut `future_strict` ne constitue jamais une fonction
 d'application en jeu. L'interface devra continuer à distinguer l'intention, la lecture
 réelle et la contrainte effectivement mise en œuvre.
 
-Le numéro d'application `0.3.6` ne change pas le format du challenge (`0.1.0`).
-Le protocole Lua (`2`) et la progression (`schema_version: 2`) sont versionnés séparément.
+Le numéro d'application `0.4.0` ne change pas le format du challenge (`0.1.0`).
+Le protocole Lua (`2`), la progression historique (`schema_version: 2`) et les
+parties (`schema_version: 1`) sont versionnés séparément.
 
 ## Suite du Mode Jeu
 
@@ -93,12 +100,17 @@ scénarios multi-écrans/DPI et éventuel embedding. Les formats et limites rete
 sont décrits dans [Réglages DeSmuME](emulator-settings.md). Aucune fusion automatique
 dans `main` n'est prévue.
 
-## Profils et futures parties
+## Profils et parties V0.4
 
-Un profil est une configuration réutilisable ; une partie sera une progression
-liée à une sauvegarde et à une copie figée de cette configuration. La future page
-**Mes parties** devra fonctionner pour plusieurs jeux d'une génération et toutes
-les générations, avec des identifiants de partie indépendants des identifiants de
-profil. Elle n'est pas implémentée dans cette version. La progression V0.3 existante
-continue d'être persistée automatiquement pour les événements pris en charge ;
-durée durable, équipe observée et statut de partie sont des extensions futures.
+Un profil est une configuration réutilisable ; une partie copie ses règles et
+possède une progression indépendante. **Mes parties** accepte plusieurs parties
+du même jeu et filtre par génération, jeu, challenge et statut. Le modèle accepte
+d'autres générations ; le lecteur d'identité livré est limité à Gen V.
+Les anciens profils/progressions restent intacts. La création depuis un profil
+est explicite et ne prétend pas convertir des compteurs historiques en individus
+identifiés. Aucun ajout de Pokémon à l'équipe ne prouve une capture.
+
+La V0.4 ne dépend pas de la disponibilité future des lectures de combat V0.3.
+Les familles préparent les clauses futures sans modifier le moteur de captures
+historique. **En attente de validation sur la machine utilisateur** pour les
+séquences réelles de mort après synchronisation de combat, soin et évolution.

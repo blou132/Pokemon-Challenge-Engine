@@ -1,4 +1,4 @@
-# Architecture V0.3.6
+# Architecture V0.4.0
 
 ## Séparation des responsabilités
 
@@ -34,10 +34,11 @@ Les autres jeux ont le statut `planned` et ne peuvent pas être générés ou la
 
 | Élément | Version | Rôle |
 | --- | --- | --- |
-| Application | `0.3.6` | Version du frontend livré |
-| Scripts Lua | `0.3.0` | Lecteurs et transport conservés |
+| Application | `0.4.0` | Version du frontend livré |
+| Scripts Lua | `0.4.0` | Identité individuelle additive, offsets absolus conservés |
 | Format sérialisé des challenges/profils | `0.1.0` | Compatibilité des profils existants |
 | Progression | `2` | Migration additive conservant le suivi manuel |
+| Partie Run | `1` | Règles figées, progression, sessions et historique atomiques |
 | Protocole de passerelle | `2` | Observations nullables ; réception v1 conservée |
 
 Le champ `version` du challenge reste indépendant de `schema_version` dans la
@@ -241,7 +242,7 @@ son `config.lua` de session immuable : relancer un ancien script arrêté ne peu
 pas récupérer silencieusement l'identifiant de la nouvelle session. Les entrées
 Lua historiques `current-<game>.lua` restent compatibles.
 
-## Profil réutilisable et partie réelle
+## Profil réutilisable et partie réelle V0.4
 
 Le modèle historique `Profile` regroupe encore configuration de challenge et
 progression. V0.3.6 conserve ses fichiers et identifiants pour compatibilité.
@@ -249,15 +250,36 @@ Conceptuellement, le **profil** est la configuration réutilisable (règles, opt
 preset, seed) ; la **partie** est la progression d'une sauvegarde Pokémon. Les
 profils de lancement sont des préférences locales par jeu, pas un catalogue de runs.
 
-Le futur Run Manager devra créer un `run_id` indépendant, référencer le jeu et
-le profil, figer la configuration au début de partie, puis associer séparément
-le chemin de sauvegarde local, les dates, l'état et les observations. Une migration
-explicite pourra reprendre les suivis existants sans les remettre à zéro. Aucune
-clé unique par génération, par jeu ou par nom de profil ne devra limiter le nombre
-de parties. Cette architecture est prévue, sans page « Mes parties » annoncée ici.
+`app/models/run.py` définit Run schéma 1 ; `app/core/run_manager.py` valide et
+écrit atomiquement `runs/<uuid>/run.json`. Historique, sessions et progression
+sont publiés dans un même fichier pour éviter des états partiellement synchronisés.
+Le snapshot challenge 0.1.0 est figé ; le `profile_id` indique seulement sa provenance.
+Une modification concurrente ou un fichier invalide est signalé et préservé.
 
-Le suivi actuel écrit automatiquement progression et historique pour les événements
-applicables au profil actif, avec journal durable et déduplication avant acquittement.
-Cela n'écrit pas la sauvegarde `.dsv`. L'équipe affichée et le temps de session PCE
-ne constituent pas encore une progression de run persistée. Les captures et morts
-automatiques ne deviennent pas disponibles sans lectures mémoire documentées.
+`RunTrackingService` possède la partie suivie, la session monotone, la reprise après
+crash, les transitions de PV et l'autosave. `RunController` l'exécute dans un worker
+Qt dédié. Seul ce worker modifie une partie active ; les interfaces reçoivent des
+copies et émettent des commandes. Le processus suivi et des messages Lua frais
+de la bonne identité sont requis. La fermeture attend la dernière écriture ; une
+erreur conserve les changements et permet de réessayer.
+
+`RunLaunchService` réutilise AutoSetup/RomPreparation et valide le snapshot local
+de lancement, indépendamment des préférences globales par jeu. Il restaure un ZIP
+depuis sa source si le cache a disparu et refuse une empreinte ROM changée.
+GameModeService conserve les options du processus lancé et SaveManagerService
+reste l'unique gestionnaire des backups/restaurations de sauvegardes Pokémon.
+
+`RunsPage` est chargée à l'ouverture de Mes parties ; les six pages historiques
+gardent leurs indices. `run_dialogs.py` contient création, détails et formulaires
+manuels. Le Mode Jeu affiche le dernier état de partie persisté/observé, dont la
+mort virtuelle reste indépendante des PV de la RAM.
+
+Le protocole 2 reçoit les champs facultatifs PID et OTID du lecteur Lua 0.4.0.
+`pokemon_identity.py` et `data/gen5_evolution_families.json` distinguent identité,
+famille et évolution orientée. Aucun offset mémoire absolu n'a été ajouté pour
+ces champs déjà présents dans le Pokémon déchiffré.
+
+Le suivi historique des profils reste disponible séparément ; sélectionner une
+partie désactive son écriture dans le BridgeController. Aucun profil V0.3 n'est
+migré ni supprimé. Voir [stockage](run-storage.md), [autosave](run-autosave.md) et
+[mort permanente](permanent-death.md) pour les invariants et limites.

@@ -1,5 +1,23 @@
 # Suivi Nuzlocke V0.3 — état et limites
 
+## Complément V0.4 : parties et mort virtuelle
+
+Le moteur V0.3 ci-dessous et ses fichiers de profils sont conservés. La V0.4
+ajoute un suivi de parties indépendant : règles figées, sessions, équipe observée,
+individus connus et cimetière virtuel. Sélectionner une partie désactive l'écriture
+du suivi historique dans le profil source. Aucune migration implicite n'a lieu.
+
+La mort permanente s'appuie sur une transition de PV et une identité PID/OT
+documentée, avec contrôle des ambiguïtés et évolutions ; elle ne dépend pas d'une
+lecture de résultat de capture. Les captures et badges des parties sont manuels.
+Une famille évolutive commune ne suffit pas à prouver un même individu.
+Voir [mort permanente](permanent-death.md) et [sources](pokemon-identity-sources.md).
+
+La zone de Blanc FR et la synchronisation des PV après combat ont été rapportées
+par l'utilisateur en V0.3.6. L'essai isolé V0.4 confirme équipe, identité et
+persistance, mais n'a pas reçu de zone nommée ni de séquence K.O./soin. Cette
+dernière demeure **En attente de validation sur la machine utilisateur.**
+
 La branche `feat/v0.3-nuzlocke-tracking` prépare un suivi automatique en lecture
 seule. **La V0.3 n'est pas terminée** : les lecteurs livrés savent produire une
 carte documentée pour Noir/Blanc FR rev0, mais ne disposent pas encore d'adresses

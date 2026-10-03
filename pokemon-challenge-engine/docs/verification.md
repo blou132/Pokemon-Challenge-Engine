@@ -1,4 +1,103 @@
-# Vérification V0.3.6 et historique V0.3.5 / V0.3 / V0.2 / V0.1
+# Vérification V0.4 et historique V0.3.6 / V0.3.5 / V0.3 / V0.2 / V0.1
+
+## V0.4 — parties et mort permanente, 3 octobre 2026
+
+Base exacte : `58395b4607cc38270dd68b8a31d5a0fd44a880ea`, branche source
+`feat/v0.3.6-auto-setup`. Avant modification : dépôt propre, **1 167 tests réussis,
+aucun ignoré** (218,50 s), compilation et point d'entrée Qt Windows réussis.
+Travail sur `feat/v0.4-runs-permadeath`, sans fusion dans `main`.
+
+Versions : application **0.4.0**, Lua **0.4.0**, Run **schéma 1**. Challenge
+**0.1.0**, progression historique **2** et protocole **2** conservés.
+Les champs PID/OTID et la capacité `party_identity` sont facultatifs ; les messages
+historiques continuent d'être acceptés. Aucun offset absolu mémoire n'est ajouté.
+
+### Tests synthétiques et interface
+
+**Résultat complet : 1 511 tests réussis, aucun ignoré.** Les 1 167 cas historiques
+sont conservés, avec 344 nouveaux cas. Deux assertions d'équipe Lua historiques
+sont enrichies des deux champs d'identité, sans retirer les valeurs déjà vérifiées.
+Le temps total affiché par pytest inclut une longue interruption de session et
+ne constitue pas une mesure de performance. La compilation `app`/`tools` et le
+point d'entrée natif `app.main` sont aussi vérifiés sur des données temporaires.
+Après les derniers ajustements de l'affichage, **124 tests ciblés d'intégration
+et d'interface** ont également réussi, ainsi qu'une nouvelle compilation et un
+nouveau démarrage natif avec fermeture propre (code 0).
+
+La suite couvre UUID, classique, copie figée du profil, écritures atomiques,
+corruption préservée, modifications concurrentes, sessions, changements de jeu,
+heartbeat, arrêt de DeSmuME, crash, debounce, erreurs disque et fermeture/reprise.
+Les tests de mort couvrent transition PV, première observation zéro, règles
+inactives, collisions, changement de slot/niveau/espèce, soin après mort,
+confirmation manuelle et correction historisée. La table d'évolution couvre les
+649 espèces ; branches sœurs, dévolution et création de Munja ne sont pas prises
+pour une évolution du même individu.
+
+Les essais Qt couvrent 0/1/20 parties, filtres, recherche, tris, six sections,
+cimetière, confirmations, données inconnues et derniers backups. La revue a aussi
+reproduit puis corrigé fermeture/réouverture du Mode Jeu, lancement historique
+pendant une partie, réactivation administrative d'une archive, sauvegarde refusée
+avant lancement et clics rapides sur les badges. Les références doivent être
+durablement enregistrées avant le démarrage du processus.
+
+Rendus inspectés avec le backend **Qt Windows** : bibliothèque à 1146×718 et
+1700×1030 (surfaces prévues après sidebar/chrome pour fenêtres 1366/1920), création,
+cimetière, équipe soignée toujours marquée morte, puis Mode Jeu à **1366×768** et
+**1920×1080** exacts. Les grandes surfaces sont rendues comme widgets enfants à
+taille fixe, le moniteur disponible bridant les fenêtres natives de cette taille.
+Il s'agit de rendus de widgets, pas de captures prouvant un écran physique 1920.
+Fichiers de revue locaux : `runtime/v04-ui/`, exclus de Git.
+
+### Essai réel sur copie isolée de Pokémon Blanc FR rev0
+
+Le harnais local `runtime/v040_verify.py`, non versionné, a créé un dossier neuf
+avec copies de l'exécutable, ROM et `.dsv`, DLL Lua vérifiées et INI de test dont
+toutes les sorties restent dans ce dossier. L'autoload Lua de cet INI sert au
+harnais ; il ne prouve pas une activation automatique de Run dans l'interface produit.
+Aucune entrée clavier/joypad, commande de combat, modification RAM ou chargement
+de save state n'a été envoyé. Seul le processus créé par cet essai a été arrêté.
+
+Services de production utilisés : AutoSetupService, RunLaunchService,
+GameModeService, EmulatorService, BridgeService, RunManager et RunTrackingService.
+Partie créée : **Blanc V0.4 Test**, règles Nuzlocke, Mort permanente, Species Clause.
+Build DeSmuME x64 0.9.14 git#a779eb7, SHA-256 de l'exécutable
+`34fe290e387722f1b4320751bf0b0f50844079833c7dce57c273d6b054becac0`.
+
+Résultat du rapport local `runtime/v040/t01/report.json` :
+
+| Contrôle | Résultat réel |
+| --- | --- |
+| Identité et heartbeat | Blanc `IRAF / FR / 0`, script `0.4.0`, 84 messages |
+| Équipe | 2 Pokémon : Grotichon 499, niveau 19, PV 67/67 ; Feuillajou 511, niveau 17, PV 46/46 |
+| Identité individuelle | Deux paires PID/OTID reçues et deux individus persistés ; pas de comparaison indépendante de leurs valeurs brutes |
+| Partie et durée | Statut actif, 21,0877 s suivies avec processus vivant et messages valides |
+| Autosave en session | Équipe présente sur disque avant fermeture, durée intermédiaire 17,1913 s |
+| Réouverture | Même run, 21,0877 s conservées, aucune session active ni temps hors ligne ajouté |
+| Zone nommée | Non reçue pendant cet essai sans interaction |
+| Variation de PV, K.O., soin après mort | Non provoqués et non observés ; aucune validation réelle revendiquée |
+| Intégrité | Empreintes ROM/save/EXE/INI/DLL originaux inchangées ; ROM de copie inchangée |
+
+La relecture du fichier réel après renforcement de la validation du modèle a
+également réussi sans le modifier. Le temps suivi est celui de la réception
+éligible, pas le compteur interne du jeu ; les menus/pauses ne disposent pas d'un
+drapeau fiable pour être déduits automatiquement.
+
+### Validation utilisateur et limites
+
+**En attente de validation sur la machine utilisateur.** Restent à parcourir dans
+la V0.4 : zones nommées, variation de PV hors combat, K.O. après synchronisation
+de fin de combat, mort virtuelle conservée après soin, évolution, plusieurs parties,
+reconnexions, fermeture/reprise et crash en usage prolongé. Le constat utilisateur
+V0.3.6 sur zones et PV reste une preuve distincte ; il ne remplace pas ces essais.
+Les retours serviront aux corrections V0.4.1/V0.4.x.
+
+Les captures et badges restent manuels. Aucun ajout à l'équipe n'est une preuve
+de capture. Une ambiguïté PID/OT ne redevient pas fiable automatiquement. Une mort
+manuelle sans individu stable reste au cimetière sans condamner arbitrairement un
+membre de l'équipe. La règle est virtuelle : aucune suppression, déplacement PC,
+interdiction de soin, écriture RAM ou patch ROM. Les anciens profils restent
+intacts, sans migration forcée ni mise à zéro. `runs/`, ROM, sauvegardes, secrets,
+configurations et journaux locaux sont exclus de Git.
 
 ## V0.3.6 — installation et corrections de profils, 2 octobre 2026
 

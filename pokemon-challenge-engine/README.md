@@ -1,4 +1,4 @@
-# Pokemon Challenge Engine — V0.3.6
+# Pokemon Challenge Engine — V0.4.0
 
 Application Windows en français pour préparer des challenges **Pokémon Noir**,
 **Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, enregistrer des profils,
@@ -12,6 +12,50 @@ pour les versions suivantes. La règle Randomizer est uniquement prévue et conf
 ![Accueil de l'application — capture V0.1](docs/screenshots/accueil-1920.png)
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)
+
+## Mes parties — V0.4
+
+**Mes parties → Nouvelle partie** crée une partie classique sans règle ou une
+partie issue d'un profil. **Profils → Commencer une partie** copie sa configuration.
+Chaque partie reçoit un UUID, ses règles figées, ses sessions, son équipe observée,
+ses Pokémon connus, sa progression et son historique. Modifier un profil ensuite
+ne change aucune partie existante. Plusieurs parties du même jeu sont possibles.
+
+**Reprendre** sélectionne la même partie, vérifie son environnement et ouvre le
+Mode Jeu. **Jouer** lance DeSmuME ; le temps commence uniquement avec les messages
+valides du jeu correspondant et le processus lancé par PCE. Fermez DeSmuME et
+arrêtez Lua avant de changer de partie. Une fenêtre DeSmuME lancée ailleurs n'est
+pas associée automatiquement à ce chronomètre.
+
+L'équipe et les zones documentées sont enregistrées automatiquement. Avec
+Nuzlocke et Mort permanente actifs, une transition observée **PV > 0 → 0** d'un
+individu identifié crée une mort dans le **cimetière virtuel PCE**. Un soin dans
+Pokémon ne l'annule pas. Une identité ambiguë ou une première observation à zéro
+demande confirmation. Les captures et badges sont **manuels** ; notes, morts
+manuelles et corrections confirmées restent dans l'historique.
+
+La progression se trouve dans `runs/<uuid>/run.json`, hors des caches et exclue de
+Git. L'autosave PCE est atomique ; elle ne force aucune sauvegarde Pokémon.
+Les anciens `profiles/*/progress.json` et historiques sont conservés sans migration
+forcée. Deux parties liées au même `.dsv` partagent la sauvegarde Pokémon : créer
+une partie PCE ne crée ni n'importe une nouvelle sauvegarde en jeu.
+
+L'identité Gen V utilise PID et identifiant du dresseur d'origine documentés par
+PKHeX. La table sourcée couvre les 649 espèces et leurs familles ; les changements
+de branche, retours en arrière et identifiants dupliqués suspendent l'identification
+automatique. Le protocole **2** est conservé, avec deux champs facultatifs et des
+scripts Lua **0.4.0** ; les anciens messages restent acceptés.
+
+[Guide des parties](docs/run-manager.md) · [Stockage](docs/run-storage.md) ·
+[Mort permanente](docs/permanent-death.md) · [Autosave](docs/run-autosave.md) ·
+[Sources de l'identité et des évolutions](docs/pokemon-identity-sources.md).
+
+Branche : `feat/v0.4-runs-permadeath`, depuis
+`58395b4607cc38270dd68b8a31d5a0fd44a880ea`, sans fusion dans `main`.
+**1 511 tests réussis, aucun ignoré** : 1 167 historiques conservés et 344 nouveaux.
+Le [rapport V0.4](docs/verification.md) distingue tests synthétiques, rendus Qt
+et lectures réelles sur copie isolée. La séquence réelle K.O. → mort PCE → soin
+et les évolutions restent **En attente de validation sur la machine utilisateur.**
 
 ## Premier démarrage — V0.3.6
 
@@ -32,7 +76,7 @@ concerne que les caches et sessions arrêtées reconnus comme appartenant à PCE
 [Guide du premier démarrage](docs/first-run.md) · [Détection et cache](docs/auto-setup.md) ·
 [Sources et installation Lua](docs/lua-runtime.md).
 
-Validation finale : **1 167 tests réussis, aucun ignoré**, compilation et démarrage
+Validation de référence V0.3.6 : **1 167 tests réussis, aucun ignoré**, compilation et démarrage
 Qt Windows vérifiés, rendus 1366×768 et 1920×1080 inspectés. Les tests synthétiques
 et les essais réels sur copies isolées sont distingués dans le
 [rapport de vérification](docs/verification.md).
@@ -73,7 +117,7 @@ pilotage direct ni mesure de vitesse réelle. L'export vérifié de x1/MAX prép
 le prochain lancement ; x2/x4 se règlent dans DeSmuME. Les manettes, shaders,
 contraintes sur les save states et randomisation réelle ne sont pas implémentés.
 
-Branche : `feat/v0.3.6-auto-setup`, issue de
+Branche historique V0.3.6 : `feat/v0.3.6-auto-setup`, issue de
 `ce8d888629f613b84d3bac3a9831b27cfbea1845` après les **960 tests de référence
 réussis, aucun ignoré**, sans fusion automatique.
 
@@ -129,8 +173,9 @@ machine utilisateur.** Noir 2 ne disposait pas d'une équipe chargée lors de so
 essai de transport. Noir et Blanc 2 n'ont pas été validés en émulateur.
 Voir le [rapport de vérification](docs/verification.md) pour les preuves et les limites exactes.
 
-Les versions sont distinctes : application **`0.3.6`**, scripts Lua **`0.3.0`**, challenge
-**`0.1.0`** conservé, progression **schéma `2`**, protocole **`2`**. Python accepte
+Les versions sont distinctes : application **`0.4.0`**, scripts Lua **`0.4.0`**, challenge
+**`0.1.0`** conservé, progression historique **schéma `2`**, partie **schéma `1`**,
+protocole **`2`**. Python accepte les anciens scripts `0.3.0/v2` et
 aussi les messages v1 des scripts `0.2.0`, sans observations Nuzlocke.
 Les anciens suivis sont migrés en mémoire à la lecture, puis persistés seulement
 lors d'une sauvegarde ou d'un événement applicable au profil actif.

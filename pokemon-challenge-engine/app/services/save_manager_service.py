@@ -207,6 +207,14 @@ class SaveManagerService:
             _game(game_id)
         return tuple(record for record in reversed(self._load()) if game_id is None or record.game_id == game_id)
 
+    def list_backups_for_save(self, save_path: str | Path, game_id: str | None = None) -> tuple[BackupRecord, ...]:
+        """Read the existing manifest for this exact source, without inspecting save contents."""
+        source = _path(save_path)
+        if source.suffix.lower() != ".dsv":
+            raise SaveManagerError("Choisissez une sauvegarde normale DeSmuME .dsv.")
+        key = hashlib.sha256(os.path.normcase(str(source)).encode("utf-8")).hexdigest()
+        return tuple(record for record in self.list_backups(game_id) if record.source_key == key)
+
     @staticmethod
     def _copy_consistent(source: Path, destination: Path) -> tuple[int, str]:
         """Une copie n'est publiée que si deux lectures concordent et les stats restent stables."""

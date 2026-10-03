@@ -17,6 +17,8 @@ logs/
 *.log.*
 runtime/
 backups/
+# Parties persistantes et progression personnelle (hors du cache runtime).
+runs/
 *.pce-backup*
 # Temporary local configuration/save files, including after an interrupted write.
 .pce_ini_*

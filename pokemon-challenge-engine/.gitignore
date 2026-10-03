@@ -9,6 +9,7 @@ config.json
 config.json.*
 logs/
 profiles/*
+runs/
 !profiles/.gitkeep
 build/
 dist/

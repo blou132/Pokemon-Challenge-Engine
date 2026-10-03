@@ -20,6 +20,7 @@ class ProfilePage(QWidget):
     open_requested = Signal(object)
     launch_requested = Signal(object)
     changed = Signal()
+    start_run_requested = Signal(object)
 
     def __init__(self, catalog: Catalog, manager: ProfileManager, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -54,6 +55,11 @@ class ProfilePage(QWidget):
         self.launch_button.clicked.connect(self.launch_selected)
         actions.addWidget(self.open_button)
         actions.addWidget(self.launch_button)
+        self.start_run_button = QPushButton("Commencer une partie")
+        self.start_run_button.setObjectName("primary")
+        self.start_run_button.clicked.connect(lambda: self.start_run_requested.emit(self.selected_profile)
+                                              if self.selected_profile else None)
+        actions.addWidget(self.start_run_button)
         actions.addStretch()
         box.addLayout(actions)
         layout.addWidget(detail)
@@ -113,7 +119,7 @@ class ProfilePage(QWidget):
         self.selected_profile = None
         self.progress_form.setRowVisible(self.level_cap, False)
         self.level_cap.setEnabled(False)
-        for button in (self.open_button, self.launch_button, self.progress_button):
+        for button in (self.open_button, self.launch_button, self.start_run_button, self.progress_button):
             button.setEnabled(False)
         if current is None:
             self.preview.setPlainText("Sélectionnez un profil pour consulter son challenge.")
@@ -137,7 +143,7 @@ class ProfilePage(QWidget):
         self.progress_form.setRowVisible(self.level_cap, cap_active)
         self.level_cap.setEnabled(cap_active)
         self.zones.setText(", ".join(progress["zones"]))
-        for button in (self.open_button, self.launch_button, self.progress_button):
+        for button in (self.open_button, self.launch_button, self.start_run_button, self.progress_button):
             button.setEnabled(True)
 
     def open_selected(self) -> None:

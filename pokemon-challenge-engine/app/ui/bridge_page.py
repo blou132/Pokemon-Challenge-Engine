@@ -199,11 +199,13 @@ class BridgePage(QWidget):
                 self.profile_combo.addItem(previous_label + " (indisponible)", previous)
                 index = self.profile_combo.count() - 1
             self.profile_combo.setCurrentIndex(max(0, index))
-        if self.profile_combo.currentData() != previous:
+        if self.profile_combo.currentData() != previous and not getattr(self, "persistent_game", None):
             self.controller.select_profile(self.profile_combo.currentData())
 
     @Slot(int)
     def _select_profile(self, _index: int) -> None:
+        if getattr(self, "persistent_game", None):
+            return
         profile_id = self.profile_combo.currentData()
         game_id = self._profile_games.get(profile_id)
         if game_id is not None and self.controller.state.status == "stopped":
@@ -217,7 +219,7 @@ class BridgePage(QWidget):
 
     @Slot()
     def _start(self) -> None:
-        game_id = self.game_combo.currentData()
+        game_id = getattr(self, "persistent_game", None) or self.game_combo.currentData()
         if game_id is None:
             return
         self.prepare_button.setEnabled(False)
@@ -271,8 +273,8 @@ class BridgePage(QWidget):
         active = state.status in {"waiting", "connected", "receiving"}
         self.prepare_button.setEnabled(not active)
         # Une session déconnectée peut encore recevoir un message tardif du même jeu.
-        self.game_combo.setEnabled(state.status == "stopped")
-        self.profile_combo.setEnabled(state.status == "stopped")
+        self.game_combo.setEnabled(state.status == "stopped" and not getattr(self, "persistent_game", None))
+        self.profile_combo.setEnabled(state.status == "stopped" and not getattr(self, "persistent_game", None))
         self.stop_button.setEnabled(state.status != "stopped")
         self.reconnect_button.setVisible(state.status in {"disconnected", "error"})
         self.change_game_button.setVisible(state.status != "stopped")

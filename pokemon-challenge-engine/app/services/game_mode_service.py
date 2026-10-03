@@ -8,7 +8,7 @@ from time import monotonic
 from app.core.profile_manager import ProfileManager
 from app.services.config_service import AppConfig
 from app.services.emulator_window_manager import EmulatorWindowManager
-from app.services.game_mode_config import GAME_IDS, SPEEDS, GameModeConfigStore
+from app.services.game_mode_config import GAME_IDS, SPEEDS, GameModeConfigStore, validate_config
 from app.services.launcher_service import LauncherService
 
 
@@ -40,6 +40,7 @@ class GameModeService:
         self._started = None
         self._last_periodic = None
         self._run_options = None
+        self.backup_observer = None
         self.state = RunState(message="\n".join(self.store.warnings) or RunState().message)
 
     def reload_preferences(self):
@@ -77,8 +78,11 @@ class GameModeService:
             raise ValueError("Choisissez explicitement une sauvegarde normale avant de créer un backup.")
         if not options["backup_directory"].strip():
             raise ValueError("Choisissez un dossier de backups.")
-        return SaveManagerService(Path(options["backup_directory"])).backup(
+        record = SaveManagerService(Path(options["backup_directory"])).backup(
             Path(options["save_path"]), options["game_id"], retention=options["backup_retention"], reason=reason)
+        if self.backup_observer is not None:
+            self.backup_observer(record)
+        return record
 
     def backup_now(self, game_id: str | None = None):
         selected = game_id or self.state.game_id
@@ -95,7 +99,7 @@ class GameModeService:
         # The settings adapter supplies the verified preset and profile exports.
         service.apply_launch_profile(options, self.base_dir)
 
-    def launch(self, game_id: str, profile_id: str | None = None):
+    def launch(self, game_id: str, profile_id: str | None = None, *, options_override: dict | None = None):
         if game_id not in GAME_IDS:
             raise ValueError("Jeu de lancement inconnu.")
         if self.process is not None and self.process.poll() is None:
@@ -104,8 +108,16 @@ class GameModeService:
         # Finalise the old session (including its own close backup) first.
         if self.process is not None and self.state.running:
             self.tick()
-        options = deepcopy(self.config["launch_profiles"][game_id])
-        profile_id = profile_id or options["challenge_profile_id"]
+        if options_override is None:
+            options = deepcopy(self.config["launch_profiles"][game_id])
+            profile_id = profile_id or options["challenge_profile_id"]
+        else:
+            options = validate_config({"launch_profiles": {game_id: options_override}},
+                                      self.legacy_config, self.base_dir)["launch_profiles"][game_id]
+            # Rules come from the run snapshot. The source profile may be edited
+            # or deleted without changing this run or preventing its launch.
+            options["challenge_profile_id"] = None
+            profile_id = None
         if profile_id is not None:
             profile = self.profiles.load(profile_id)
             if profile.challenge.game_id != game_id:

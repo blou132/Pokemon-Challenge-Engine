@@ -237,7 +237,7 @@ class AutoSetupService:
                  Path(record["source_path"])]
         return {str(path): fingerprint(path) if path.is_file() else None for path in paths}
 
-    def health_check(self, game_id, require_lua=True):
+    def health_check(self, game_id, require_lua=True, *, options_override=None):
         from app.services.game_discovery_service import GameDiscoveryService
         from app.services.desmume_discovery_service import DeSmuMEDiscoveryService
         from app.services.lua_runtime_installer import LuaRuntimeInstaller
@@ -248,8 +248,10 @@ class AutoSetupService:
             _, preferences = self._preferences()
             if game_id not in preferences["launch_profiles"]:
                 raise ValueError("Jeu de lancement inconnu.")
-            options = preferences["launch_profiles"][game_id]
-            record = self.store.load()["games"].get(game_id)
+            options = preferences["launch_profiles"][game_id] if options_override is None else options_override
+            # A persistent run owns its launch snapshot; later global setup changes
+            # must not redirect that run to another ROM or save.
+            record = self.store.load()["games"].get(game_id) if options_override is None else None
             changed = False
             if record:
                 try:

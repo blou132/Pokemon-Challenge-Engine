@@ -1,6 +1,8 @@
 """Fenêtre frontend indépendante ; DeSmuME conserve sa fenêtre et ses entrées."""
 
 from pathlib import Path
+from copy import deepcopy
+from dataclasses import asdict
 
 from PySide6.QtCore import QPoint, QSignalBlocker, QTimer, Qt, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
@@ -26,6 +28,8 @@ class GameModeWindow(QMainWindow):
     process_launched = Signal(object)
     shortcuts_changed = Signal(dict)
     installation_requested = Signal()
+    run_action_requested = Signal(str, str, object)
+    process_context_changed = Signal(bool, object)
 
     def __init__(self, catalog: Catalog, base_dir: Path, bridge_controller, profiles: ProfileManager,
                  config: AppConfig, parent=None, *, service: GameModeService | None = None):
@@ -39,6 +43,12 @@ class GameModeWindow(QMainWindow):
         self._legacy_config = config
         self._setup_service = None
         self._preparing_game = None
+        self.persistent_run = None
+        self._run_launch_options = None
+        self._persistent_notice = ""
+        self._pending_run_launch = None
+        self._pending_reference_save = False
+        self.service.backup_observer = self._record_backup
         self.play_runner = SetupTaskRunner(self)
         self.play_runner.succeeded.connect(self._play_prepared)
         self.play_runner.failed.connect(self._play_failed)
@@ -61,6 +71,7 @@ class GameModeWindow(QMainWindow):
         self.page.arrange_requested.connect(self.arrange_windows)
         self.page.reconnect_requested.connect(self.reconnect_lua)
         self.page.stop_session_requested.connect(self.stop_lua_for_change)
+        self.page.run_action_requested.connect(self._quick_run_action)
         self.controller.state_changed.connect(self.page.set_bridge_state)
         self.controller.tracking_changed.connect(self._tracking_changed)
         self.page.set_bridge_state(self.controller.state)
@@ -85,6 +96,8 @@ class GameModeWindow(QMainWindow):
             self.launch_settings.set_profiles(values)
 
     def _select_profile(self, profile_id):
+        if self.persistent_run is not None:
+            return
         if self.controller.state.status != "stopped" or self.service.state.running:
             self.page.set_profiles(self.profiles.list_profiles(), self.controller.tracking_state.profile_id)
             self.page.status_label.setText("Terminez la session et arrêtez la connexion Lua avant de changer de profil.")
@@ -95,6 +108,9 @@ class GameModeWindow(QMainWindow):
         self.page.set_bridge_state(self.controller.state)
 
     def _game_changed(self, game_id, *, select_associated=True):
+        if self.persistent_run is not None:
+            self.page.set_persistent_run(self.persistent_run, self.page._autosave)
+            return
         options = self.service.config["launch_profiles"][game_id]
         if select_associated and self.controller.state.status == "stopped" and not self.service.state.running:
             desired = options["challenge_profile_id"]
@@ -122,6 +138,8 @@ class GameModeWindow(QMainWindow):
             self.page.controls_source.setToolTip(str(exc))
 
     def _tracking_changed(self, state):
+        if self.persistent_run is not None:
+            return
         if self.service.state.running and state.profile_id != self.service.state.profile_id:
             from app.services.tracking_service import TrackingState
             self.page.set_tracking_state(TrackingState(status="mismatch", message="La passerelle suit un autre profil que la session Mode Jeu."))
@@ -143,7 +161,15 @@ class GameModeWindow(QMainWindow):
             self.page.set_profile(None)
 
     def launch_game(self, game_id):
-        if self.play_runner.is_busy:
+        if self.play_runner.is_busy or self._pending_reference_save or self._pending_run_launch is not None:
+            return
+        if self.persistent_run is not None:
+            from app.services.run_launch_service import RunLaunchService
+            self._preparing_game = self.persistent_run.game_id
+            self.page.status_label.setText("Vérification de l'environnement lié à cette partie…")
+            self._persistent_notice = ""
+            run = deepcopy(self.persistent_run)
+            self.play_runner.start(lambda: RunLaunchService(self.base_dir, self._legacy_config).prepare(run))
             return
         if self._setup_service is None:
             from app.services.auto_setup_service import AutoSetupService
@@ -167,17 +193,34 @@ class GameModeWindow(QMainWindow):
         health = result.get("health", {})
         if not health.get("ready"):
             self.page.status_label.setText("Installation à vérifier : " + "\n".join(health.get("issues", [])))
+            if self.persistent_run is not None:
+                self._persistent_notice = self.page.status_label.text()
             self.installation_requested.emit()
+            return
+        if self.persistent_run is not None:
+            if result.get("run_id") != self.persistent_run.run_id:
+                self.page.status_label.setText("La partie a changé pendant la préparation ; relancez la vérification.")
+                return
+            self._run_launch_options = result["profile"]
+            snapshot = deepcopy(result["profile"])
+            if "_source" in self.persistent_run.launch_profile:
+                snapshot["_source"] = deepcopy(self.persistent_run.launch_profile["_source"])
+            self._pending_run_launch = {"snapshot": snapshot, "result": result}
+            self.page.launch_button.setEnabled(False)
+            self.run_action_requested.emit(self.persistent_run.run_id, "update_launch_reference",
+                {"profile": snapshot, "rom_fingerprint": result["rom_fingerprint"]})
             return
         self.service.reload_preferences()
         self._launch_process(self._preparing_game, prepare_lua=True)
 
     def _play_failed(self, message):
         self.page.status_label.setText("Préparation impossible : " + message + " · Ouvrez Installation & diagnostic.")
+        if self.persistent_run is not None:
+            self._persistent_notice = self.page.status_label.text()
 
     def reconnect_lua(self):
         game_id = self.page.game_combo.currentData()
-        self.controller.start(game_id, self.service.config["launch_profiles"][game_id]["rom_path"])
+        self.controller.start(game_id, self.launch_options(game_id)["rom_path"])
         self.bridge_requested.emit()
 
     def stop_lua_for_change(self):
@@ -189,22 +232,27 @@ class GameModeWindow(QMainWindow):
 
     def _launch_process(self, game_id, *, prepare_lua=False):
         try:
-            profile_id = self.page.profile_combo.currentData()
-            # Le choix visible est l'association explicite du lancement suivant.
-            self.service.save_launch_profile(game_id, {"challenge_profile_id": profile_id})
-            process = self.service.launch(game_id, profile_id)
+            if self.persistent_run is not None:
+                process = self.service.launch(game_id, options_override=self._run_launch_options)
+            else:
+                profile_id = self.page.profile_combo.currentData()
+                # Le choix visible est l'association explicite du lancement suivant.
+                self.service.save_launch_profile(game_id, {"challenge_profile_id": profile_id})
+                process = self.service.launch(game_id, profile_id)
         except (OSError, ValueError) as exc:
             self.page.status_label.setText(str(exc))
             QMessageBox.warning(self, "Lancement impossible", str(exc))
             return
         self.process_launched.emit(process)
+        self._persistent_notice = ""
+        self.process_context_changed.emit(True, game_id)
         if prepare_lua:
-            self.controller.start(game_id, self.service.config["launch_profiles"][game_id]["rom_path"])
+            self.controller.start(game_id, self.launch_options(game_id)["rom_path"])
             self.bridge_requested.emit()
         self.page.set_run_state(self.service.state)
         self._arrange_pending = self.service.config["interface"]["auto_arrange"]
         self._arrange_attempts = 0
-        if self.service.config["launch_profiles"][game_id]["game_mode"]:
+        if self.launch_options(game_id)["game_mode"]:
             self.showNormal() if not self.isFullScreen() else self.showFullScreen()
             self.raise_()
         else:
@@ -219,7 +267,10 @@ class GameModeWindow(QMainWindow):
 
     def backup_now(self):
         try:
-            self.service.backup_now(self.page.game_combo.currentData())
+            if self.persistent_run is not None and not self.service.state.running:
+                self.service._backup(self.launch_options(self.persistent_run.game_id), "manual")
+            else:
+                self.service.backup_now(self.page.game_combo.currentData())
             self.page.status_label.setText("Backup manuel créé et vérifié.")
             if self.settings_dialog:
                 self.save_settings.refresh()
@@ -231,7 +282,12 @@ class GameModeWindow(QMainWindow):
             return
         try:
             state = self.service.tick()
+            self.process_context_changed.emit(state.running, state.game_id)
             self.page.set_run_state(state)
+            if self._pending_reference_save or self._pending_run_launch is not None:
+                self.page.launch_button.setEnabled(False)
+            if self._persistent_notice:
+                self.page.status_label.setText(self._persistent_notice)
             if self.settings_dialog:
                 self.save_settings.set_emulator_running(state.running)
             if self._arrange_pending and state.running:
@@ -241,6 +297,79 @@ class GameModeWindow(QMainWindow):
                     self.arrange_windows()
         except (OSError, ValueError) as exc:
             self.page.status_label.setText(str(exc))
+
+    def launch_options(self, game_id):
+        if self.persistent_run is not None:
+            return self._run_launch_options or {key: value for key, value in self.persistent_run.launch_profile.items()
+                                                if not key.startswith("_")}
+        return self.service.config["launch_profiles"][game_id]
+
+    def set_run_notice(self, message):
+        self._persistent_notice = message
+        self.page.status_label.setText(message)
+
+    def run_action_saved(self, run_id, action, run):
+        if self.persistent_run is None or run_id != self.persistent_run.run_id or action != "update_launch_reference":
+            return
+        self._pending_reference_save = False
+        pending = self._pending_run_launch
+        if pending is not None:
+            if run.launch_profile != pending["snapshot"] or run.rom_fingerprint != pending["result"]["rom_fingerprint"]:
+                return
+            self._pending_run_launch = None
+            self._run_launch_options = pending["result"]["profile"]
+            self.set_persistent_run(run, self.page._autosave)
+            self._run_launch_options = pending["result"]["profile"]
+            self._launch_process(run.game_id, prepare_lua=True)
+        else:
+            self.set_persistent_run(run, self.page._autosave)
+            self.page.launch_button.setEnabled(not self.service.state.running)
+
+    def run_action_failed(self, message):
+        if self._pending_run_launch is not None or self._pending_reference_save:
+            self._pending_run_launch = None
+            self._pending_reference_save = False
+            self._run_launch_options = None
+            self.set_run_notice("Références de partie non enregistrées ; lancement annulé : " + message)
+            self.page.launch_button.setEnabled(not self.service.state.running)
+
+    def set_persistent_run(self, run, autosave=None):
+        changed = self.persistent_run is None or self.persistent_run.run_id != run.run_id
+        environment_changed = self.persistent_run is not None and self.persistent_run.launch_profile != run.launch_profile
+        self.persistent_run = deepcopy(run)
+        if changed:
+            self._run_launch_options = None
+            if self.settings_dialog:
+                self.settings_dialog.close()
+                self.settings_dialog.deleteLater()
+                self.settings_dialog = None
+                self._settings_game = None
+        if environment_changed:
+            self._run_launch_options = None
+            self._settings_game = None
+            self._set_settings_game(run.game_id)
+        self.page.set_persistent_run(run, autosave)
+
+    def _record_backup(self, record):
+        if self.persistent_run is not None:
+            self.run_action_requested.emit(self.persistent_run.run_id, "record_backup", {"payload": asdict(record)})
+
+    def _quick_run_action(self, action):
+        run = self.persistent_run
+        if run is None:
+            return
+        from app.ui.run_dialogs import prompt_run_action
+        if action in {"badge_increment", "badge_decrement"}:
+            if run.badges is None:
+                payload = prompt_run_action(self, self.catalog, run, "set_badges")
+                action = "set_badges"
+            else:
+                payload = {"delta": 1 if action == "badge_increment" else -1}
+                action = "adjust_badges"
+        else:
+            payload = prompt_run_action(self, self.catalog, run, action)
+        if payload is not None:
+            self.run_action_requested.emit(run.run_id, action, payload)
 
     def toggle_fullscreen(self):
         if self.isFullScreen():
@@ -308,16 +437,17 @@ class GameModeWindow(QMainWindow):
         self.settings_tabs = QTabWidget()
         layout.addWidget(self.settings_tabs)
         game_id = self.page.game_combo.currentData()
-        options = self.service.config["launch_profiles"][game_id]
+        options = self.launch_options(game_id)
         adapter = EmulatorSettingsService(options["emulator_path"])
-        self.launch_settings = LaunchProfilePage(self.catalog, self.service.config["launch_profiles"])
+        self.launch_settings = LaunchProfilePage(self.catalog, self._settings_profiles())
         self.launch_settings.set_profiles(self.profiles.list_profiles())
         self.controls_settings = ControlsPage(adapter, self.base_dir / "controls.local.json")
         self.controls_settings.set_app_shortcuts(self.service.config["shortcuts"])
         self.graphics_settings = GraphicsPage(adapter)
         self.save_settings = SaveManagerPage(SaveManagerService(Path(options["backup_directory"])), self.catalog.games.values())
         self.save_settings.set_running_probe(lambda: self.service.windows.running_executable(
-            self.service.config["launch_profiles"][self._settings_game or game_id]["emulator_path"]))
+            self.launch_options(self._settings_game or game_id)["emulator_path"]))
+        self.save_settings.backup_created.connect(self._record_backup)
         self.interface_settings = InterfaceInGamePage(self.service.config["interface"])
         self._tab_ids = {}
         for key, text, page in (("launch", "Lancement", self.launch_settings), ("controls", "Contrôles", self.controls_settings),
@@ -329,19 +459,28 @@ class GameModeWindow(QMainWindow):
         self.save_settings.settings_changed.connect(self._save_launch_settings)
         self.save_settings.game_changed.connect(self._set_settings_game)
         self.controls_settings.settings_changed.connect(lambda _: self._refresh_controls(
-            self.service.config["launch_profiles"][self._settings_game]["emulator_path"]))
+            self.launch_options(self._settings_game)["emulator_path"]))
         self.graphics_settings.settings_changed.connect(lambda _: self._refresh_controls(
-            self.service.config["launch_profiles"][self._settings_game]["emulator_path"]))
+            self.launch_options(self._settings_game)["emulator_path"]))
         self.controls_settings.app_shortcuts_changed.connect(self._save_shortcuts)
         self.interface_settings.settings_changed.connect(self._save_interface)
         self._set_settings_game(game_id)
+        if self.persistent_run is not None:
+            self.launch_settings.game_combo.setEnabled(False)
+            self.save_settings.game_combo.setEnabled(False)
+
+    def _settings_profiles(self):
+        profiles = deepcopy(self.service.config["launch_profiles"])
+        if self.persistent_run is not None:
+            profiles[self.persistent_run.game_id] = self.launch_options(self.persistent_run.game_id)
+        return profiles
 
     def _set_settings_game(self, game_id):
         if not self.settings_dialog or self._settings_game == game_id:
             return
         self._settings_game = game_id
-        options = self.service.config["launch_profiles"][game_id]
-        self.launch_settings.set_context(game_id, self.service.config["launch_profiles"])
+        options = self.launch_options(game_id)
+        self.launch_settings.set_context(game_id, self._settings_profiles())
         self.controls_settings.set_executable(options["emulator_path"])
         self.graphics_settings.set_executable(options["emulator_path"])
         self.save_settings.set_context(game_id, options)
@@ -365,6 +504,25 @@ class GameModeWindow(QMainWindow):
 
     def _save_launch_settings(self, game_id, values):
         try:
+            if self.persistent_run is not None:
+                if self.service.state.running or self.controller.state.status != "stopped":
+                    raise ValueError("Fermez DeSmuME et arrêtez Lua avant de modifier l'environnement de cette partie.")
+                from app.services.game_mode_config import validate_config
+                snapshot = deepcopy(self.persistent_run.launch_profile)
+                source = snapshot.pop("_source", None)
+                old_rom = snapshot.get("rom_path")
+                snapshot.update(values)
+                snapshot["challenge_profile_id"] = None
+                snapshot = validate_config({"launch_profiles": {game_id: snapshot}}, self._legacy_config,
+                                           self.base_dir)["launch_profiles"][game_id]
+                if source and snapshot["rom_path"] == old_rom:
+                    snapshot["_source"] = source
+                self._pending_reference_save = True
+                self.page.launch_button.setEnabled(False)
+                self.run_action_requested.emit(self.persistent_run.run_id, "update_launch_reference", {"profile": snapshot})
+                self._run_launch_options = None
+                self.launch_settings.feedback.setText("Enregistrement des références de cette partie…")
+                return
             self.service.save_launch_profile(game_id, values)
             self._settings_game = None
             self._set_settings_game(game_id)
@@ -396,13 +554,20 @@ class GameModeWindow(QMainWindow):
             self.timer.start()
         super().showEvent(event)
 
-    def closeEvent(self, event):
-        if self.play_runner.is_busy:
-            event.ignore()
-            self.page.status_label.setText("Attendez la fin de la préparation avant de fermer le Mode Jeu.")
-            return
+    def shutdown_tracking(self):
         self.timer.stop()
         self.service.stop_tracking()
+        self.process_context_changed.emit(False, self.service.state.game_id)
+
+    def closeEvent(self, event):
+        if self.play_runner.is_busy or self._pending_run_launch is not None or self._pending_reference_save:
+            event.ignore()
+            self.page.status_label.setText("Attendez la fin de la préparation et de l'enregistrement avant de fermer le Mode Jeu.")
+            return
+        # Closing this view does not end a persistent run while PCE and its
+        # owned emulator remain alive. The main window ends tracking on exit.
+        if self.persistent_run is None:
+            self.shutdown_tracking()
         if self.settings_dialog:
             self.settings_dialog.close()
         super().closeEvent(event)

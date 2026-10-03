@@ -1,6 +1,7 @@
 """Présentation du Mode Jeu : aucune règle ni décision de capture dans l'UI."""
 
 from copy import deepcopy
+from datetime import datetime, timezone
 
 from PySide6.QtCore import QSignalBlocker, Qt, Signal
 from PySide6.QtWidgets import (
@@ -73,12 +74,13 @@ class TeamSlot(QFrame):
         level = pokemon.get("level")
         name = species_name(pokemon.get("species_id"))
         self.name_label.setText(name + (f" · N{level}" if level is not None else " · N?"))
-        hp, maximum = pokemon.get("hp"), pokemon.get("max_hp")
+        hp, maximum = pokemon.get("current_hp", pokemon.get("hp")), pokemon.get("max_hp")
         self.hp_label.setText(f"{hp} / {maximum} PV" if hp is not None and maximum is not None else UNAVAILABLE)
         self.hp_bar.setVisible(hp is not None and maximum is not None and maximum > 0)
         if hp is not None and maximum:
             self.hp_bar.setValue(round(100 * hp / maximum))
-        self.status_label.setText("K.O." if hp == 0 else "Statut : " + UNAVAILABLE)
+        self.status_label.setText("☠ Mort dans cette partie" if pokemon.get("life_status") == "dead" else
+                                 "K.O." if hp == 0 else "Statut : " + UNAVAILABLE)
 
 
 class GameModePage(QWidget):
@@ -92,6 +94,7 @@ class GameModePage(QWidget):
     arrange_requested = Signal()
     reconnect_requested = Signal()
     stop_session_requested = Signal()
+    run_action_requested = Signal(str)
 
     def __init__(self, catalog: Catalog, parent=None):
         super().__init__(parent)
@@ -101,6 +104,8 @@ class GameModePage(QWidget):
         self._bridge = BridgeState()
         self._run = RunState()
         self._interface = None
+        self._persistent_run = None
+        self._autosave = {}
         self._panels_visible = True
         self.setObjectName("page")
         outer = QVBoxLayout(self)
@@ -140,6 +145,19 @@ class GameModePage(QWidget):
         self.launch_profile_button.clicked.connect(lambda: self.settings_requested.emit("launch"))
         selection.addWidget(self.launch_profile_button)
         outer.addLayout(selection)
+        self.run_bar = QWidget()
+        run_row = QHBoxLayout(self.run_bar)
+        run_row.setContentsMargins(0, 0, 0, 0)
+        self.active_run_label = label("", "sectionTitle")
+        run_row.addWidget(self.active_run_label, 1)
+        for text, action in (("+ Capture", "manual_capture"), ("☠ Mort", "manual_death"),
+                             ("+ Badge", "badge_increment"), ("− Badge", "badge_decrement"), ("Note", "add_note")):
+            button = QPushButton(text)
+            button.setToolTip("Saisie manuelle dans la progression PCE")
+            button.clicked.connect(lambda checked=False, value=action: self.run_action_requested.emit(value))
+            run_row.addWidget(button)
+        self.run_bar.hide()
+        outer.addWidget(self.run_bar)
         self.recovery_row = QWidget()
         recovery = QHBoxLayout(self.recovery_row)
         recovery.setContentsMargins(0, 0, 0, 0)
@@ -272,6 +290,9 @@ class GameModePage(QWidget):
         saves = self._block("saves")
         self.save_policy_label = label("Save states : non géré", "muted")
         saves.addWidget(self.save_policy_label)
+        self.autosave_label = label("", "muted")
+        self.autosave_label.hide()
+        saves.addWidget(self.autosave_label)
         self.manual_backup_button = QPushButton("Créer un backup")
         self.manual_backup_button.clicked.connect(self.backup_requested)
         saves.addWidget(self.manual_backup_button)
@@ -349,6 +370,9 @@ class GameModePage(QWidget):
             self.game_changed.emit(game_id)
 
     def set_profile(self, profile: Profile | None):
+        if self._persistent_run is not None:
+            self._render_persistent()
+            return
         self._profile = profile
         self.profile_label.setText(profile.name if profile else "Sans profil")
         challenge = profile.challenge if profile else None
@@ -406,8 +430,12 @@ class GameModePage(QWidget):
         self.debug_label.setText(f"Protocole : {state.protocol_version or UNAVAILABLE}\n"
                                  f"Code : {state.game_code or UNAVAILABLE}\nProfil mémoire : {state.memory_profile or UNAVAILABLE}\n"
                                  f"Séquence : {state.sequence}\nPID : {self._run.pid or UNAVAILABLE}")
+        self._render_persistent()
 
     def set_tracking_state(self, state: TrackingState):
+        if self._persistent_run is not None:
+            self._render_persistent()
+            return
         self.nuzlocke_widget.update_state(state)
         self.zone_label.setText(state.zone_name or state.current_zone_id or UNAVAILABLE)
         self.zone_map_label.setText("Carte : " + (str(state.current_map_id) if state.current_map_id is not None else UNAVAILABLE))
@@ -436,6 +464,83 @@ class GameModePage(QWidget):
         self.time_label.setText(f"Session PCE : {seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02}"
                                if state.game_id else "Session PCE : " + UNAVAILABLE)
         self.time_label.setToolTip("Temps écoulé depuis le lancement suivi par PCE ; distinct du temps de jeu enregistré dans Pokémon.")
+        self._render_persistent()
+
+    def set_persistent_run(self, run, autosave=None):
+        self._persistent_run = deepcopy(run)
+        self._autosave = deepcopy(autosave or {})
+        self.run_bar.setVisible(run is not None)
+        self.autosave_label.setVisible(run is not None)
+        if run is not None:
+            with QSignalBlocker(self.game_combo):
+                self.game_combo.setCurrentIndex(self.game_combo.findData(run.game_id))
+            self._render_persistent()
+
+    def _render_persistent(self):
+        run = self._persistent_run
+        if run is None:
+            return
+        game = self.catalog.games.get(run.game_id)
+        trackable = run.status in {"preparing", "active"}
+        self.active_run_label.setText(("PARTIE ACTIVE · " if trackable else "PARTIE SÉLECTIONNÉE · ") + run.name)
+        if not trackable:
+            self.launch_button.setEnabled(False)
+        self.profile_label.setText(run.name)
+        self.game_label.setText(game.name if game else run.game_id)
+        self.game_combo.setEnabled(False)
+        self.profile_combo.setEnabled(False)
+        self.profile_combo.setToolTip("Règles figées de cette partie. Changez de partie dans Mes parties.")
+        rules = run.rules_snapshot.get("active_rules", [])
+        selection_text = "Classique · aucune règle" if not rules else f"Règles figées de la partie · {len(rules)} actives"
+        if self.profile_combo.count() != 1 or self.profile_combo.itemText(0) != selection_text:
+            with QSignalBlocker(self.profile_combo):
+                self.profile_combo.clear()
+                self.profile_combo.addItem(selection_text, None)
+        self.mode_label.setText("Classique" if not rules else "Règles de la partie")
+        self.rules_label.show()
+        self.rules_label.setText("\n".join(self.catalog.rules[key].name if key in self.catalog.rules else key
+                                         for key in rules) or "Aucune règle active")
+        seconds = int(run.total_play_seconds)
+        self.time_label.setText(f"Temps suivi : {seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02}")
+        self.time_label.setToolTip("Temps confirmé par DeSmuME lancé ici et les messages du jeu associé.")
+        self.stat_labels["badges"].setText(f"{run.badges} / 8 · Manuel" if run.badges is not None else "Non renseigné · Manuel")
+        self.stat_labels["seed"].setText(str(run.seed) if run.seed is not None else "Non renseigné")
+        deaths = [death for death in run.deaths or [] if not death.get("corrected", False)]
+        self.stat_labels["deaths"].setText(str(len(deaths)) if run.deaths is not None else "Non renseigné")
+        pending = [item for item in run.pending_deaths if not item.get("resolved", False)]
+        self.stat_labels["deaths"].setToolTip("")
+        if pending:
+            self.stat_labels["deaths"].setText(self.stat_labels["deaths"].text() + f" · {len(pending)} à confirmer")
+            self.stat_labels["deaths"].setToolTip("Une observation à 0 PV demande confirmation dans Mes parties > Détails > Équipe.")
+        self.capture_count_label.setText("Captures · Manuel : " + (str(len(run.captures)) if run.captures is not None else "Non renseigné"))
+        self.monotype_label.hide()
+        self.randomizer_label.hide()
+        self.stat_labels["level_cap"].setText("Non renseigné")
+        zone = run.current_zone
+        self.zone_label.setText((zone.get("name") or zone.get("id") or "Non renseigné") if isinstance(zone, dict)
+                                else zone or "Non renseigné")
+        self.zone_map_label.setText("Dernière zone enregistrée dans cette partie")
+        party = run.current_party
+        matching = self._bridge.connected and self._bridge.game_id == run.game_id
+        self.team_note.show()
+        self.team_note.setText("Dernière équipe observée · " + ("Lua connecté" if matching else "hors ligne"))
+        for index, slot in enumerate(self.team_slots):
+            slot.set_pokemon(party[index] if index < len(party) else None, known_empty=bool(party))
+        self.nuzlocke_widget.hide()
+        self.history_label.setText("\n".join(event["type"].replace("_", " ") for event in run.history[-5:]) or "Aucun événement")
+        saved = self._autosave.get("last_saved_at")
+        message = "Autosave PCE : en attente"
+        if saved:
+            try:
+                age = max(0, int((datetime.now(timezone.utc) - datetime.fromisoformat(saved)).total_seconds()))
+                message = f"Autosave PCE : ✓ il y a {age} s"
+            except (ValueError, TypeError):
+                message = "Autosave PCE : enregistré"
+        if self._autosave.get("dirty"):
+            message += " · modifications en attente"
+        if self._autosave.get("error"):
+            message = "Autosave PCE : erreur · " + self._autosave["error"]
+        self.autosave_label.setText(message + "\nSauvegarde Pokémon : gérée dans DeSmuME")
 
     def _refresh_recovery(self):
         active = self._bridge.status != "stopped"
@@ -474,6 +579,7 @@ class GameModePage(QWidget):
         self.rules_label.setVisible(density != "compact")
         self.team_note.setVisible(density != "compact")
         self.toggle_panels(self._panels_visible)
+        self._render_persistent()
 
     def toggle_panels(self, visible: bool | None = None):
         self._panels_visible = not self._panels_visible if visible is None else visible

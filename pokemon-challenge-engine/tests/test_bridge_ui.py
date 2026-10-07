@@ -5,7 +5,7 @@ import json
 import os
 from pathlib import Path
 from threading import Event
-from time import monotonic, time
+from time import monotonic, sleep, time
 from types import SimpleNamespace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -56,6 +56,9 @@ def until(application, predicate, timeout=3.0):
     while not predicate() and monotonic() < deadline:
         application.processEvents()
         QTest.qWait(10)
+        # qWait pumps Qt but can retain the GIL while worker filesystem calls
+        # need to reacquire it. Yield as the native QApplication loop does.
+        sleep(0.001)
     assert predicate(), "L'état Qt attendu n'a pas été reçu dans le délai de test."
 
 

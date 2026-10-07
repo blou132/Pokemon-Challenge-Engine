@@ -84,6 +84,7 @@ def test_health_refuses_broken_installation(environment, change):
     elif change == "missing_save": env.save.unlink()
     health = env.service.health_check("white")
     assert not health["ready"] and health["issues"]
+    assert health["launch_ready"] == (change in {"missing_dll", "wrong_dll"})
     assert health["changed"] or change == "missing_save"
 
 
@@ -201,4 +202,5 @@ def test_missing_lua_can_prepare_but_never_report_ready(environment):
     result = env.service.prepare(env.selection)
     assert result["health"]["lua_status"]["status"] == "missing"
     assert not result["health"]["ready"]
+    assert result["health"]["launch_ready"]  # game can open while Lua repair remains explicit
     assert env.service.is_configured("white")

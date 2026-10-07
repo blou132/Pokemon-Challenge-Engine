@@ -10,7 +10,7 @@ from app.ui.widgets.common import card, label, page_layout
 
 class HomePage(QWidget):
     create_requested = Signal(str)
-    profiles_requested = Signal()
+    runs_requested = Signal()
 
     def __init__(self, catalog: Catalog, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -21,14 +21,14 @@ class HomePage(QWidget):
         box.addWidget(label(f"POKEMON CHALLENGE ENGINE   /   V{__version__}", "eyebrow"))
         box.addSpacing(8)
         box.addWidget(label("Votre prochaine aventure,\nvos propres règles.", "heroTitle"))
-        box.addWidget(label("De la première idée au profil prêt à lancer : composez un Nuzlocke,\ntentez un Monotype ou laissez le hasard décider.", "subtitle"))
+        box.addWidget(label("Créez une partie classique, utilisez un modèle de challenge\nou composez vos propres règles.", "subtitle"))
         box.addSpacing(12)
         actions = QHBoxLayout()
-        create = QPushButton("Créer un challenge  →")
+        create = QPushButton("Nouvelle partie  →")
         create.setObjectName("primary")
         create.clicked.connect(lambda: self.create_requested.emit("black"))
-        saved = QPushButton("Mes profils")
-        saved.clicked.connect(self.profiles_requested)
+        saved = QPushButton("Mes parties")
+        saved.clicked.connect(self.runs_requested)
         actions.addWidget(create)
         actions.addWidget(saved)
         actions.addStretch()
@@ -48,15 +48,15 @@ class HomePage(QWidget):
             games_row.addWidget(frame, index // 2, index % 2)
         layout.addLayout(games_row)
         stats = QHBoxLayout()
-        for value, title, description in [(str(len(catalog.rules)), "Règles configurables", "Obligatoires, possibles ou interdites."), (str(len(catalog.types)), "Types pour votre Monotype", "Une roue animée, un tirage reproductible."), ("100 %", "Préparation locale", "Vos profils restent sur cet ordinateur.")]:
+        for value, title, description in [(str(len(catalog.rules)), "Règles configurables", "Obligatoires, possibles ou interdites."), (str(len(catalog.types)), "Types pour votre Monotype", "Une roue animée, un tirage reproductible."), ("100 %", "Préparation locale", "Vos parties restent sur cet ordinateur.")]:
             frame, stat_box = card()
             stat_box.addWidget(label(value, "title"))
             stat_box.addWidget(label(title, "sectionTitle"))
             stat_box.addWidget(label(description, "muted"))
             stats.addWidget(frame, 1)
         layout.addLayout(stats)
-        self.profile_count = label("", "subtitle")
-        layout.addWidget(self.profile_count)
+        self.model_count = label("", "subtitle")
+        layout.addWidget(self.model_count)
         layout.addWidget(label(f"V{__version__} · Les règles restent à respecter manuellement dans le jeu. La page Connexion DeSmuME affiche les données transmises par Lua.", "badge"))
         layout.addStretch()
 

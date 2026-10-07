@@ -159,7 +159,7 @@ class NewRunDialog(QDialog):
         self.resize(700, 610)
         layout = QVBoxLayout(self)
         layout.addWidget(label("Commencer une partie", "title"))
-        layout.addWidget(label("Chaque partie conserve ses propres règles et sa progression PCE. Un profil reste une configuration réutilisable.", "muted"))
+        layout.addWidget(label("Chaque partie conserve ses propres règles et sa progression PCE. Un modèle de challenge est une configuration réutilisable.", "muted"))
         form = QFormLayout()
         self.game_combo = QComboBox()
         for game in catalog.games.values():
@@ -167,8 +167,8 @@ class NewRunDialog(QDialog):
                 self.game_combo.addItem(game.name, game.id)
         self.profile_combo = QComboBox()
         self.source_combo = QComboBox()
-        for text, key in (("Partie classique", "classic"), ("Utiliser un profil existant", "profile"),
-                          ("Configurer un challenge", "custom")):
+        for text, key in (("Partie classique", "classic"), ("Depuis un modèle existant", "profile"),
+                          ("Challenge personnalisé", "custom")):
             self.source_combo.addItem(text, key)
         self.configure_button = QPushButton("Configurer les règles…")
         self.configure_button.clicked.connect(self._configure_custom)
@@ -185,7 +185,7 @@ class NewRunDialog(QDialog):
         self.configured_save_button.clicked.connect(self._use_configured_save)
         form.addRow("Jeu", self.game_combo)
         form.addRow("Configuration", self.source_combo)
-        form.addRow("Profil", self.profile_combo)
+        form.addRow("Modèle", self.profile_combo)
         form.addRow("", self.configure_button)
         form.addRow("Nom de la partie", self.name_edit)
         form.addRow("Sauvegarde Pokémon", save_row)
@@ -224,7 +224,7 @@ class NewRunDialog(QDialog):
         self._loading = True
         self.custom_challenge = None
         self.profile_combo.clear()
-        self.profile_combo.addItem("Choisissez un profil compatible", None)
+        self.profile_combo.addItem("Choisissez un modèle compatible", None)
         for profile in self.profiles:
             if profile.challenge.game_id == game_id:
                 self.profile_combo.addItem(profile.name, profile.id)
@@ -264,13 +264,13 @@ class NewRunDialog(QDialog):
                 self.rules_label.setToolTip(challenge_summary(challenge, self.catalog))
                 self.configure_button.setText("Modifier les règles…")
             else:
-                self.rules_label.setText("Configurez les règles, le preset et la seed. La partie sera indépendante des profils.")
+                self.rules_label.setText("Configurez les règles, le preset et la seed pour cette partie, sans enregistrer de modèle.")
                 self.rules_label.setToolTip("")
                 self.configure_button.setText("Configurer les règles…")
         elif source == "profile":
-            self.rules_label.setText(f"Profil : {selected.name}\nRègles : " + (" · ".join(names) or "aucune règle") +
+            self.rules_label.setText(f"Modèle : {selected.name}\nRègles : " + (" · ".join(names) or "aucune règle") +
                                     "\nCes règles seront figées dans la partie." if selected else
-                                    "Sélectionnez un profil pour copier ses règles dans cette partie.")
+                                    "Sélectionnez un modèle pour copier ses règles dans cette partie. Les modèles se gèrent depuis Mes parties.")
             self.rules_label.setToolTip(challenge_summary(selected.challenge, self.catalog) if selected else "")
         else:
             self.rules_label.setText("Classique : 0 règle active. Temps, équipe, zone et événements restent disponibles.")
@@ -326,7 +326,7 @@ class NewRunDialog(QDialog):
             return
         values = self.selection()
         if values["source"] == "profile" and not values["profile_id"]:
-            self.error_label.setText("Sélectionnez un profil existant ou choisissez une autre configuration.")
+            self.error_label.setText("Sélectionnez un modèle existant ou choisissez une autre configuration.")
             self.error_label.show()
             return
         if values["source"] == "custom" and values["challenge"] is None:
@@ -649,8 +649,8 @@ class RunDetailsDialog(QDialog):
         self.team_note.setText(f"{len(run.known_pokemon)} individu(s) connu(s) de cette partie ; le cimetière reste conservé hors de l'équipe."
                                if run.known_pokemon else "Équipe et identités : en attente d'observation du jeu.")
         self.rules_view.setPlainText("Règles figées à la création de cette partie\n\n" + ("\n".join("• " + text for text in rules) or "Classique · 0 règle active")
-                                    + f"\n\nProfil source : {run.profile_id or 'Aucun'}\nPreset d'origine : {run.preset or 'Non renseigné'}\nSeed : {run.seed}"
-                                    + "\n\nModifier le profil source ne modifie pas ces règles. Aucune règle ne modifie la RAM ou la sauvegarde Pokémon.")
+                                    + f"\n\nModèle source : {run.profile_id or 'Aucun'}\nPreset d'origine : {run.preset or 'Non renseigné'}\nSeed : {run.seed}"
+                                    + "\n\nModifier le modèle source ne modifie pas ces règles. Aucune règle ne modifie la RAM ou la sauvegarde Pokémon.")
         self.technical_view.setPlainText(json.dumps(run.rules_snapshot, ensure_ascii=False, indent=2))
         events = list(run.history)  # The store preserves a validated chronological sequence.
         self.history_table.setRowCount(len(events))

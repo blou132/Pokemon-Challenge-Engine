@@ -2,11 +2,14 @@
 
 import os
 from dataclasses import replace
+from pathlib import Path
+import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFontDatabase
 from PySide6.QtTest import QSignalSpy
 from PySide6.QtWidgets import QApplication
 
@@ -26,8 +29,19 @@ from app.ui.theme import STYLESHEET
 @pytest.fixture(scope="module")
 def qt_app():
     app = QApplication.instance() or QApplication([])
+    added_fonts = []
+    # Offscreen Qt on Windows can expose no fonts at all. Layout measurements
+    # must use the application's real font, as in the layout regression suite.
+    if sys.platform == "win32" and not QFontDatabase.families():
+        fonts = Path(os.environ["WINDIR"]) / "Fonts"
+        for filename in ("segoeui.ttf", "segoeuib.ttf", "seguisb.ttf"):
+            font_id = QFontDatabase.addApplicationFont(str(fonts / filename))
+            assert font_id >= 0
+            added_fonts.append(font_id)
     yield app
     app.processEvents()
+    for font_id in added_fonts:
+        QFontDatabase.removeApplicationFont(font_id)
 
 
 def profile(catalog, *, game="white", rules=(), name="Run de test"):
@@ -203,14 +217,15 @@ def test_interface_page_has_thirteen_independent_blocks(qt_app, tmp_path):
     widget.deleteLater()
 
 
-def test_main_window_keeps_six_pages_and_game_mode_is_separate(qt_app, catalog, tmp_path):
+def test_main_window_keeps_pages_and_game_mode_is_separate(qt_app, catalog, tmp_path):
     window = MainWindow(catalog, tmp_path)
     try:
-        assert window.pages.count() == len(window.nav_buttons) == 6
+        assert window.pages.count() == 7
+        assert len(window.nav_group.buttons()) == 5
         window.game_mode_button.click()
         mode = window.game_mode_window
         assert mode is not None and mode.isWindow()
-        assert window.pages.count() == 6
+        assert window.pages.count() == 7
         assert mode.page.profile_combo.currentData() is None
         assert not (tmp_path / "game-mode.local.json").exists()
         mode.open_settings("interface")

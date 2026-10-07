@@ -5,8 +5,12 @@ Le code de l'application, les tests et la documentation sont dans
 
 La V0.4.1 rend la nouvelle partie immédiatement visible dans **Mes parties**,
 avec confirmation, carte sélectionnée et filtres incompatibles réinitialisés.
-La création propose **Classique**, **Profil existant** ou **Configurer un challenge**
-directement, sans profil intermédiaire. Le Mode Jeu attend l'activation confirmée
+**Mes parties** est la page d'ouverture et l'entrée principale. **Nouvelle partie**
+propose **Partie classique**, **Depuis un modèle existant** ou **Challenge personnalisé**.
+Les configurations réutilisables restent accessibles depuis **Mes parties →
+Modèles de challenge** ; leur gestion est secondaire et leur stockage en profils
+est conservé. Le challenge personnalisé se prépare directement, sans profil
+intermédiaire. Le Mode Jeu attend l'activation confirmée
 de l'identifiant demandé ; il ne reprend pas silencieusement l'ancienne partie.
 
 **Jouer** prépare maintenant la session Bridge et son loader **avant** de lancer
@@ -43,7 +47,8 @@ Un profil décrit un challenge ; chaque partie V0.4 en conserve sa propre copie.
 [Préparation automatique](pokemon-challenge-engine/docs/auto-setup.md) ·
 [Installation Lua vérifiée](pokemon-challenge-engine/docs/lua-runtime.md).
 
-La V0.4.1 compte **1 630 tests réussis, aucun ignoré**, dont les 1 511 cas historiques,
+La V0.4.1 compte **1 644 tests réussis, aucun ignoré**, dont 14 cas ajoutés pour
+le parcours unifié Mes parties / Modèles de challenge et les 1 511 cas historiques,
 avec compilation, démarrage Windows et rendus Qt vérifiés. L'essai réel sur copies
 de Blanc confirme le lancement Lua automatique avec Jouer, la séparation A/B,
 l'équipe, le temps, l'autosave et la restauration INI. K.O./soin, évolution et zone nommée dans ce nouveau

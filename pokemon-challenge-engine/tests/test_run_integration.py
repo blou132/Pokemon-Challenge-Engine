@@ -146,7 +146,7 @@ def test_new_run_mode_displays_unknown_counts(qt_app, tmp_path, catalog):
     page.close()
 
 
-def test_main_window_library_lazy_and_resume_keeps_same_run(qt_app, tmp_path, catalog, monkeypatch):
+def test_main_window_starts_with_library_and_resume_keeps_same_run(qt_app, tmp_path, catalog, monkeypatch):
     window = MainWindow(catalog, tmp_path)
     run = create(window.runs, tmp_path, catalog)
     def prepare(service, selected):
@@ -154,7 +154,8 @@ def test_main_window_library_lazy_and_resume_keeps_same_run(qt_app, tmp_path, ca
                 "health": {"ready": False, "issues": ["Installation synthétique absente"]}}
     monkeypatch.setattr(RunLaunchService, "prepare", prepare)
     try:
-        assert window.pages.count() == 6
+        assert window.pages.count() == 7
+        assert window.pages.currentWidget() is window.runs_page
         window.navigate(6)
         assert window.pages.count() == 7
         window.resume_run(run.run_id)

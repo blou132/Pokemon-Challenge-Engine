@@ -52,7 +52,7 @@ class RunCard(QWidget):
         self.resume_button.setToolTip("Reprend cette partie et vérifie son environnement de jeu." if self.resume_button.isEnabled()
                                       else "Modifiez d'abord le statut dans Détails pour reprendre cette partie.")
         self.resume_button.clicked.connect(lambda: self.resume_requested.emit(self.run_id))
-        details = QPushButton("Détails")
+        details = QPushButton("Détails et règles")
         details.clicked.connect(lambda: self.details_requested.emit(self.run_id))
         actions.addWidget(self.resume_button)
         actions.addWidget(details)
@@ -62,6 +62,7 @@ class RunCard(QWidget):
 
 class RunsPage(QWidget):
     new_requested = Signal()
+    models_requested = Signal()
     resume_requested = Signal(str)
     saves_requested = Signal(str)
     action_requested = Signal(str, str, object)
@@ -86,6 +87,10 @@ class RunsPage(QWidget):
         self.new_button.setObjectName("primary")
         self.new_button.clicked.connect(self.new_requested)
         row.addWidget(self.new_button)
+        self.models_button = QPushButton("Modèles de challenge")
+        self.models_button.setToolTip("Gérer les configurations réutilisables pour vos prochaines parties.")
+        self.models_button.clicked.connect(self.models_requested)
+        row.addWidget(self.models_button)
         refresh = QPushButton("Actualiser")
         refresh.clicked.connect(self.refresh)
         row.addWidget(refresh)
@@ -234,7 +239,7 @@ class RunsPage(QWidget):
         visible_suffix = "s" if len(runs) != 1 else ""
         total_suffix = "s" if len(self.runs) != 1 else ""
         self.summary.setText(f"{len(runs)} partie{visible_suffix} affichée{visible_suffix} · {len(self.runs)} enregistrée{total_suffix}")
-        self.empty_label.setText("Aucune partie pour le moment. Créez une partie Classique ou commencez depuis un profil."
+        self.empty_label.setText("Aucune partie pour le moment. Créez une partie classique, depuis un modèle ou avec un challenge personnalisé."
                                  if not self.runs else "Aucune partie ne correspond à ces filtres.")
         self.empty_label.setVisible(not runs)
         for run in runs:

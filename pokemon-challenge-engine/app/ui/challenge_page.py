@@ -54,6 +54,7 @@ def challenge_summary(challenge: Challenge, catalog: Catalog) -> str:
 
 
 class ChallengePage(QWidget):
+    back_requested = Signal()
     saved = Signal(object)
     launch_requested = Signal(object)
 
@@ -72,9 +73,13 @@ class ChallengePage(QWidget):
         self.parameter_controls: dict[str, dict[str, QSpinBox]] = {}
         self._generated_parameter_rules = set()
         self._generated_parameter_signature = None
-        layout = page_layout(self, "Configurer le challenge" if configuration_only else "Nouveau challenge",
+        layout = page_layout(self, "Configurer le challenge" if configuration_only else "Configurer un modèle",
                              "Ces règles seront copiées directement dans votre partie." if configuration_only else
-                             "Choisissez votre jeu. Composez les contraintes. Lancez votre aventure.")
+                             "Composez des règles réutilisables. Chaque sauvegarde crée un nouveau modèle pour vos aventures dans Mes parties.")
+        self.back_button = QPushButton("← Modèles de challenge")
+        self.back_button.clicked.connect(self.back_requested.emit)
+        layout.addWidget(self.back_button)
+        self.back_button.setVisible(not configuration_only)
         layout.addWidget(self._build_options())
         layout.addWidget(self._build_rules())
         layout.addWidget(self._build_extras())
@@ -93,7 +98,7 @@ class ChallengePage(QWidget):
 
     def _build_options(self) -> QWidget:
         """Construire les choix de jeu, de mode et de reproductibilité."""
-        options, box = card("01  /  Préparer la partie")
+        options, box = card("01  /  Préparer la partie" if self.configuration_only else "01  /  Préparer le modèle")
         grid = QGridLayout()
         self.game_combo = QComboBox()
         for game in self.catalog.games.values():
@@ -228,22 +233,32 @@ class ChallengePage(QWidget):
         result_box.addWidget(self.preview)
         action_row = QHBoxLayout()
         self.name_edit = QLineEdit()
-        self.name_edit.setPlaceholderText("Nom du profil, par exemple Classic Nuzlocke")
+        self.name_edit.setPlaceholderText("Nom du modèle, par exemple Classic Nuzlocke")
         self.name_edit.setMaxLength(100)
-        self.save_button = QPushButton("Sauvegarder le profil")
+        self.save_button = QPushButton("Sauvegarder le modèle")
         self.save_button.clicked.connect(self.save_profile)
-        self.launch_button = QPushButton("Lancer dans DeSmuME")
+        self.launch_button = QPushButton("Lancer directement dans DeSmuME")
         self.launch_button.clicked.connect(self.request_launch)
         action_row.addWidget(self.name_edit, 1)
         action_row.addWidget(self.save_button)
-        action_row.addWidget(self.launch_button)
         result_box.addLayout(action_row)
+        self.legacy_toggle = QPushButton("▸ Lancement direct historique")
+        self.legacy_toggle.setCheckable(True)
+        result_box.addWidget(self.legacy_toggle)
+        legacy, legacy_box = card()
+        legacy_box.addWidget(label("Ce lancement ne crée pas de partie. Pour une aventure avec sa propre progression, utilisez Mes parties.", "muted"))
+        legacy_box.addWidget(self.launch_button)
+        result_box.addWidget(legacy)
+        legacy.hide()
+        self.legacy_toggle.toggled.connect(legacy.setVisible)
+        self.legacy_toggle.toggled.connect(lambda expanded: self.legacy_toggle.setText(
+            ("▾" if expanded else "▸") + " Lancement direct historique"))
         if self.configuration_only:
-            for widget in (self.name_edit, self.save_button, self.launch_button):
+            for widget in (self.name_edit, self.save_button, self.launch_button, self.legacy_toggle):
                 widget.hide()
-        result_box.addWidget(label("Les règles sont copiées dans la partie, sans créer de profil. Aucune règle n'est imposée directement dans Pokémon."
+        result_box.addWidget(label("Les règles sont copiées dans la partie, sans créer de modèle. Aucune règle n'est imposée directement dans Pokémon."
                                   if self.configuration_only else
-                                  "Configuration réutilisable et suivi local. Aucune règle n'est imposée directement dans Pokémon.", "muted"))
+                                  "Un modèle conserve des règles réutilisables ; chaque partie aura sa propre progression. Aucune règle n'est imposée directement dans Pokémon.", "muted"))
         return result
 
     def states(self) -> dict[str, str]:
@@ -421,7 +436,7 @@ class ChallengePage(QWidget):
         self.launch_button.setEnabled(True)
         self.show_feedback("Configuration prête. Utilisez cette configuration pour revenir à la création de votre partie."
                            if self.configuration_only else
-                           "Aperçu non enregistré. Sauvegardez pour créer un profil avec ces règles ; les profils existants restent inchangés.", success=True)
+                           "Aperçu non enregistré. Sauvegardez pour créer un modèle avec ces règles ; les modèles existants restent inchangés.", success=True)
 
     def _current_preset_id(self) -> str:
         """A modified starting preset becomes custom; no preset is reapplied on restore."""
@@ -442,7 +457,7 @@ class ChallengePage(QWidget):
             return
         name = self.name_edit.text().strip()
         if not name:
-            self.show_feedback("Donnez un nom au profil avant de le sauvegarder.")
+            self.show_feedback("Donnez un nom au modèle avant de le sauvegarder.")
             self.name_edit.setFocus()
             return
         try:
@@ -452,14 +467,14 @@ class ChallengePage(QWidget):
             profile = self.profiles.create(name, Challenge.from_dict(expected))
             verified = self.profiles.load(profile.id)
             if verified.challenge.to_dict() != expected:
-                raise ValueError("La relecture du profil ne correspond pas à l'aperçu. Vérifiez le profil créé avant de continuer.")
+                raise ValueError("La relecture du modèle ne correspond pas à l'aperçu. Vérifiez le modèle créé avant de continuer.")
         except (ValueError, OSError) as exc:
             LOGGER.warning("Impossible de sauvegarder un profil : %s", type(exc).__name__)
             self.show_feedback(str(exc))
             return
-        self.show_feedback(f"Profil « {verified.name} » sauvegardé et relu : "
+        self.show_feedback(f"Modèle « {verified.name} » sauvegardé et relu : "
                            f"{MODE_LABELS.get(verified.challenge.mode, verified.challenge.mode)}, "
-                           f"{len(verified.challenge.active_rules)} règle(s). Chaque sauvegarde crée un profil distinct.", success=True)
+                           f"{len(verified.challenge.active_rules)} règle(s). Chaque sauvegarde crée un modèle distinct.", success=True)
         LOGGER.info("Profil vérifié après sauvegarde : id=%s, jeu=%s, mode=%s, règles=%d",
                     verified.id, verified.challenge.game_id, verified.challenge.mode, len(verified.challenge.active_rules))
         self.saved.emit(verified)

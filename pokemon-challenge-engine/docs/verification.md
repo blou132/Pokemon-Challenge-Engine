@@ -1,5 +1,58 @@
 # Vérification V0.4.1 et historique V0.4 / V0.3.6 / V0.3.5 / V0.3 / V0.2 / V0.1
 
+## Simplification Mes parties / Modèles de challenge — 7 octobre 2026
+
+Base : `c7f8ecba578e1da5b3298de63ce3e06efbb94dc3`, branche
+`feat/v0.4.1-run-flow-autolua`. Le changement porte sur la navigation et les
+libellés. Les formats Profile/Run, règles figées, données personnelles et versions
+restent inchangés ; aucune migration n'est exécutée.
+
+### Tests synthétiques et interface
+
+- Référence avant modification : **108 tests réussis** dans `test_ui_flow`,
+  `test_runs_ui`, `test_run_creation` et `test_run_integration`.
+- **14 nouveaux cas** : huit dans `test_runs_navigation.py`, six dans
+  `test_model_manager_ui.py`. Ils couvrent l'entrée principale, les trois sources
+  de création, les retours, les brouillons, l'annulation, la préselection du modèle,
+  les règles consultables et figées, ainsi que l'accès à l'ancien suivi sans
+  transférer sa progression dans une nouvelle partie.
+- Passe ciblée finale : **139 tests réussis** dans ces deux nouveaux modules et
+  `test_ui_flow`, `test_run_creation`, `test_run_integration`, `test_first_run_ui`,
+  `test_game_mode_ui`, `test_bridge_ui`.
+- Suite complète : **1 644 tests réussis, aucun échec, aucun ignoré** en 538,30 s.
+  Commande : `python -m pytest -q --junitxml=runtime/ux-runs/tests-full.xml`
+  avec l'environnement virtuel du dépôt et `QT_QPA_PLATFORM=offscreen`.
+- **20 rendus Qt sur données synthétiques** : bibliothèque vide/remplie, modèles,
+  ancien suivi, éditeur et trois sources de création, aux fenêtres de 1366×768 et
+  1060×640 (dialogues de création : 700×610). Contrôle des textes et boutons avec
+  les polices Segoe UI de Windows ; les actions sous le résumé des modèles sont
+  accessibles par défilement. Artefacts locaux ignorés : `runtime/ux-runs/`.
+- `compileall -q app tools` : réussi. Démarrage natif Windows via `app.main`
+  sur données isolées : Mes parties visible, sélection correcte, fermeture propre,
+  code 0. Ce contrôle remplace uniquement le déclenchement de l'assistant de
+  première installation, couvert séparément par les tests.
+- Aucun packaging exécutable effectué ; aucun outil de build supplémentaire
+  n'est configuré dans ce projet Python.
+
+La première passe ciblée a donné **132 réussites et sept échecs** : quatre
+utilisaient par erreur une méthode de sérialisation absente de Profile dans les
+nouveaux tests, un test mesurait l'Accueil sans le sélectionner après le changement
+de page initiale, et deux mesures du Mode Jeu utilisaient Qt sans aucune police.
+Ces causes ont été corrigées dans les tests. Sur le même composant Mode Jeu
+inchangé, la largeur mesurée passe de 1393 à 1366 après chargement de la police
+réelle. Le fixture concerné suit désormais la méthode de la suite de régression
+visuelle existante ; les dimensions attendues et assertions sont conservées.
+Un premier contrôle de démarrage s'est terminé par une erreur de nettoyage du
+harnais : son journal temporaire était encore ouvert. Le harnais ferme maintenant
+ses handlers avant nettoyage ; le second passage est réussi.
+
+### Limites
+
+Aucun lancement de ROM, entrée de jeu, accès à une sauvegarde Pokémon utilisateur
+ou nouvelle validation réelle DeSmuME pour ce changement UX. Les validations
+réelles V0.4.1 consignées ci-dessous restent des vérifications antérieures et ne
+sont pas remplacées par les tests synthétiques de navigation.
+
 ## V0.4.1 — création, activation exacte et autoload Lua, 7 octobre 2026
 
 Base exacte : `237614fe4269f1420e46c86c3de26758500b09f9`, dépôt propre sur

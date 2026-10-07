@@ -1,18 +1,24 @@
 # Mes parties — V0.4.1
 
-Une **partie (run)** représente une aventure persistante. Un **profil** reste une
-configuration de challenge réutilisable. Plusieurs parties du même jeu peuvent
-coexister ; une seule reçoit le suivi actif à la fois.
+Une **partie (run)** représente une aventure persistante. Un **profil**, présenté
+comme un **modèle de challenge** dans l'interface, reste une configuration
+réutilisable. Plusieurs parties du même jeu peuvent coexister ; une seule reçoit
+le suivi actif à la fois.
+
+**Mes parties** est la page d'ouverture et l'entrée principale pour créer,
+reprendre et gérer ses aventures. La gestion des modèles est un accès secondaire
+depuis cette bibliothèque. Cette organisation ne modifie ni le stockage des
+profils et des parties, ni les données existantes.
 
 ## Créer une partie
 
 Dans **Mes parties → Nouvelle partie**, choisissez le jeu et une source :
 
 - **Partie classique** : zéro règle, aucun paramètre de challenge à remplir.
-- **Utiliser un profil existant** : son nom et ses règles sont affichés avant
+- **Depuis un modèle existant** : son nom et ses règles sont affichés avant
   d'être copiés dans la partie.
-- **Configurer un challenge** : **Configurer les règles** ouvre le même éditeur
-  et le même moteur que la page Nouveau challenge. Preset, règles obligatoires,
+- **Challenge personnalisé** : **Configurer les règles** ouvre le même éditeur
+  et le même moteur que la création de modèles. Preset, règles obligatoires,
   possibles ou interdites, nombre de règles en mode aléatoire, seed et paramètres
   existants sont disponibles. Monotype, Level Cap et Catch Limit ne montrent
   leurs paramètres que lorsqu'ils sont actifs. Leur présence dans l'éditeur
@@ -43,11 +49,18 @@ La carte est mise en évidence. Si les filtres précédents la masquaient, ils
 sont réinitialisés avec une indication ; les filtres compatibles sont gardés.
 Il n'est pas nécessaire de cliquer sur Actualiser.
 
-Depuis **Profils → Commencer une partie**, le profil sélectionné est proposé.
+Depuis **Mes parties → Modèles de challenge → Créer une partie**, le modèle
+sélectionné est proposé.
 Les règles, leurs paramètres et la seed sont copiés dans `rules_snapshot`.
 Modifier ensuite le profil ne modifie pas la partie créée. La progression
 historique V0.3 du profil est conservée dans son stockage et n'est pas fusionnée
 automatiquement avec une nouvelle partie.
+
+**Modèles de challenge → Configurer un modèle** permet de préparer une configuration
+réutilisable. Reprendre ses réglages permet d'en enregistrer une copie ; cette
+action ne modifie aucune aventure. **← Mes parties** ramène à la
+bibliothèque. Le volet replié **Ancien suivi par profil** conserve le suivi
+manuel historique et le lancement direct dans DeSmuME pour les profils existants.
 
 Une partie **Classique** possède zéro règle active. Elle conserve néanmoins
 ses sessions, son temps suivi, son équipe observée, sa zone, ses notes et ses

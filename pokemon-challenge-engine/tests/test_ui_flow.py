@@ -209,9 +209,10 @@ def test_save_reload_and_copy_through_connected_pages(window):
     page.save_button.click()
     assert "sauvegardé" in page.feedback.text()
     assert window.profile_page.list_widget.count() == 1
-    assert "1 profil(s)" in window.home_page.profile_count.text()
+    assert "1 modèle(s)" in window.home_page.model_count.text()
 
-    window.nav_buttons[3].click()
+    window.runs_button.click()
+    window.runs_page.models_button.click()
     profiles_page = window.profile_page
     selected = profiles_page.selected_profile
     assert selected is not None

@@ -1,7 +1,8 @@
 # Pokemon Challenge Engine — V0.4.1
 
 Application Windows en français pour préparer des challenges **Pokémon Noir**,
-**Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, enregistrer des profils,
+**Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, gérer ses parties et
+enregistrer des modèles de challenge réutilisables,
 lancer DeSmuME standalone et consulter
 les données transmises par une passerelle Lua locale en lecture seule.
 
@@ -15,12 +16,16 @@ pour les versions suivantes. La règle Randomizer est uniquement prévue et conf
 
 ## Mes parties — V0.4.1
 
-**Mes parties → Nouvelle partie** propose une partie classique sans règle, un
-profil existant ou **Configurer un challenge** directement. Ce dernier choix
+L'application s'ouvre sur **Mes parties**, qui rassemble création, reprise,
+règles et gestion des aventures. **Mes parties → Nouvelle partie** propose
+**Partie classique**, **Depuis un modèle existant** ou **Challenge personnalisé**.
+Ce dernier choix
 réutilise l'éditeur de règles et son moteur : preset, obligations/possibilités/
 interdictions, nombre de règles, seed et paramètres des règles actives. Le résultat
 est figé dans la partie, sans écrire de profil intermédiaire.
-**Profils → Commencer une partie** copie la configuration sélectionnée.
+La gestion des configurations réutilisables se trouve dans **Mes parties →
+Modèles de challenge**. Un modèle correspond au profil technique existant ;
+**Créer une partie** copie sa configuration dans une nouvelle aventure.
 Chaque partie reçoit un UUID, ses règles figées, ses sessions, son équipe observée,
 ses Pokémon connus, sa progression et son historique. Modifier un profil ensuite
 ne change aucune partie existante. Plusieurs parties du même jeu sont possibles.
@@ -61,8 +66,9 @@ scripts Lua **0.4.0** ; les anciens messages restent acceptés.
 
 Branche : `feat/v0.4.1-run-flow-autolua`, depuis la V0.4
 `237614fe4269f1420e46c86c3de26758500b09f9`, sans fusion dans `main`.
-La suite V0.4.1 compte **1 630 tests réussis, aucun ignoré** : les 1 511 cas historiques
-et 119 nouveaux. L'essai réel sur copies de Blanc confirme Jouer avec autoload,
+La suite V0.4.1 compte **1 644 tests réussis, aucun ignoré** : les 1 511 cas historiques
+et 133 nouveaux, dont 14 pour le parcours Mes parties / Modèles de challenge.
+L'essai réel antérieur sur copies de Blanc confirme Jouer avec autoload,
 le passage A/B, l'autosave et la restauration des réglages Lua.
 Le [rapport de vérification](docs/verification.md) distingue tests synthétiques, rendus Qt
 et lectures réelles sur copie isolée. La séquence réelle K.O. → mort PCE → soin
@@ -238,12 +244,14 @@ pour éviter une console Python supplémentaire :
 
 ## Utilisation
 
-1. Ouvrir **Nouveau challenge** et choisir Noir, Blanc, Noir 2 ou Blanc 2.
-2. Choisir un preset ou régler les états : obligatoire, possible, interdite.
-3. En mode aléatoire, choisir le total exact de règles et une seed facultative.
-4. Si Monotype est actif, ouvrir la roue, exclure des types si souhaité, tirer puis confirmer.
-5. Générer le challenge, lui donner un nom et sauvegarder le profil.
-6. Préparer le jeu dans **Installation & diagnostic**, puis cliquer **Jouer**.
+1. Depuis **Mes parties**, cliquer **Nouvelle partie** et choisir Noir, Blanc, Noir 2 ou Blanc 2.
+2. Choisir **Partie classique**, **Depuis un modèle existant** ou **Challenge personnalisé**.
+3. Pour un challenge personnalisé, ouvrir **Configurer les règles**, choisir un preset
+   ou régler les règles, puis valider avec **Utiliser cette configuration**.
+4. Donner un nom à la partie, vérifier ses références de lancement et la créer.
+5. Préparer le jeu dans **Installation & diagnostic** si nécessaire, puis cliquer **Jouer**.
+6. Retrouver la partie dans **Mes parties** pour la reprendre ou consulter ses règles
+   dans ses détails. Les boutons de création de l'Accueil ouvrent ce même parcours.
 
 Le mode personnalisé inclut les obligations et leurs dépendances. Le mode aléatoire
 complète le total avec les règles possibles ; une combinaison impossible est expliquée.
@@ -256,9 +264,13 @@ Monotype propose 17 types, **sans Fée**, avec trois modes : Souple (au moins un
 Strict (type principal) et Pur (type unique). Le mode, les exclusions et les relances
 sont conservés. Sans roue manuelle, la seed choisit le type à la génération.
 
-Dans **Profils**, consulter le challenge et sa seed, reprendre les réglages pour créer
-une copie ou mettre à jour la progression manuelle. Une sauvegarde de challenge crée
-toujours un nouveau profil ; la modification du suivi existant demande confirmation.
+Pour préparer une configuration réutilisable, ouvrir **Mes parties → Modèles de
+challenge → Configurer un modèle**. La gestion des modèles permet de consulter les
+règles et la seed, de reprendre les réglages pour créer une copie ou de commencer
+une partie. Une sauvegarde crée toujours un nouveau modèle. Le volet replié
+**Ancien suivi par profil** conserve la progression manuelle historique et le
+lancement direct dans DeSmuME ; modifier ce suivi demande confirmation. Les
+parties existantes gardent leurs propres règles et leur progression.
 
 ## RetroBat et DeSmuME
 

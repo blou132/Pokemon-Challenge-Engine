@@ -1,4 +1,4 @@
-"""Consultation des profils et suivi manuel explicitement local."""
+"""Gestion secondaire des modèles et accès au suivi historique des profils."""
 
 from datetime import datetime, timezone
 
@@ -17,6 +17,8 @@ from app.ui.widgets.common import MODE_LABELS, card, label, page_layout
 
 
 class ProfilePage(QWidget):
+    back_requested = Signal()
+    create_requested = Signal()
     open_requested = Signal(object)
     launch_requested = Signal(object)
     changed = Signal()
@@ -27,7 +29,17 @@ class ProfilePage(QWidget):
         self.catalog = catalog
         self.manager = manager
         self.selected_profile: Profile | None = None
-        layout = page_layout(self, "Vos profils", "Configurations réutilisables de challenges. Le suivi historique reste associé à chaque profil.")
+        layout = page_layout(self, "Modèles de challenge",
+                             "Préparez des règles réutilisables. Chaque partie créée depuis un modèle conserve sa propre progression dans Mes parties.")
+        navigation = QHBoxLayout()
+        self.back_button = QPushButton("← Mes parties")
+        self.back_button.clicked.connect(self.back_requested.emit)
+        navigation.addWidget(self.back_button)
+        navigation.addStretch()
+        self.create_button = QPushButton("Configurer un modèle")
+        self.create_button.clicked.connect(self.create_requested.emit)
+        navigation.addWidget(self.create_button)
+        layout.addLayout(navigation)
         top = QHBoxLayout()
         self.summary = label("", "subtitle")
         top.addWidget(self.summary, 1)
@@ -48,22 +60,30 @@ class ProfilePage(QWidget):
         self.preview.setMinimumHeight(220)
         box.addWidget(self.preview)
         actions = QHBoxLayout()
-        self.open_button = QPushButton("Reprendre les réglages")
+        self.open_button = QPushButton("Adapter le modèle")
+        self.open_button.setToolTip("Reprendre les réglages puis enregistrer une copie ; le modèle existant est conservé.")
         self.open_button.clicked.connect(self.open_selected)
-        self.launch_button = QPushButton("Lancer dans DeSmuME")
-        self.launch_button.setObjectName("primary")
-        self.launch_button.clicked.connect(self.launch_selected)
         actions.addWidget(self.open_button)
-        actions.addWidget(self.launch_button)
-        self.start_run_button = QPushButton("Commencer une partie")
+        self.start_run_button = QPushButton("Créer une partie")
         self.start_run_button.setObjectName("primary")
+        self.start_run_button.setToolTip("Créer une aventure avec une copie des règles de ce modèle.")
         self.start_run_button.clicked.connect(lambda: self.start_run_requested.emit(self.selected_profile)
                                               if self.selected_profile else None)
         actions.addWidget(self.start_run_button)
         actions.addStretch()
         box.addLayout(actions)
         layout.addWidget(detail)
-        progress, progress_box = card("Progression manuelle")
+        self.legacy_toggle = QPushButton("▸ Ancien suivi par profil")
+        self.legacy_toggle.setCheckable(True)
+        layout.addWidget(self.legacy_toggle)
+        progress, progress_box = card()
+        self.legacy_card = progress
+        progress_box.addWidget(label("Ce suivi historique est indépendant de Mes parties. Les anciennes données du profil restent conservées ; elles ne deviennent pas la progression d'une nouvelle partie.", "muted"))
+        self.launch_button = QPushButton("Lancer directement dans DeSmuME")
+        self.launch_button.setToolTip("Lancement historique : ne crée aucune entrée dans Mes parties.")
+        self.launch_button.clicked.connect(self.launch_selected)
+        progress_box.addWidget(self.launch_button)
+        progress_box.addWidget(label("Progression manuelle", "sectionTitle"))
         progress_box.addWidget(label("Ces valeurs sont saisies par vous. Le suivi automatique Nuzlocke reste conservé séparément dans ce profil.", "muted"))
         form = QFormLayout()
         self.badges = QSpinBox()
@@ -85,6 +105,10 @@ class ProfilePage(QWidget):
         self.progress_button.clicked.connect(self.save_progress)
         progress_box.addWidget(self.progress_button)
         layout.addWidget(progress)
+        progress.hide()
+        self.legacy_toggle.toggled.connect(progress.setVisible)
+        self.legacy_toggle.toggled.connect(lambda expanded: self.legacy_toggle.setText(
+            ("▾" if expanded else "▸") + " Ancien suivi par profil"))
         layout.addStretch()
         self.refresh()
 
@@ -95,7 +119,7 @@ class ProfilePage(QWidget):
         previous = select_profile_id or (self.selected_profile.id if self.selected_profile else None)
         self.list_widget.clear()
         profiles = self.manager.list_profiles()
-        self.summary.setText(f"{len(profiles)} profil(s) enregistré(s)" if profiles else "Aucun profil pour le moment. Créez et sauvegardez votre premier challenge.")
+        self.summary.setText(f"{len(profiles)} modèle(s) enregistré(s)" if profiles else "Aucun modèle pour le moment. Configurez un modèle pour préparer des règles réutilisables.")
         self.warning.setText("\n".join(self.manager.warnings))
         self.warning.setVisible(bool(self.manager.warnings))
         chosen = 0
@@ -122,13 +146,13 @@ class ProfilePage(QWidget):
         for button in (self.open_button, self.launch_button, self.start_run_button, self.progress_button):
             button.setEnabled(False)
         if current is None:
-            self.preview.setPlainText("Sélectionnez un profil pour consulter son challenge.")
+            self.preview.setPlainText("Sélectionnez un modèle pour consulter ses règles.")
             return
         try:
             profile = self.manager.load(current.data(Qt.ItemDataRole.UserRole))
             errors = ChallengeEngine(self.catalog).validate(profile.challenge)
             if errors:
-                raise ValueError("Profil incompatible avec le catalogue :\n" + "\n".join(errors))
+                raise ValueError("Modèle incompatible avec le catalogue :\n" + "\n".join(errors))
         except (ValueError, OSError) as exc:
             self.preview.setPlainText(str(exc))
             return

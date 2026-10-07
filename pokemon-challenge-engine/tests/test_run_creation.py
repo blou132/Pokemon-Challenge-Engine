@@ -76,7 +76,7 @@ def test_existing_profile_has_explicit_name_and_rules(qt_app, catalog):
     dialog = NewRunDialog(catalog, [source], {}, profile=source)
     assert dialog.source_combo.currentData() == "profile"
     assert not dialog.profile_combo.isHidden()
-    assert "Profil : Classic Nuzlocke" in dialog.rules_label.text()
+    assert "Modèle : Classic Nuzlocke" in dialog.rules_label.text()
     assert all(name in dialog.rules_label.text() for name in ("Nuzlocke", "Mort permanente", "Species Clause"))
     assert dialog.selection()["profile_id"] == source.id
     assert dialog.selection()["challenge"] is None
@@ -88,7 +88,7 @@ def test_profile_source_without_selection_cannot_be_created(qt_app, catalog):
     choose(dialog.source_combo, "profile")
     dialog.accept()
     assert dialog.result() != QDialog.DialogCode.Accepted
-    assert "Sélectionnez un profil" in dialog.error_label.text()
+    assert "Sélectionnez un modèle" in dialog.error_label.text()
     close(dialog, qt_app)
 
 

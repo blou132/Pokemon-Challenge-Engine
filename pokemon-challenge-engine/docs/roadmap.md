@@ -7,7 +7,8 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 La branche active est `feat/v0.4.1-run-flow-autolua`, issue de
 `feat/v0.4-runs-permadeath` au commit `237614fe4269f1420e46c86c3de26758500b09f9`.
-La V0.4.1 compte **1 630 tests réussis, aucun ignoré**, dont les 1 511 cas V0.4.
+La V0.4.1 compte **1 644 tests réussis, aucun ignoré**, dont les 1 511 cas V0.4
+et 14 nouveaux cas pour le parcours unifié Mes parties / Modèles de challenge.
 Le parcours réel Jouer avec autoload, le passage A/B et la restauration INI ont
 réussi sur copies isolées de Blanc. Les résultats et limites sont détaillés dans
 le [rapport de vérification](verification.md).
@@ -128,6 +129,12 @@ d'autres générations ; le lecteur d'identité livré est limité à Gen V.
 Les anciens profils/progressions restent intacts. La création depuis un profil
 est explicite et ne prétend pas convertir des compteurs historiques en individus
 identifiés. Aucun ajout de Pokémon à l'équipe ne prouve une capture.
+
+**Mes parties** devient l'entrée principale et la page d'ouverture. Sa création
+réunit partie classique, modèle existant et challenge personnalisé. La gestion
+des **Modèles de challenge** est secondaire et accessible depuis cette page ;
+le modèle de données profil/partie reste distinct. L'ancien suivi par profil est
+conservé dans un volet replié de la gestion des modèles.
 
 La V0.4.1 permet aussi une configuration directe sans profil intermédiaire.
 La bibliothèque sélectionne la carte créée après sa persistance ; l'ouverture

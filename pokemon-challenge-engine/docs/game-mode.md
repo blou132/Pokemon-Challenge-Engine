@@ -2,14 +2,16 @@
 
 ## Partie persistante
 
-Depuis **Mes parties**, créez ou reprenez une partie ; depuis **Profils**, utilisez
-**Commencer une partie**. Le Mode Jeu affiche son nom, ses règles figées, son temps
+Depuis **Mes parties**, créez ou reprenez une partie. Pour réutiliser une
+configuration, choisissez **Depuis un modèle existant** à la création ou ouvrez
+**Modèles de challenge → Créer une partie** depuis la bibliothèque.
+Le Mode Jeu affiche son nom, ses règles figées, son temps
 cumulé, sa dernière équipe, sa zone et son autosave PCE. Les boutons **Capture**,
 **Mort**, **Badge +/−** et **Note** ouvrent les saisies manuelles. Une première
 saisie de badges demande le total ; une donnée absente reste « Non renseigné ».
 
-La création propose une partie classique, un profil existant ou la configuration
-directe d'un challenge avec l'éditeur existant. Après l'enregistrement confirmé,
+La création propose **Partie classique**, **Depuis un modèle existant** ou
+**Challenge personnalisé** avec l'éditeur existant. Après l'enregistrement confirmé,
 la bibliothèque affiche **Partie créée**, actualise son compteur et sélectionne
 la carte ; elle retire les filtres qui masqueraient celle-ci. Une erreur de
 création affiche **Partie non créée** et n'ouvre pas le Mode Jeu.
@@ -44,6 +46,8 @@ l'onglet Sauvegardes réutilisent SaveManagerService et ses confirmations.
 Voir [Run Manager](run-manager.md), [autosave](run-autosave.md) et
 [mort permanente](permanent-death.md). Le parcours historique sans partie décrit
 ci-dessous conserve son compteur de processus non persistant et son suivi de profil.
+Son lancement direct reste accessible dans **Mes parties → Modèles de challenge →
+Ancien suivi par profil**.
 
 ## Parcours simplifié
 

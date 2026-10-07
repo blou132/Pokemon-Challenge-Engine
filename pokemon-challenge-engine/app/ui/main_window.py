@@ -81,20 +81,22 @@ class MainWindow(QMainWindow):
         side.addWidget(label("     CHALLENGE ENGINE", "eyebrow"))
         side.addSpacing(28)
         self.nav_group = QButtonGroup(self)
-        self.nav_buttons: list[QPushButton] = []
-        for index, name in enumerate(["⌂   Accueil", "+   Nouveau challenge", "≡   Règles", "▤   Profils", "⚙   Paramètres", "↔   Connexion DeSmuME"]):
-            button = QPushButton(name)
-            button.setObjectName("nav")
-            button.setCheckable(True)
-            self.nav_group.addButton(button, index)
-            self.nav_buttons.append(button)
-            side.addWidget(button)
-        self.nav_group.idClicked.connect(self.navigate)
         self.runs_button = QPushButton("▣   Mes parties")
         self.runs_button.setObjectName("nav")
         self.runs_button.setCheckable(True)
         self.nav_group.addButton(self.runs_button, 6)
-        side.insertWidget(4, self.runs_button)
+        side.addWidget(self.runs_button)
+        # Keep page IDs stable; the template manager and editor are secondary
+        # pages within Mes parties, with no competing sidebar entries.
+        self.nav_buttons: dict[int, QPushButton] = {}
+        for index, name in [(0, "⌂   Accueil"), (2, "≡   Règles"), (4, "⚙   Paramètres"), (5, "↔   Connexion DeSmuME")]:
+            button = QPushButton(name)
+            button.setObjectName("nav")
+            button.setCheckable(True)
+            self.nav_group.addButton(button, index)
+            self.nav_buttons[index] = button
+            side.addWidget(button)
+        self.nav_group.idClicked.connect(self.navigate)
         self.game_mode_button = QPushButton("▷   Mode Jeu")
         self.game_mode_button.setObjectName("primary")
         self.game_mode_button.setToolTip("Ouvre les panneaux de jeu autour d'une fenêtre DeSmuME externe.")
@@ -120,17 +122,20 @@ class MainWindow(QMainWindow):
             self.pages.addWidget(page)
         main.addWidget(self.pages, 1)
         self.setCentralWidget(center)
-        self.home_page.create_requested.connect(self.new_challenge)
-        self.home_page.profiles_requested.connect(lambda: self.navigate(3))
+        self.home_page.create_requested.connect(lambda game_id: self.new_run(game_id=game_id))
+        self.home_page.runs_requested.connect(lambda: self.navigate(6))
+        self.challenge_page.back_requested.connect(lambda: self.navigate(3))
         self.challenge_page.saved.connect(self.profile_saved)
         self.challenge_page.launch_requested.connect(self.launch_challenge)
         self.profile_page.open_requested.connect(self.open_profile)
         self.profile_page.launch_requested.connect(self.launch_challenge)
         self.profile_page.changed.connect(self.refresh_home)
         self.profile_page.start_run_requested.connect(self.new_run)
+        self.profile_page.back_requested.connect(lambda: self.navigate(6))
+        self.profile_page.create_requested.connect(lambda: self.new_challenge(self.challenge_page.game_combo.currentData()))
         self.settings_page.config_changed.connect(self.config_changed)
         self.settings_page.installation_requested.connect(self.open_installation)
-        self.navigate(0)
+        self.navigate(6)
         self.refresh_home()
         self.statusBar().showMessage(f"Prêt  ·  V{__version__} : préparation et lecture Lua, règles à respecter manuellement")
         if self.config_service.warnings:
@@ -152,6 +157,7 @@ class MainWindow(QMainWindow):
                 from app.ui.runs_page import RunsPage
                 self.runs_page = RunsPage(self.catalog, self.runs)
                 self.runs_page.new_requested.connect(self.new_run)
+                self.runs_page.models_requested.connect(lambda: self.navigate(3))
                 self.runs_page.resume_requested.connect(self.resume_run)
                 self.runs_page.saves_requested.connect(self._run_saves)
                 self.runs_page.action_requested.connect(self._run_action)
@@ -172,7 +178,10 @@ class MainWindow(QMainWindow):
         if index == 5:
             self.bridge_page.set_profiles(self.profiles.list_profiles())
         self.pages.setCurrentIndex(index)
-        self.nav_buttons[index].setChecked(True)
+        if index in (1, 3):
+            self.runs_button.setChecked(True)
+        else:
+            self.nav_buttons[index].setChecked(True)
 
     def new_challenge(self, game_id: str) -> None:
         self.challenge_page.game_combo.setCurrentIndex(self.challenge_page.game_combo.findData(game_id))
@@ -181,13 +190,13 @@ class MainWindow(QMainWindow):
     def profile_saved(self, profile: Profile) -> None:
         self.profile_page.refresh(select_profile_id=profile.id)
         self.refresh_home()
-        self.statusBar().showMessage(f"Profil « {profile.name} » enregistré", 8000)
+        self.statusBar().showMessage(f"Modèle « {profile.name} » enregistré", 8000)
 
     def refresh_home(self) -> None:
         profiles = self.profiles.list_profiles()
         self.bridge_page.set_profiles(profiles)
         count = len(profiles)
-        self.home_page.profile_count.setText(f"{count} profil(s) enregistré(s) · Retrouvez vos aventures dans Profils." if count else "Votre premier challenge vous attend. Commencez par choisir un jeu.")
+        self.home_page.model_count.setText(f"{count} modèle(s) disponible(s) pour vos prochaines parties. Retrouvez vos aventures dans Mes parties." if count else "Votre première partie vous attend : classique, depuis un modèle ou avec un challenge personnalisé.")
 
     def open_profile(self, profile: Profile) -> None:
         self.challenge_page.load_challenge(profile.challenge, profile.name)
@@ -270,12 +279,14 @@ class MainWindow(QMainWindow):
         if self._requested_run_id == run_id and self.run_controller.requested_run_id is None:
             self.run_controller.activate(run_id)
 
-    def new_run(self, profile=None):
+    def new_run(self, profile=None, *, game_id=None):
         from app.ui.run_dialogs import NewRunDialog
         from app.services.run_launch_service import RunLaunchService
         from PySide6.QtWidgets import QDialog
         options = GameModeConfigStore(self.base_dir, self.config).load()["launch_profiles"]
         dialog = NewRunDialog(self.catalog, self.profiles.list_profiles(), options, self, profile=profile)
+        if game_id is not None:
+            dialog.game_combo.setCurrentIndex(dialog.game_combo.findData(game_id))
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         try:
@@ -284,9 +295,9 @@ class MainWindow(QMainWindow):
             if source not in {"classic", "profile", "custom"}:
                 raise ValueError("Source de configuration inconnue.")
             if source == "profile" and not values["profile_id"]:
-                raise ValueError("Choisissez le profil de cette partie.")
+                raise ValueError("Choisissez le modèle de cette partie.")
             if source != "profile" and values["profile_id"]:
-                raise ValueError("Cette configuration directe ne doit pas référencer un profil.")
+                raise ValueError("Cette configuration directe ne doit pas référencer un modèle.")
             selected = self.profiles.load(values["profile_id"]) if source == "profile" else None
             game = self.catalog.games[values["game_id"]]
             challenge = selected.challenge if selected else None

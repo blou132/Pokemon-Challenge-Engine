@@ -227,13 +227,13 @@ def test_worker_keeps_event_loop_responsive_and_close_is_deferred(qt_app, dialog
         until(qt_app, lambda: not widget.is_busy)
 
 
-def test_settings_entry_preserves_six_pages_and_first_run_starts_only_on_request(qt_app, catalog, tmp_path):
+def test_settings_entry_preserves_pages_and_first_run_starts_only_on_request(qt_app, catalog, tmp_path):
     window = MainWindow(catalog, tmp_path)
     service = SyntheticSetup()
     window._setup_service = service
     try:
         assert window.installation_dialog is None
-        assert window.pages.count() == 6
+        assert window.pages.count() == 7
         window.start_first_run()
         assert window.installation_dialog.first_run
         until(qt_app, lambda: not window.installation_dialog.is_busy)
@@ -242,7 +242,7 @@ def test_settings_entry_preserves_six_pages_and_first_run_starts_only_on_request
         assert service.first_run_done
         window.settings_page.installation_button.click()
         assert window.installation_dialog.isVisible()
-        assert window.pages.count() == 6
+        assert window.pages.count() == 7
     finally:
         if window.installation_dialog:
             until(qt_app, lambda: not window.installation_dialog.is_busy)

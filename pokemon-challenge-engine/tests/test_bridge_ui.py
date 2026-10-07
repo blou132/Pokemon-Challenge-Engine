@@ -335,7 +335,7 @@ def test_connection_page_scrolls_at_supported_resolutions(connection, size):
 def test_window_navigation_config_and_close_connect_to_controller(qt_app, catalog, tmp_path):
     window = MainWindow(catalog, tmp_path)
     try:
-        assert window.pages.count() == 6
+        assert window.pages.count() == 7
         assert window.bridge_controller._thread is None
         window.nav_buttons[5].click()
         assert window.pages.currentWidget() is window.bridge_page
@@ -375,6 +375,7 @@ def test_four_game_home_cards_fit_minimum_window(qt_app, catalog, tmp_path):
     previous = qt_app.styleSheet()
     qt_app.setStyleSheet(STYLESHEET)
     try:
+        window.nav_buttons[0].click()
         window.resize(1060, 640)
         window.show()
         qt_app.processEvents()

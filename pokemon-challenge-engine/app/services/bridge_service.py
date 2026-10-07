@@ -6,7 +6,7 @@ import math
 import os
 from pathlib import Path
 import re
-from time import monotonic
+from time import monotonic, sleep
 from uuid import uuid4
 
 from app.bridge.protocol import GAME_IDS, MAX_MESSAGE_BYTES, BridgeMessage, ProtocolError, parse_message
@@ -178,7 +178,16 @@ class BridgeService:
             path.unlink(missing_ok=True)
         temporary = self._session_dir / "ack.txt.tmp"
         temporary.write_text(str(state.sequence), encoding="ascii")
-        temporary.replace(self._session_dir / "ack.txt")
+        for attempt in range(3):
+            try:
+                temporary.replace(self._session_dir / "ack.txt")
+                break
+            except OSError as exc:
+                # Lua may briefly hold ack.txt open on Windows. Keep the old
+                # complete acknowledgement until an atomic replacement succeeds.
+                if getattr(exc, "winerror", None) not in {5, 32, 33} or attempt == 2:
+                    raise
+                sleep(0.005 * (attempt + 1))
 
     def poll(self) -> BridgeState:
         """Lit uniquement le dernier instantané complet, sans rafraîchir les doublons."""

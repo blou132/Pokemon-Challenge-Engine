@@ -141,7 +141,7 @@ class IniDocument:
         index = self.entries.get((section.casefold(), key.casefold()))
         if index is not None:
             line = self.lines[index]
-            match = re.fullmatch(r"([^=]+=\s*)([^\r\n]*?)(\r?\n)?", line)
+            match = re.fullmatch(r"([^=]+=[^\S\r\n]*)([^\r\n]*?)(\r?\n)?", line)
             assert match
             tail = re.search(r"(\s*[;#].*)$", match.group(2))
             self.lines[index] = match.group(1) + str(value) + (tail.group(1) if tail else "") + (match.group(3) or "")
@@ -156,6 +156,53 @@ class IniDocument:
                 if insert and not self.lines[insert - 1].endswith(("\n", "\r")):
                     self.lines[insert - 1] += self.newline
                 self.lines.insert(insert, f"{key}={value}{self.newline}")
+        self._index()
+
+    def get_text(self, section: str, key: str, default: str = "") -> str:
+        """String profile values include semicolons; unlike integers, they are not comments."""
+        line = self.entry_line(section, key)
+        if line is None:
+            return default
+        value = line.split("=", 1)[1].strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            value = value[1:-1]
+        return value
+
+    def entry_line(self, section: str, key: str) -> str | None:
+        index = self.entries.get((section.casefold(), key.casefold()))
+        return self.lines[index] if index is not None else None
+
+    def set_text(self, section: str, key: str, value: str):
+        if not isinstance(value, str) or any(char in value for char in "\r\n\0"):
+            raise ValueError("Valeur texte INI invalide.")
+        index = self.entries.get((section.casefold(), key.casefold()))
+        if index is None:
+            self.set_int(section, key, 0)
+            index = self.entries[section.casefold(), key.casefold()]
+        match = re.fullmatch(r"([^=]+=[^\S\r\n]*)([^\r\n]*?)(\r?\n)?", self.lines[index])
+        assert match
+        self.lines[index] = match.group(1) + value + (match.group(3) or "")
+        self._index()
+
+    def restore_entry(self, section: str, key: str, line: str | None):
+        """Restore exactly one captured line, or remove a key originally absent."""
+        if line is not None:
+            if (not isinstance(line, str) or "\0" in line
+                    or re.fullmatch(r"[^\r\n]+(?:\r?\n)?", line) is None
+                    or "=" not in line or line.lstrip().startswith((";", "#", "["))
+                    or line.split("=", 1)[0].strip().casefold() != key.casefold()):
+                raise ValueError("Ligne INI de restauration invalide.")
+        index = self.entries.get((section.casefold(), key.casefold()))
+        if line is None:
+            if index is not None:
+                self.lines.pop(index)
+        else:
+            if index is None:
+                self.set_text(section, key, "")
+                index = self.entries[section.casefold(), key.casefold()]
+            self.lines[index] = line
+            if index < len(self.lines) - 1 and not line.endswith(("\n", "\r")):
+                self.lines[index] += self.newline
         self._index()
 
     def to_bytes(self) -> bytes:
@@ -326,18 +373,33 @@ class EmulatorSettingsService:
             document.set_int("FrameLimit", "FrameLimit", 0 if speed == "MAX" else 1)
             if speed == "x1":
                 document.set_int("Video", "FPS Scaler Index", 5)
+        backup = self.replace_config(path, raw, document.to_bytes())
+        return SettingsChange(backup, speed)
+
+    def replace_config(self, path: Path, original: bytes, updated: bytes, *, before_replace=None) -> Path:
+        """Common guarded transaction for documented settings and Lua autoload.
+
+        before_replace may persist a recovery journal, after the complete backup
+        exists but before the atomic INI replacement. A failed callback leaves
+        the configuration untouched.
+        """
+        if path != self._path() or not detect_capabilities(self.executable).known_build:
+            raise ValueError("Configuration DeSmuME non vérifiée.")
+        self._guard_stopped()
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".pce_ini_", delete=False) as handle:
                 temporary = Path(handle.name)
-                handle.write(document.to_bytes())
+                handle.write(updated)
                 handle.flush()
                 os.fsync(handle.fileno())
-            if path.read_bytes() != raw:
+            if path.read_bytes() != original:
                 raise ValueError("La configuration a changé pendant l'édition ; recommencez.")
-            backup = self._backup(path, raw)
+            backup = self._backup(path, original)
+            if before_replace is not None:
+                before_replace(backup)
             self._guard_stopped()
-            if path.read_bytes() != raw:
+            if path.read_bytes() != original:
                 raise ValueError("La configuration a changé pendant l'édition ; recommencez.")
             temporary.replace(path)
         except OSError as exc:
@@ -345,7 +407,7 @@ class EmulatorSettingsService:
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
-        return SettingsChange(backup, speed)
+        return backup
 
     def apply_launch_profile(self, options: dict, base_dir: Path) -> SettingsChange:
         if options.get("emulator_path"):

@@ -5,7 +5,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 
-from PySide6.QtCore import QDateTime, Qt, Signal
+from PySide6.QtCore import QDateTime, QSignalBlocker, Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox, QDateTimeEdit, QDialog, QDialogButtonBox, QFileDialog,
     QFormLayout, QHBoxLayout, QHeaderView, QLineEdit, QListWidget, QListWidgetItem,
@@ -16,6 +16,9 @@ from PySide6.QtWidgets import (
 from app.ui.widgets.common import label
 from app.ui.widgets.nuzlocke import species_name
 from app.services.save_manager_service import SaveManagerService
+from app.core.challenge_engine import ChallengeEngine
+from app.models.challenge import Challenge
+from app.ui.challenge_page import ChallengePage, challenge_summary
 
 
 STATUS_LABELS = {"preparing": "Préparation", "active": "En cours", "finished": "Terminée",
@@ -96,6 +99,52 @@ def prompt_run_action(parent, catalog, run, action):
     raise ValueError("Action de partie inconnue.")
 
 
+class RunChallengeDialog(QDialog):
+    """Embed the existing editor and engine; no profile or game files are written."""
+
+    def __init__(self, catalog, game_id, parent=None, *, challenge=None):
+        super().__init__(parent)
+        self.game_id = game_id
+        self.setWindowTitle("Configurer les règles de la partie")
+        self.resize(1000, 700)
+        layout = QVBoxLayout(self)
+        self.editor = ChallengePage(catalog, None, self, configuration_only=True)
+        self.editor.game_combo.setCurrentIndex(self.editor.game_combo.findData(game_id))
+        self.editor.game_combo.setEnabled(False)
+        if challenge is not None:
+            self.editor.load_challenge(Challenge.from_dict(challenge))
+        layout.addWidget(self.editor, 1)
+        self.error_label = label("", "error")
+        self.error_label.hide()
+        layout.addWidget(self.error_label)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Utiliser cette configuration")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Annuler")
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def configuration(self):
+        if self.editor.challenge is None:
+            raise ValueError("La configuration du challenge n'est pas prête.")
+        return self.editor.challenge.to_dict()
+
+    def accept(self):
+        # The editor invalidates its preview after every setting change. Generate
+        # through the same engine only when the current preview is stale.
+        if self.editor.challenge is None:
+            self.editor.generate()
+        challenge = self.editor.challenge
+        errors = self.editor.engine.validate(challenge) if challenge is not None else [self.editor.feedback.text()]
+        if challenge is not None and challenge.game_id != self.game_id:
+            errors.append("Le challenge ne correspond pas au jeu de la partie.")
+        if errors:
+            self.error_label.setText("\n".join(errors))
+            self.error_label.show()
+            return
+        super().accept()
+
+
 class NewRunDialog(QDialog):
     """Select a source and file references, without creating or altering a save."""
 
@@ -104,8 +153,10 @@ class NewRunDialog(QDialog):
         self.catalog = catalog
         self.profiles = list(profiles)
         self.launch_profiles = deepcopy(launch_profiles)
+        self.custom_challenge = None
+        self._loading = False
         self.setWindowTitle("Nouvelle partie")
-        self.resize(640, 540)
+        self.resize(700, 610)
         layout = QVBoxLayout(self)
         layout.addWidget(label("Commencer une partie", "title"))
         layout.addWidget(label("Chaque partie conserve ses propres règles et sa progression PCE. Un profil reste une configuration réutilisable.", "muted"))
@@ -115,6 +166,12 @@ class NewRunDialog(QDialog):
             if game.status == "supported":
                 self.game_combo.addItem(game.name, game.id)
         self.profile_combo = QComboBox()
+        self.source_combo = QComboBox()
+        for text, key in (("Partie classique", "classic"), ("Utiliser un profil existant", "profile"),
+                          ("Configurer un challenge", "custom")):
+            self.source_combo.addItem(text, key)
+        self.configure_button = QPushButton("Configurer les règles…")
+        self.configure_button.clicked.connect(self._configure_custom)
         self.name_edit = QLineEdit()
         self.name_edit.setMaxLength(100)
         self.save_edit = QLineEdit()
@@ -124,10 +181,16 @@ class NewRunDialog(QDialog):
         browse = QPushButton("Choisir…")
         browse.clicked.connect(self._browse_save)
         save_row.addWidget(browse)
+        self.configured_save_button = QPushButton("Utiliser la sauvegarde configurée")
+        self.configured_save_button.clicked.connect(self._use_configured_save)
         form.addRow("Jeu", self.game_combo)
-        form.addRow("Configuration", self.profile_combo)
+        form.addRow("Configuration", self.source_combo)
+        form.addRow("Profil", self.profile_combo)
+        form.addRow("", self.configure_button)
         form.addRow("Nom de la partie", self.name_edit)
         form.addRow("Sauvegarde Pokémon", save_row)
+        form.addRow("", self.configured_save_button)
+        self.form = form
         layout.addLayout(form)
         self.environment_label = label("", "muted")
         self.rules_label = label("", "muted")
@@ -140,41 +203,100 @@ class NewRunDialog(QDialog):
         layout.addStretch()
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Créer la partie")
+        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Annuler")
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
         layout.addWidget(self.buttons)
         self.game_combo.currentIndexChanged.connect(self._game_changed)
-        self.profile_combo.currentIndexChanged.connect(self._source_changed)
+        self.source_combo.currentIndexChanged.connect(self._source_changed)
+        self.profile_combo.currentIndexChanged.connect(self._profile_changed)
         self._game_changed()
         if profile is not None:
             index = self.game_combo.findData(profile.challenge.game_id)
             if index >= 0:
                 self.game_combo.setCurrentIndex(index)
+                self.source_combo.setCurrentIndex(self.source_combo.findData("profile"))
                 self.profile_combo.setCurrentIndex(self.profile_combo.findData(profile.id))
                 self.name_edit.setText(profile.name)
 
     def _game_changed(self):
         game_id = self.game_combo.currentData()
+        self._loading = True
+        self.custom_challenge = None
         self.profile_combo.clear()
-        self.profile_combo.addItem("Classique · aucune règle", None)
+        self.profile_combo.addItem("Choisissez un profil compatible", None)
         for profile in self.profiles:
             if profile.challenge.game_id == game_id:
                 self.profile_combo.addItem(profile.name, profile.id)
         settings = self.launch_profiles.get(game_id, {})
-        self.save_edit.setText(settings.get("save_path", ""))
+        self.save_edit.clear()
+        self.configured_save_button.setVisible(bool(settings.get("save_path")))
+        self.configured_save_button.setToolTip(settings.get("save_path", ""))
         configured = bool(settings.get("rom_path") and settings.get("emulator_path"))
         self.environment_label.setText("Environnement : configuration enregistrée pour ce jeu ; vérification avant lancement."
                                        if configured else "Environnement : à préparer dans Installation & Diagnostic avant le lancement.")
+        self._loading = False
+        self._source_changed()
+
+    def _profile_changed(self):
+        if self._loading:
+            return
+        if self.profile_combo.currentData() is not None:
+            with QSignalBlocker(self.source_combo):
+                self.source_combo.setCurrentIndex(self.source_combo.findData("profile"))
         self._source_changed()
 
     def _source_changed(self):
-        selected = next((item for item in self.profiles if item.id == self.profile_combo.currentData()), None)
+        if self._loading:
+            return
+        source = self.source_combo.currentData()
+        selected = next((item for item in self.profiles if item.id == self.profile_combo.currentData()), None) if source == "profile" else None
+        self.form.setRowVisible(self.profile_combo, source == "profile")
+        self.form.setRowVisible(self.configure_button, source == "custom")
         names = [self.catalog.rules[key].name if key in self.catalog.rules else key
                  for key in selected.challenge.active_rules] if selected else []
-        self.rules_label.setText("Copie des règles du profil : " + (", ".join(names) or "aucune règle")
-                                 if selected else "Classique : 0 règle active. Temps, équipe, zone et événements restent disponibles.")
+        if source == "custom":
+            if self.custom_challenge is not None:
+                challenge = Challenge.from_dict(self.custom_challenge)
+                names = [self.catalog.rules[key].name if key in self.catalog.rules else key for key in challenge.active_rules]
+                self.rules_label.setText("Challenge personnalisé · " + str(len(names)) + " règle(s)\n" +
+                                        (" · ".join(names) or "Aucune règle active") + f"\nSeed : {challenge.seed}")
+                self.rules_label.setToolTip(challenge_summary(challenge, self.catalog))
+                self.configure_button.setText("Modifier les règles…")
+            else:
+                self.rules_label.setText("Configurez les règles, le preset et la seed. La partie sera indépendante des profils.")
+                self.rules_label.setToolTip("")
+                self.configure_button.setText("Configurer les règles…")
+        elif source == "profile":
+            self.rules_label.setText(f"Profil : {selected.name}\nRègles : " + (" · ".join(names) or "aucune règle") +
+                                    "\nCes règles seront figées dans la partie." if selected else
+                                    "Sélectionnez un profil pour copier ses règles dans cette partie.")
+            self.rules_label.setToolTip(challenge_summary(selected.challenge, self.catalog) if selected else "")
+        else:
+            self.rules_label.setText("Classique : 0 règle active. Temps, équipe, zone et événements restent disponibles.")
+            self.rules_label.setToolTip("")
         if not self.name_edit.isModified():
-            self.name_edit.setText(selected.name if selected else self.game_combo.currentText() + " — Classique")
+            suffix = {"classic": "Classique", "profile": "Partie", "custom": "Challenge"}[source]
+            self.name_edit.setText(selected.name if selected else self.game_combo.currentText() + " — " + suffix)
+
+    def _configure_custom(self):
+        dialog = RunChallengeDialog(self.catalog, self.game_combo.currentData(), self, challenge=self.custom_challenge)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.set_custom_challenge(dialog.configuration())
+
+    def set_custom_challenge(self, data):
+        challenge = Challenge.from_dict(data)
+        errors = ChallengeEngine(self.catalog).validate(challenge)
+        if challenge.game_id != self.game_combo.currentData():
+            errors.append("Le challenge ne correspond pas au jeu de la partie.")
+        if errors:
+            raise ValueError("\n".join(errors))
+        self.custom_challenge = challenge.to_dict()
+        self.source_combo.setCurrentIndex(self.source_combo.findData("custom"))
+        self._source_changed()
+
+    def _use_configured_save(self):
+        self.save_edit.setText(self.launch_profiles.get(self.game_combo.currentData(), {}).get("save_path", ""))
 
     def _browse_save(self):
         path, _ = QFileDialog.getOpenFileName(self, "Lier une sauvegarde existante", self.save_edit.text(), "Sauvegardes DeSmuME (*.dsv)")
@@ -187,8 +309,10 @@ class NewRunDialog(QDialog):
         save = self.save_edit.text().strip() or None
         if launch is not None:
             launch["save_path"] = save or ""
+        source = self.source_combo.currentData()
         return {"name": self.name_edit.text().strip(), "game_id": game_id,
-                "profile_id": self.profile_combo.currentData(), "save_path": save,
+                "source": source, "profile_id": self.profile_combo.currentData() if source == "profile" else None,
+                "challenge": deepcopy(self.custom_challenge) if source == "custom" else None, "save_path": save,
                 "launch_profile": launch}
 
     def accept(self):
@@ -198,6 +322,15 @@ class NewRunDialog(QDialog):
             return
         if "\0" in self.save_edit.text():
             self.error_label.setText("Le chemin de sauvegarde est invalide.")
+            self.error_label.show()
+            return
+        values = self.selection()
+        if values["source"] == "profile" and not values["profile_id"]:
+            self.error_label.setText("Sélectionnez un profil existant ou choisissez une autre configuration.")
+            self.error_label.show()
+            return
+        if values["source"] == "custom" and values["challenge"] is None:
+            self.error_label.setText("Configurez les règles avant de créer cette partie.")
             self.error_label.show()
             return
         super().accept()

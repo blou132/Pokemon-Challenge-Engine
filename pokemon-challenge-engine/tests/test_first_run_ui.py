@@ -267,11 +267,25 @@ def test_prepared_game_health_check_runs_in_worker_before_launch_and_lua(qt_app,
             mode.service.state = RunState(game_id=game_id, running=True)
             return SimpleNamespace(pid=123)
         monkeypatch.setattr(mode.service, "launch", launch)
-        monkeypatch.setattr(window.bridge_controller, "start", lambda game, path: calls.append(("lua", game)))
+        from PySide6.QtCore import QTimer
+        controller = window.bridge_controller
+        def prepare_bridge(game, path):
+            calls.append(("lua", game))
+            controller.bridge.start(game)
+            controller.request_id += 1
+            request = controller.request_id
+            script = controller.bridge.session_dir / "connect.lua"
+            script.write_text("-- synthetic fixture", encoding="utf-8")
+            QTimer.singleShot(0, lambda: controller.prepared_for_request.emit(request, str(script)))
+            return request
+        monkeypatch.setattr(controller, "start", prepare_bridge)
+        monkeypatch.setattr(mode.autoload, "restore", lambda *args: None)
+        monkeypatch.setattr(mode.autoload, "prepare", lambda *args, **kwargs:
+                            SimpleNamespace(enabled=False, message="Synthetic manual fallback"))
         mode.page.game_combo.setCurrentIndex(mode.page.game_combo.findData("white"))
         mode.launch_game("white")
-        until(qt_app, lambda: not mode.play_runner.is_busy)
-        assert calls == [("health", "white", False), ("reload",), ("launch", "white"), ("lua", "white")]
+        until(qt_app, lambda: not mode.launch_busy and mode.service.state.running)
+        assert calls == [("health", "white", False), ("reload",), ("lua", "white"), ("launch", "white")]
     finally:
         if window.game_mode_window:
             until(qt_app, lambda: not window.game_mode_window.play_runner.is_busy)

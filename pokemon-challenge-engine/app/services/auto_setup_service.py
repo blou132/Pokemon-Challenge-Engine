@@ -281,7 +281,8 @@ class AutoSetupService:
             except (OSError, ValueError):
                 issues.append("Configuration DeSmuME absente ou illisible. Ouvrez puis fermez DeSmuME une fois et relancez le diagnostic.")
             lua = plain(LuaRuntimeInstaller(self.download_root).diagnose(options["emulator_path"]))
-            if require_lua and lua.get("status") not in {"ready", "verified", "installed"}:
+            lua_issue = require_lua and lua.get("status") not in {"ready", "verified", "installed"}
+            if lua_issue:
                 issues.append("Support Lua à réparer avant de jouer avec la connexion PCE.")
             if options["save_path"]:
                 try:
@@ -306,7 +307,8 @@ class AutoSetupService:
                 except (OSError, ValueError):
                     issues.append("Le profil de challenge sélectionné n'est plus disponible.")
             warnings.append("La présence vérifiée du support Lua ne prouve pas encore la connexion : elle sera confirmée par les messages du jeu.")
-            return {"ready": not issues, "issues": issues, "warnings": warnings, "changed": changed, "lua_status": lua}
+            return {"ready": not issues, "launch_ready": len(issues) == int(lua_issue),
+                    "issues": issues, "warnings": warnings, "changed": changed, "lua_status": lua}
 
     def prepare_play(self, game_id):
         from app.services.rom_preparation_service import RomPreparationService

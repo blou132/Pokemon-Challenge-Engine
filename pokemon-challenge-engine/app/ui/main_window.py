@@ -55,8 +55,13 @@ class MainWindow(QMainWindow):
         self.run_controller.action_succeeded.connect(self._run_action_saved)
         self.run_prepare = SetupTaskRunner(self)
         self.run_prepare.succeeded.connect(self._run_prepared)
-        self.run_prepare.failed.connect(lambda message: self.statusBar().showMessage("Reprise impossible : " + message))
+        self.run_prepare.failed.connect(self._run_prepare_failed)
         self._prepared_run = None
+        self._requested_run_id = None
+        self._preparing_run_id = None
+        self._queued_resume_id = None
+        self._open_after_activation = True
+        self._run_mismatch_dialog = None
         self._last_run_saved = None
         self._game_mode_shortcut = QShortcut(self)
         self._game_mode_shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
@@ -131,6 +136,15 @@ class MainWindow(QMainWindow):
         if self.config_service.warnings:
             warning_text = "\n".join(self.config_service.warnings)
             QTimer.singleShot(0, lambda: QMessageBox.warning(self, "Configuration à vérifier", warning_text))
+        try:
+            restored_id = self.runs.active_id
+        except (OSError, ValueError) as exc:
+            restored_id = None
+            self.statusBar().showMessage("Sélection précédente illisible, données conservées : " + str(exc))
+        if restored_id is not None:
+            self._requested_run_id = restored_id
+            self._open_after_activation = False
+            QTimer.singleShot(0, lambda: self._restore_run_selection(restored_id))
 
     def navigate(self, index: int) -> None:
         if index == 6:
@@ -184,7 +198,7 @@ class MainWindow(QMainWindow):
         self.bridge_page.set_config(config)
         self.statusBar().showMessage("Paramètres enregistrés", 6000)
 
-    def open_game_mode(self) -> None:
+    def _ensure_game_mode(self):
         if self.game_mode_window is None:
             self.game_mode_window = GameModeWindow(self.catalog, self.base_dir, self.bridge_controller,
                                                    self.profiles, self.config, self)
@@ -195,10 +209,66 @@ class MainWindow(QMainWindow):
             self.game_mode_window.installation_requested.connect(self.open_installation)
             self.game_mode_window.run_action_requested.connect(self._run_action)
             self.game_mode_window.process_context_changed.connect(self.run_controller.process_context)
+            self.game_mode_window.set_run_guard(self._validate_requested_run)
+            self.game_mode_window.run_mismatch.connect(self._show_run_mismatch)
+        return self.game_mode_window
+
+    def _validate_requested_run(self, requested_run_id):
+        active = self.run_controller.active_run
+        try:
+            return (not self.run_controller.activation_pending
+                    and requested_run_id is not None
+                    and requested_run_id == self._requested_run_id
+                    and active is not None and active.run_id == requested_run_id
+                    and self.run_controller.requested_run_id == requested_run_id
+                    and self.runs.active_id == requested_run_id)
+        except (OSError, ValueError):
+            return False
+
+    def _show_run_mismatch(self, requested_run_id):
+        message = "La partie active ne correspond pas à celle demandée."
+        self.statusBar().showMessage(message)
+        if self.game_mode_window is not None:
+            self.game_mode_window.hide()
+        if self._run_mismatch_dialog is not None:
+            self._run_mismatch_dialog.close()
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Partie à vérifier")
+        dialog.setIcon(QMessageBox.Icon.Warning)
+        dialog.setText(message)
+        retry = dialog.addButton("Réessayer", QMessageBox.ButtonRole.AcceptRole)
+        library = dialog.addButton("Retour à Mes parties", QMessageBox.ButtonRole.RejectRole)
+        retry.clicked.connect(lambda: self.resume_run(requested_run_id))
+        library.clicked.connect(lambda: self.navigate(6))
+        self._run_mismatch_dialog = dialog
+        dialog.open()
+
+    def open_game_mode(self, requested_run_id=None) -> None:
+        # clicked(bool) is not a run identifier.
+        requested = requested_run_id if isinstance(requested_run_id, str) else self._requested_run_id
+        active = self.run_controller.active_run
+        if requested is None and active is not None:
+            requested = active.run_id
+            self._requested_run_id = requested
+        if requested is not None:
+            if self.run_controller.activation_pending:
+                self._open_after_activation = True
+                self.statusBar().showMessage("Activation de la partie demandée…")
+                return
+            if not self._validate_requested_run(requested):
+                self._show_run_mismatch(requested)
+                return
+        mode = self._ensure_game_mode()
+        if requested is not None:
+            mode.bind_requested_run(active, self.run_controller.state)
         self.game_mode_window.refresh_profiles()
         self.game_mode_window.show()
         self.game_mode_window.raise_()
         self.game_mode_window.activateWindow()
+
+    def _restore_run_selection(self, run_id):
+        if self._requested_run_id == run_id and self.run_controller.requested_run_id is None:
+            self.run_controller.activate(run_id)
 
     def new_run(self, profile=None):
         from app.ui.run_dialogs import NewRunDialog
@@ -210,50 +280,120 @@ class MainWindow(QMainWindow):
             return
         try:
             values = dialog.selection()
-            selected = self.profiles.load(values["profile_id"]) if values["profile_id"] else None
+            source = values.get("source", "profile" if values["profile_id"] else "classic")
+            if source not in {"classic", "profile", "custom"}:
+                raise ValueError("Source de configuration inconnue.")
+            if source == "profile" and not values["profile_id"]:
+                raise ValueError("Choisissez le profil de cette partie.")
+            if source != "profile" and values["profile_id"]:
+                raise ValueError("Cette configuration directe ne doit pas référencer un profil.")
+            selected = self.profiles.load(values["profile_id"]) if source == "profile" else None
             game = self.catalog.games[values["game_id"]]
+            challenge = selected.challenge if selected else None
+            if source == "custom":
+                challenge = Challenge.from_dict(values.get("challenge"))
+                errors = ChallengeEngine(self.catalog).validate(challenge)
+                if errors:
+                    raise ValueError("\n".join(errors))
             snapshot = RunLaunchService(self.base_dir, self.config).snapshot(game.id, values["launch_profile"], values["save_path"])
             run = self.runs.create(values["name"], game.id, generation=game.generation,
-                challenge=selected.challenge if selected else None, profile_id=selected.id if selected else None,
-                preset=selected.challenge.settings.get("preset_id") if selected else "classic",
+                challenge=challenge, profile_id=selected.id if selected else None,
+                preset=challenge.settings.get("preset_id") if challenge else "classic",
                 game_code=game.game_code, region=game.region, revision=game.revision,
                 save_path=values["save_path"] or None, launch_profile=snapshot)
-            self.navigate(6)
-            self.resume_run(run.run_id)
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, "Partie non créée", str(exc))
+            return
+        self.navigate(6)
+        self.runs_page.notify_created(run.run_id)
+        self.statusBar().showMessage("Partie créée", 8000)
+        self.resume_run(run.run_id)
+        return run
+
+    def _session_busy(self):
+        mode = self.game_mode_window
+        return ((mode is not None and (mode.service.state.running or mode.launch_busy))
+                or self.bridge_controller.state.status != "stopped")
+
+    def _request_run(self, run_id):
+        self._requested_run_id = run_id
+        self.run_controller.expect_run(run_id)
+        if self.game_mode_window is not None:
+            previous = self.game_mode_window.persistent_run
+            if previous is not None and previous.run_id != run_id:
+                self.game_mode_window.hide()
 
     def resume_run(self, run_id):
-        if self.run_prepare.is_busy:
+        try:
+            run = self.runs.load(run_id)
+        except (OSError, ValueError) as exc:
+            self.statusBar().showMessage("Reprise impossible : " + str(exc))
             return
+        self._request_run(run_id)
+        self._open_after_activation = True
         active = self.run_controller.active_run
-        mode = self.game_mode_window
-        busy = (mode is not None and (mode.service.state.running or mode.play_runner.is_busy)) or self.bridge_controller.state.status != "stopped"
-        if busy:
+        if self.run_prepare.is_busy:
+            self._queued_resume_id = run_id
+            self.statusBar().showMessage("La partie demandée sera préparée après la vérification en cours.")
+            return
+        if self._session_busy():
             if active and active.run_id == run_id:
-                self.open_game_mode()
+                self.open_game_mode(run_id)
             else:
-                self.statusBar().showMessage("Fermez DeSmuME et arrêtez Lua avant de changer de partie.")
+                self.navigate(6)
+                self.runs_page.highlight_run(run_id)
+                self.statusBar().showMessage("Partie enregistrée. Fermez DeSmuME et arrêtez Lua, puis reprenez la partie demandée.")
             return
         try:
             from app.services.run_launch_service import RunLaunchService
-            self._prepared_run = self.runs.load(run_id)
-            run = self._prepared_run
+            self._prepared_run = run
+            self._preparing_run_id = run_id
+            self._queued_resume_id = None
             self.statusBar().showMessage("Vérification de l'environnement de la partie…")
             self.run_prepare.start(lambda: RunLaunchService(self.base_dir, self.config).prepare(run))
         except (OSError, ValueError) as exc:
             self.statusBar().showMessage("Reprise impossible : " + str(exc))
 
+    def _run_prepare_failed(self, message):
+        if self._queued_resume_id is not None:
+            pending, self._queued_resume_id = self._queued_resume_id, None
+            self.resume_run(pending)
+            return
+        self._preparing_run_id = None
+        self.statusBar().showMessage("Partie conservée ; reprise impossible : " + message)
+
     def _run_prepared(self, result):
-        mode = self.game_mode_window
-        if (mode is not None and (mode.service.state.running or mode.play_runner.is_busy)) or self.bridge_controller.state.status != "stopped":
+        if self._session_busy():
             self.statusBar().showMessage("Une session a démarré pendant la vérification. Terminez-la avant de reprendre cette partie.")
             return
+        if self._queued_resume_id is not None:
+            pending, self._queued_resume_id = self._queued_resume_id, None
+            self.resume_run(pending)
+            return
+        if result.get("run_id") != self._requested_run_id:
+            return
+        self._preparing_run_id = None
         self._run_preparation_result = result
         self.run_controller.activate(result["run_id"])
 
     def _run_activated(self, run):
-        self.open_game_mode()
+        if self._requested_run_id is None:
+            self._requested_run_id = self.run_controller.requested_run_id
+        if run.run_id != self._requested_run_id:
+            return
+        if not self._validate_requested_run(run.run_id):
+            self._show_run_mismatch(run.run_id)
+            return
+        if self.runs_page is not None:
+            self.runs_page.refresh_visible()
+            self.runs_page.set_active_run(run.run_id)
+            self.runs_page.highlight_run(run.run_id)
+        if not self._open_after_activation:
+            self.statusBar().showMessage(f"Partie sélectionnée : {run.name}. Reprenez-la depuis Mes parties.")
+            return
+        mode = self._ensure_game_mode()
+        mode.bind_requested_run(run, self.run_controller.state)
+        self.open_game_mode(run.run_id)
         self.bridge_controller.select_profile(None)
         self.bridge_page.persistent_game = run.game_id
         with QSignalBlocker(self.bridge_page.profile_combo):
@@ -262,26 +402,25 @@ class MainWindow(QMainWindow):
             self.bridge_page.game_combo.setCurrentIndex(self.bridge_page.game_combo.findData(run.game_id))
         self.bridge_page.game_combo.setEnabled(False)
         self.bridge_page.profile_combo.setEnabled(False)
-        self.game_mode_window.set_persistent_run(run)
         result = getattr(self, "_run_preparation_result", None)
         if result and result["run_id"] == run.run_id:
             if result["health"]["ready"]:
                 from copy import deepcopy
                 snapshot = deepcopy(result["profile"])
-                if "_source" in run.launch_profile:
+                if "_source" in (run.launch_profile or {}):
                     snapshot["_source"] = deepcopy(run.launch_profile["_source"])
                 self._run_action(run.run_id, "update_launch_reference", {
                     "profile": snapshot, "rom_fingerprint": result["rom_fingerprint"]})
-                message = "Partie prête. Lancez DeSmuME avec Jouer ; le temps commencera avec les messages du jeu."
+                message = "Partie prête. Jouer prépare la connexion Lua et lance DeSmuME ; le temps commence avec les messages du jeu."
             else:
                 message = "Environnement à vérifier : " + "\n".join(result["health"]["issues"])
             self.game_mode_window.set_run_notice(message)
             self.statusBar().showMessage(message)
 
     def _run_changed(self, run, state):
-        if run is None:
+        if run is None or (self._requested_run_id is not None and run.run_id != self._requested_run_id):
             return
-        if self.game_mode_window:
+        if self.game_mode_window and self._validate_requested_run(run.run_id):
             self.game_mode_window.set_persistent_run(run, state)
             options = self.game_mode_window.launch_options(run.game_id)
             self.bridge_page.set_config(AppConfig(self.config.retrobat_path, options.get("emulator_path", ""),
@@ -294,7 +433,8 @@ class MainWindow(QMainWindow):
 
     def _run_action(self, run_id, action, payload):
         active = self.run_controller.active_run
-        if action != "set_status" and (active is None or active.run_id != run_id):
+        if action != "set_status" and (active is None or active.run_id != run_id
+                                      or self._requested_run_id not in (None, run_id)):
             self.statusBar().showMessage("Reprenez cette partie pour y enregistrer une action.")
             return
         if action == "update_launch_reference" and self.game_mode_window and self.game_mode_window._pending_run_launch is None:
@@ -304,11 +444,11 @@ class MainWindow(QMainWindow):
 
     def _run_failed(self, message):
         self.statusBar().showMessage("Partie : " + message)
-        if self.game_mode_window:
+        if self.game_mode_window and self.game_mode_window.persistent_run is not None and self.game_mode_window.persistent_run.run_id == self._requested_run_id:
             self.game_mode_window.run_action_failed(message)
 
     def _run_action_saved(self, run_id, action, run):
-        if self.game_mode_window:
+        if self.game_mode_window and self._requested_run_id == run_id:
             self.game_mode_window.run_action_saved(run_id, action, run)
         if self.runs_page and action == "set_status":
             self.runs_page.refresh_visible()
@@ -318,7 +458,9 @@ class MainWindow(QMainWindow):
         if active is None or active.run_id != run_id:
             self.statusBar().showMessage("Reprenez cette partie avant d'ouvrir ses sauvegardes.")
             return
-        self.open_game_mode()
+        self.open_game_mode(run_id)
+        if self.game_mode_window is None or not self._validate_requested_run(run_id):
+            return
         self.game_mode_window.open_settings("saves")
 
     def setup_service(self):
@@ -446,8 +588,8 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "DeSmuME s'est arrêté", "L'émulateur s'est arrêté après le lancement. Vérifiez votre installation et la ROM sélectionnée.")
 
     def closeEvent(self, event) -> None:
-        if (self.run_prepare.is_busy or (self.installation_dialog is not None and self.installation_dialog.is_busy)
-                or (self.game_mode_window is not None and (self.game_mode_window.play_runner.is_busy
+        if (self.run_prepare.is_busy or self.run_controller.activation_pending or (self.installation_dialog is not None and self.installation_dialog.is_busy)
+                or (self.game_mode_window is not None and (self.game_mode_window.launch_busy
                     or self.game_mode_window._pending_run_launch is not None or self.game_mode_window._pending_reference_save))):
             self.statusBar().showMessage("Attendez la fin de la préparation avant de fermer PCE.")
             event.ignore()

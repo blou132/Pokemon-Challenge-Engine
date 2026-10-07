@@ -69,6 +69,9 @@ class RunTrackingService:
         self._last_observation: float | None = None
         self._previous_party: dict[str, dict] = {}
         self._session_id: str | None = None
+        self._activation_pending = False
+        self._activation_previous = None
+        self._activation_same = False
         try:
             selected = manager.active_id
             if selected is not None:
@@ -130,13 +133,27 @@ class RunTrackingService:
         run.total_play_seconds = sum(session["duration"] for session in run.sessions)
 
     def activate(self, run_id: str) -> Run:
+        self.prepare_activation(run_id)
+        try:
+            return self.commit_activation(run_id)
+        except (OSError, ValueError):
+            self.cancel_activation()
+            raise
+
+    def prepare_activation(self, run_id: str) -> Run:
+        """Stage a validated candidate; the selection is published after acknowledgement."""
+        if self._activation_pending:
+            self.cancel_activation()
         if self._run and self._run.run_id == run_id:
+            self._activation_pending = self._activation_same = True
             return self.active_run
         selected = self.manager.load(run_id)
         if self._run:
             self._end_session("run_changed")
             self.flush(force=True)
-        self.manager.set_active_id(run_id)
+        self._activation_previous = (self._run, self.last_saved_at, self.last_error)
+        self._activation_pending = True
+        self._activation_same = False
         self._run = selected
         self._previous_party.clear()
         self._last_observation = self._last_tick = None
@@ -145,13 +162,40 @@ class RunTrackingService:
         self._data_dirty = self._critical_dirty = False
         self._dirty_since = None
         self.last_saved_at = None
-        self._recover()
-        if selected.started_at is not None and selected.status == "active":
-            self._event("run_resumed", "manual", {})
-        self.flush(force=True)
+        try:
+            self._recover()
+            if selected.started_at is not None and selected.status == "active":
+                self._event("run_resumed", "manual", {})
+            self.flush(force=True)
+        except (OSError, ValueError):
+            self.cancel_activation()
+            raise
         return self.active_run
 
+    def commit_activation(self, run_id: str) -> Run:
+        if not self._activation_pending or self._run is None or self._run.run_id != run_id:
+            raise ValueError("La partie préparée ne correspond pas à celle demandée.")
+        self.manager.set_active_id(run_id)
+        self._activation_pending = False
+        self._activation_previous = None
+        self._activation_same = False
+        return self.active_run
+
+    def cancel_activation(self) -> None:
+        if not self._activation_pending:
+            return
+        if not self._activation_same:
+            self._run, self.last_saved_at, self.last_error = self._activation_previous
+            self._previous_party.clear()
+            self._last_observation = self._last_tick = self._session_id = None
+            self.dirty = self._data_dirty = self._critical_dirty = False
+            self._dirty_since = None
+        self._activation_pending = False
+        self._activation_previous = None
+        self._activation_same = False
+
     def deactivate(self) -> None:
+        self.cancel_activation()
         if self._run:
             self._end_session("tracking_stopped")
             self.flush(force=True)
@@ -221,6 +265,8 @@ class RunTrackingService:
         return True
 
     def heartbeat(self, emulator_running: bool, game_id: str | None, connected: bool = True) -> Run | None:
+        if self._activation_pending:
+            return self.active_run
         eligible = (self._run is not None and self._run.status in {"preparing", "active"}
                     and emulator_running is True and connected is True and game_id == self._run.game_id
                     and self._last_observation is not None
@@ -261,6 +307,8 @@ class RunTrackingService:
     def observe(self, party: list[dict], zone: dict | str | None = None, *, game_id: str,
                 game_code: str | None = None, region: str | None = None, revision: int | None = None,
                 emulator_running: bool, valid: bool = True, connected: bool = True) -> Run | None:
+        if self._activation_pending:
+            return self.active_run
         if not (emulator_running is True and valid is True and connected is True
                 and self._matches(game_id, game_code, region, revision)):
             self._end_session("identity_or_connection_unavailable")
@@ -576,5 +624,6 @@ class RunTrackingService:
         return True
 
     def close(self) -> None:
+        self.cancel_activation()
         self._end_session("pce_closed")
         self.flush(force=True)

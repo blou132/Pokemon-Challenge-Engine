@@ -57,10 +57,12 @@ class ChallengePage(QWidget):
     saved = Signal(object)
     launch_requested = Signal(object)
 
-    def __init__(self, catalog: Catalog, profiles: ProfileManager, parent: QWidget | None = None) -> None:
+    def __init__(self, catalog: Catalog, profiles: ProfileManager | None, parent: QWidget | None = None,
+                 *, configuration_only: bool = False) -> None:
         super().__init__(parent)
         self.catalog = catalog
         self.profiles = profiles
+        self.configuration_only = configuration_only
         self.engine = ChallengeEngine(catalog)
         self.selector = RandomSelector(RuleEngine(catalog.rules.values()))
         self.challenge: Challenge | None = None
@@ -70,7 +72,9 @@ class ChallengePage(QWidget):
         self.parameter_controls: dict[str, dict[str, QSpinBox]] = {}
         self._generated_parameter_rules = set()
         self._generated_parameter_signature = None
-        layout = page_layout(self, "Nouveau challenge", "Choisissez votre jeu. Composez les contraintes. Lancez votre aventure.")
+        layout = page_layout(self, "Configurer le challenge" if configuration_only else "Nouveau challenge",
+                             "Ces règles seront copiées directement dans votre partie." if configuration_only else
+                             "Choisissez votre jeu. Composez les contraintes. Lancez votre aventure.")
         layout.addWidget(self._build_options())
         layout.addWidget(self._build_rules())
         layout.addWidget(self._build_extras())
@@ -234,7 +238,12 @@ class ChallengePage(QWidget):
         action_row.addWidget(self.save_button)
         action_row.addWidget(self.launch_button)
         result_box.addLayout(action_row)
-        result_box.addWidget(label("Configuration réutilisable et suivi local. Aucune règle n'est imposée directement dans Pokémon.", "muted"))
+        if self.configuration_only:
+            for widget in (self.name_edit, self.save_button, self.launch_button):
+                widget.hide()
+        result_box.addWidget(label("Les règles sont copiées dans la partie, sans créer de profil. Aucune règle n'est imposée directement dans Pokémon."
+                                  if self.configuration_only else
+                                  "Configuration réutilisable et suivi local. Aucune règle n'est imposée directement dans Pokémon.", "muted"))
         return result
 
     def states(self) -> dict[str, str]:
@@ -410,7 +419,9 @@ class ChallengePage(QWidget):
         self.update_rule_parameter_visibility()
         self.save_button.setEnabled(True)
         self.launch_button.setEnabled(True)
-        self.show_feedback("Aperçu non enregistré. Sauvegardez pour créer un profil avec ces règles ; les profils existants restent inchangés.", success=True)
+        self.show_feedback("Configuration prête. Utilisez cette configuration pour revenir à la création de votre partie."
+                           if self.configuration_only else
+                           "Aperçu non enregistré. Sauvegardez pour créer un profil avec ces règles ; les profils existants restent inchangés.", success=True)
 
     def _current_preset_id(self) -> str:
         """A modified starting preset becomes custom; no preset is reapplied on restore."""
@@ -427,7 +438,7 @@ class ChallengePage(QWidget):
         return selected
 
     def save_profile(self) -> None:
-        if self.challenge is None:
+        if self.challenge is None or self.configuration_only or self.profiles is None:
             return
         name = self.name_edit.text().strip()
         if not name:
@@ -454,7 +465,7 @@ class ChallengePage(QWidget):
         self.saved.emit(verified)
 
     def request_launch(self) -> None:
-        if self.challenge is not None:
+        if self.challenge is not None and not self.configuration_only:
             self.launch_requested.emit(self.challenge)
 
     def load_challenge(self, challenge: Challenge, name: str = "") -> None:

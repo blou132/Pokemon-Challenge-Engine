@@ -30,6 +30,7 @@ class GameModeWindow(QMainWindow):
     installation_requested = Signal()
     run_action_requested = Signal(str, str, object)
     process_context_changed = Signal(bool, object)
+    run_mismatch = Signal(object)
 
     def __init__(self, catalog: Catalog, base_dir: Path, bridge_controller, profiles: ProfileManager,
                  config: AppConfig, parent=None, *, service: GameModeService | None = None):
@@ -48,6 +49,21 @@ class GameModeWindow(QMainWindow):
         self._persistent_notice = ""
         self._pending_run_launch = None
         self._pending_reference_save = False
+        self.requested_run_id = None
+        self._run_guard = None
+        self._launch_generation = 0
+        self._lua_pipeline = None
+        self._connection_session = None
+        self._lua_message = ""
+        from app.services.lua_autoload_service import LuaAutoLoadService
+        self.autoload = LuaAutoLoadService(base_dir, running_probe=self.service.windows.running_executable)
+        self.autoload_runner = SetupTaskRunner(self)
+        self.autoload_runner.succeeded.connect(self._autoload_prepared)
+        self.autoload_runner.failed.connect(self._autoload_failed)
+        self.lua_timeout = QTimer(self)
+        self.lua_timeout.setSingleShot(True)
+        self.lua_timeout.setInterval(8000)
+        self.lua_timeout.timeout.connect(self._lua_timed_out)
         self.service.backup_observer = self._record_backup
         self.play_runner = SetupTaskRunner(self)
         self.play_runner.succeeded.connect(self._play_prepared)
@@ -72,7 +88,9 @@ class GameModeWindow(QMainWindow):
         self.page.reconnect_requested.connect(self.reconnect_lua)
         self.page.stop_session_requested.connect(self.stop_lua_for_change)
         self.page.run_action_requested.connect(self._quick_run_action)
-        self.controller.state_changed.connect(self.page.set_bridge_state)
+        self.controller.state_changed.connect(self._bridge_state_changed)
+        self.controller.prepared_for_request.connect(self._bridge_prepared)
+        self.controller.preparation_failed.connect(self._bridge_failed)
         self.controller.tracking_changed.connect(self._tracking_changed)
         self.page.set_bridge_state(self.controller.state)
         self.page.set_tracking_state(self.controller.tracking_state)
@@ -110,6 +128,7 @@ class GameModeWindow(QMainWindow):
     def _game_changed(self, game_id, *, select_associated=True):
         if self.persistent_run is not None:
             self.page.set_persistent_run(self.persistent_run, self.page._autosave)
+            self._refresh_controls(self.launch_options(self.persistent_run.game_id)["emulator_path"])
             return
         options = self.service.config["launch_profiles"][game_id]
         if select_associated and self.controller.state.status == "stopped" and not self.service.state.running:
@@ -133,6 +152,7 @@ class GameModeWindow(QMainWindow):
         try:
             snapshot = EmulatorSettingsService(executable).inspect()
             self.page.set_controls({key: key_label(value) for key, value in snapshot.controls.items()}, snapshot.source)
+            self.page.controls_source.setToolTip("")
         except (OSError, ValueError) as exc:
             self.page.set_controls({}, "Mapping réel : Non disponible")
             self.page.controls_source.setToolTip(str(exc))
@@ -161,8 +181,10 @@ class GameModeWindow(QMainWindow):
             self.page.set_profile(None)
 
     def launch_game(self, game_id):
-        if self.play_runner.is_busy or self._pending_reference_save or self._pending_run_launch is not None:
+        if self.launch_busy or self.service.state.running or not self.validate_requested_run():
             return
+        self._launch_generation += 1
+        self.page.set_session_phase("preparing", "Vérification de l'environnement et du support Lua…", busy=True)
         if self.persistent_run is not None:
             from app.services.run_launch_service import RunLaunchService
             self._preparing_game = self.persistent_run.game_id
@@ -179,7 +201,39 @@ class GameModeWindow(QMainWindow):
             self.page.status_label.setText("Vérification de votre installation avant le lancement…")
             self.play_runner.start(lambda: self._setup_service.prepare_play(game_id))
             return
-        self._launch_process(game_id)
+        self._launch_process(game_id, prepare_lua=True)
+
+    @property
+    def launch_busy(self):
+        return (self.play_runner.is_busy or self.autoload_runner.is_busy or self._lua_pipeline is not None
+                or self._pending_reference_save or self._pending_run_launch is not None)
+
+    def set_run_guard(self, callback):
+        self._run_guard = callback
+
+    def validate_requested_run(self):
+        if self.persistent_run is None and self.requested_run_id is None:
+            return True
+        valid = (self.persistent_run is not None and self.requested_run_id == self.persistent_run.run_id
+                 and (self._run_guard is None or self._run_guard(self.requested_run_id)))
+        if not valid:
+            self.set_run_notice("La partie active ne correspond pas à celle demandée. Réessayez depuis Mes parties.")
+            self.page.set_session_phase("error", self._persistent_notice)
+            self.run_mismatch.emit(self.requested_run_id)
+        return valid
+
+    def bind_requested_run(self, run, autosave=None):
+        if self.requested_run_id != run.run_id:
+            self._launch_generation += 1
+            self._lua_pipeline = None
+            self._pending_run_launch = None
+            self._pending_reference_save = False
+            self._connection_session = None
+            self.lua_timeout.stop()
+            self._persistent_notice = ""
+            self.page.set_session_phase("ready")
+        self.requested_run_id = run.run_id
+        self.set_persistent_run(run, autosave, requested_run_id=run.run_id)
 
     def _play_busy(self, busy):
         if busy:
@@ -190,11 +244,14 @@ class GameModeWindow(QMainWindow):
             self.page.set_run_state(self.service.state)
 
     def _play_prepared(self, result):
+        if not self.validate_requested_run():
+            return
         health = result.get("health", {})
-        if not health.get("ready"):
+        if not health.get("ready") and not health.get("launch_ready"):
             self.page.status_label.setText("Installation à vérifier : " + "\n".join(health.get("issues", [])))
             if self.persistent_run is not None:
                 self._persistent_notice = self.page.status_label.text()
+            self.page.set_session_phase("error", self.page.status_label.text())
             self.installation_requested.emit()
             return
         if self.persistent_run is not None:
@@ -202,6 +259,7 @@ class GameModeWindow(QMainWindow):
                 self.page.status_label.setText("La partie a changé pendant la préparation ; relancez la vérification.")
                 return
             self._run_launch_options = result["profile"]
+            self._resolve_lua_choice(self._run_launch_options)
             snapshot = deepcopy(result["profile"])
             if "_source" in self.persistent_run.launch_profile:
                 snapshot["_source"] = deepcopy(self.persistent_run.launch_profile["_source"])
@@ -211,26 +269,186 @@ class GameModeWindow(QMainWindow):
                 {"profile": snapshot, "rom_fingerprint": result["rom_fingerprint"]})
             return
         self.service.reload_preferences()
+        options = deepcopy(self.launch_options(self._preparing_game))
+        self._resolve_lua_choice(options)
+        self.service.save_launch_profile(self._preparing_game, {"lua_connection": options.get("lua_connection", "ask")})
         self._launch_process(self._preparing_game, prepare_lua=True)
 
     def _play_failed(self, message):
         self.page.status_label.setText("Préparation impossible : " + message + " · Ouvrez Installation & diagnostic.")
         if self.persistent_run is not None:
             self._persistent_notice = self.page.status_label.text()
+        self.page.set_session_phase("error", self.page.status_label.text())
 
     def reconnect_lua(self):
+        if self.launch_busy or not self.validate_requested_run():
+            return
         game_id = self.page.game_combo.currentData()
-        self.controller.start(game_id, self.launch_options(game_id)["rom_path"])
-        self.bridge_requested.emit()
+        self._begin_lua(game_id, reconnect=True)
 
     def stop_lua_for_change(self):
         answer = QMessageBox.question(self, "Arrêter la session Lua ?",
             "L'ancienne session Lua sera arrêtée. DeSmuME restera ouvert : fermez sa fenêtre avant de lancer un autre jeu. Continuer ?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         if answer == QMessageBox.StandardButton.Yes:
+            self.lua_timeout.stop()
             self.controller.stop()
+            if self._lua_pipeline is not None:
+                self._cancel_lua_pipeline()
+
+    def _resolve_lua_choice(self, options):
+        from app.services.emulator_capabilities import detect_capabilities
+        choice = options.get("lua_connection", "ask")
+        if choice == "manual" or not detect_capabilities(options["emulator_path"]).known_build:
+            return
+        try:
+            consent = self.autoload.consent_status(options["emulator_path"])
+            if consent is None or (choice == "auto" and consent is False):
+                consent = self._ask_lua_consent()
+                self.autoload.record_consent(options["emulator_path"], consent)
+            options["lua_connection"] = "auto" if consent else "manual"
+        except (OSError, ValueError) as exc:
+            self._lua_message = "Mode manuel : " + str(exc)
+
+    def _ask_lua_consent(self):
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Connexion Lua automatique")
+        dialog.setText("PCE peut configurer l'autoload Lua de DeSmuME afin que la connexion démarre automatiquement avec le jeu.")
+        dialog.setInformativeText("Les deux réglages existants seront sauvegardés. Vos scripts personnels seront conservés.")
+        activate = dialog.addButton("Activer", QMessageBox.ButtonRole.AcceptRole)
+        dialog.addButton("Conserver le mode manuel", QMessageBox.ButtonRole.RejectRole)
+        dialog.exec()
+        return dialog.clickedButton() is activate
+
+    def _begin_lua(self, game_id, *, reconnect=False):
+        if not self.validate_requested_run():
+            return
+        self._launch_generation += 1
+        self.lua_timeout.stop()
+        self._connection_session = None
+        self._lua_message = ""
+        self._lua_pipeline = {"generation": self._launch_generation, "game_id": game_id,
+            "run_id": self.requested_run_id, "options": deepcopy(self.launch_options(game_id)),
+            "reconnect": reconnect, "request": None}
+        self.page.set_session_phase("preparing", "Création d'une nouvelle session Lua…", busy=True)
+        self._lua_pipeline["request"] = self.controller.start(game_id, self._lua_pipeline["options"]["rom_path"])
+
+    def _pipeline_matches(self, pipeline):
+        return (pipeline is not None and pipeline is self._lua_pipeline
+                and pipeline["generation"] == self._launch_generation
+                and pipeline["run_id"] == self.requested_run_id
+                and pipeline["request"] == self.controller.request_id
+                and self.validate_requested_run())
+
+    def _bridge_prepared(self, request_id, script):
+        pending = self._lua_pipeline
+        if pending is None or request_id != pending["request"]:
+            return
+        if not self._pipeline_matches(pending):
+            self._cancel_lua_pipeline()
+            return
+        path = Path(script)
+        bridge = self.controller.bridge
+        if path.parent != bridge.session_dir or path.parent.name != bridge.session_id or (path.parent / "stop").exists():
+            self._bridge_failed(request_id, "Le script ne correspond pas à la nouvelle session Lua.")
+            return
+        self._connection_session = bridge.session_id
+        pending["session_id"] = bridge.session_id
+        options = pending["options"]
+        self.page.set_session_phase("preparing", "Préparation de l'autoload Lua…", busy=True)
+        def prepare():
+            automatic = options.get("lua_connection", "ask") == "auto" and not pending["reconnect"]
+            try:
+                if not automatic and not pending["reconnect"]:
+                    self.autoload.restore(options["emulator_path"])
+                result = self.autoload.prepare(options["emulator_path"], options["rom_path"], path,
+                    pending["session_id"], configure_ini=automatic)
+                return {"pipeline": pending, "enabled": result.enabled, "message": result.message}
+            except (OSError, ValueError) as exc:
+                return {"pipeline": pending, "enabled": False, "message": "Mode manuel : " + str(exc)}
+        self.autoload_runner.start(prepare)
+
+    def _autoload_prepared(self, result):
+        pending = result["pipeline"]
+        if pending is not self._lua_pipeline:
+            return
+        if not self._pipeline_matches(pending):
+            self._cancel_lua_pipeline()
+            return
+        if pending.get("session_id") is not None:
+            bridge = self.controller.bridge
+            if (bridge.session_id != pending["session_id"] or bridge.session_dir is None
+                    or (bridge.session_dir / "stop").exists()):
+                self._cancel_lua_pipeline()
+                return
+        self._lua_pipeline = None
+        self._lua_message = "" if result["enabled"] else result["message"] + (
+            " Ouvrez le mode manuel et exécutez le nouveau connect.lua."
+            " L'autoload ne s'exécute qu'au chargement de la ROM ; aucun réglage INI n'a été modifié dans le processus ouvert."
+            if pending["reconnect"] else " Ouvrez le mode manuel pour charger le connect.lua de cette session.")
+        if pending["reconnect"]:
+            self.page.set_session_phase("waiting_script", self._lua_message)
+            self.lua_timeout.start()
+        else:
+            self.page.set_session_phase("waiting_emulator", self._lua_message or "Autoload prêt. Lancement de DeSmuME…", busy=True)
+            self._launch_process(pending["game_id"])
+
+    def _autoload_failed(self, message):
+        pending = self._lua_pipeline
+        if pending is not None:
+            self._autoload_prepared({"pipeline": pending, "enabled": False, "message": "Mode manuel : " + message})
+
+    def _bridge_failed(self, request_id, message):
+        pending = self._lua_pipeline
+        if pending is not None and pending["request"] == request_id:
+            self._autoload_prepared({"pipeline": pending, "enabled": False,
+                                    "message": "Session Lua à réparer : " + message})
+
+    def _cancel_lua_pipeline(self):
+        self._lua_pipeline = None
+        self.page.set_session_phase("error", "La session a changé pendant la préparation. Réessayez depuis Mes parties.")
+
+    def _bridge_state_changed(self, state):
+        if state.connected and self._connection_session is not None and state.session_id != self._connection_session:
+            return
+        self.page.set_bridge_state(state)
+        if state.status == "stopped":
+            self.lua_timeout.stop()
+        if state.status == "stopped" and self._lua_pipeline is not None:
+            self._cancel_lua_pipeline()
+            return
+        if self._lua_pipeline is not None or self.play_runner.is_busy or self._pending_run_launch is not None:
+            return
+        game = self.persistent_run.game_id if self.persistent_run else self.page.game_combo.currentData()
+        matching = state.connected and state.game_id == game and (
+            self._connection_session is None or state.session_id == self._connection_session)
+        if matching:
+            self.lua_timeout.stop()
+            self._lua_message = ""
+            self.page.set_session_phase("connected", "Connexion Lua confirmée par le jeu.")
+        elif state.status in {"stopped", "disconnected", "error"}:
+            self.page.set_session_phase("error" if state.status == "error" else "disconnected",
+                state.last_error or ("Jeu lancé, suivi Lua indisponible." if self.service.state.running else ""))
+        elif state.status == "waiting" and self.page._session_phase != "error":
+            self.page.set_session_phase("waiting_script", self._lua_message or "En attente du script Lua de cette session…")
+
+    def _lua_timed_out(self):
+        state = self.controller.state
+        game = self.persistent_run.game_id if self.persistent_run else self.page.game_combo.currentData()
+        if (state.connected and state.game_id == game and self._connection_session is not None
+                and state.session_id == self._connection_session):
+            self._bridge_state_changed(state)
+            return
+        message = ("DeSmuME a démarré mais Lua ne s'est pas connecté." if self.service.state.running else
+                   "Aucun heartbeat Lua reçu pour cette session.")
+        self.page.set_session_phase("error", message + " " + self._lua_message)
 
     def _launch_process(self, game_id, *, prepare_lua=False):
+        if not self.validate_requested_run():
+            return
+        if prepare_lua:
+            self._begin_lua(game_id)
+            return
         try:
             if self.persistent_run is not None:
                 process = self.service.launch(game_id, options_override=self._run_launch_options)
@@ -241,15 +459,15 @@ class GameModeWindow(QMainWindow):
                 process = self.service.launch(game_id, profile_id)
         except (OSError, ValueError) as exc:
             self.page.status_label.setText(str(exc))
+            self.page.set_session_phase("error", str(exc))
             QMessageBox.warning(self, "Lancement impossible", str(exc))
             return
         self.process_launched.emit(process)
         self._persistent_notice = ""
         self.process_context_changed.emit(True, game_id)
-        if prepare_lua:
-            self.controller.start(game_id, self.launch_options(game_id)["rom_path"])
-            self.bridge_requested.emit()
         self.page.set_run_state(self.service.state)
+        self.page.set_session_phase("waiting_script", self._lua_message or "DeSmuME a démarré. Attente du heartbeat Lua…")
+        self.lua_timeout.start()
         self._arrange_pending = self.service.config["interface"]["auto_arrange"]
         self._arrange_attempts = 0
         if self.launch_options(game_id)["game_mode"]:
@@ -278,13 +496,13 @@ class GameModeWindow(QMainWindow):
             self.page.status_label.setText("Backup non créé : " + str(exc))
 
     def refresh_run(self):
-        if self.play_runner.is_busy:
+        if self.play_runner.is_busy or self.autoload_runner.is_busy:
             return
         try:
             state = self.service.tick()
             self.process_context_changed.emit(state.running, state.game_id)
             self.page.set_run_state(state)
-            if self._pending_reference_save or self._pending_run_launch is not None:
+            if self.launch_busy:
                 self.page.launch_button.setEnabled(False)
             if self._persistent_notice:
                 self.page.status_label.setText(self._persistent_notice)
@@ -309,7 +527,8 @@ class GameModeWindow(QMainWindow):
         self.page.status_label.setText(message)
 
     def run_action_saved(self, run_id, action, run):
-        if self.persistent_run is None or run_id != self.persistent_run.run_id or action != "update_launch_reference":
+        if (self.persistent_run is None or run_id != self.persistent_run.run_id or run_id != self.requested_run_id
+                or action != "update_launch_reference" or not self.validate_requested_run()):
             return
         self._pending_reference_save = False
         pending = self._pending_run_launch
@@ -331,9 +550,14 @@ class GameModeWindow(QMainWindow):
             self._pending_reference_save = False
             self._run_launch_options = None
             self.set_run_notice("Références de partie non enregistrées ; lancement annulé : " + message)
+            self.page.set_session_phase("error", self._persistent_notice)
             self.page.launch_button.setEnabled(not self.service.state.running)
 
-    def set_persistent_run(self, run, autosave=None):
+    def set_persistent_run(self, run, autosave=None, *, requested_run_id=None):
+        expected = requested_run_id or self.requested_run_id or run.run_id
+        if run.run_id != expected or (self.requested_run_id is not None and expected != self.requested_run_id):
+            return False
+        self.requested_run_id = expected
         changed = self.persistent_run is None or self.persistent_run.run_id != run.run_id
         environment_changed = self.persistent_run is not None and self.persistent_run.launch_profile != run.launch_profile
         self.persistent_run = deepcopy(run)
@@ -349,6 +573,9 @@ class GameModeWindow(QMainWindow):
             self._settings_game = None
             self._set_settings_game(run.game_id)
         self.page.set_persistent_run(run, autosave)
+        if changed or environment_changed:
+            self._refresh_controls(self.launch_options(run.game_id)["emulator_path"])
+        return True
 
     def _record_backup(self, record):
         if self.persistent_run is not None:
@@ -552,15 +779,17 @@ class GameModeWindow(QMainWindow):
     def showEvent(self, event):
         if hasattr(self, "timer"):
             self.timer.start()
+            self._refresh_controls(self.launch_options(self.page.game_combo.currentData())["emulator_path"])
         super().showEvent(event)
 
     def shutdown_tracking(self):
         self.timer.stop()
+        self.lua_timeout.stop()
         self.service.stop_tracking()
         self.process_context_changed.emit(False, self.service.state.game_id)
 
     def closeEvent(self, event):
-        if self.play_runner.is_busy or self._pending_run_launch is not None or self._pending_reference_save:
+        if self.launch_busy:
             event.ignore()
             self.page.status_label.setText("Attendez la fin de la préparation et de l'enregistrement avant de fermer le Mode Jeu.")
             return

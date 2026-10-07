@@ -2,8 +2,8 @@
 
 from datetime import datetime
 
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtCore import QSignalBlocker, QTimer, Signal
+from PySide6.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QPushButton, QScrollArea, QVBoxLayout, QWidget
 
 from app.ui.run_dialogs import (
     RunDetailsDialog, STATUS_LABELS, active_deaths, badges_text, display_date,
@@ -16,12 +16,16 @@ class RunCard(QWidget):
     resume_requested = Signal(str)
     details_requested = Signal(str)
 
-    def __init__(self, run, catalog, *, active=False, parent=None):
+    def __init__(self, run, catalog, *, active=False, highlighted=False, parent=None):
         super().__init__(parent)
         self.run_id = run.run_id
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         frame, box = card()
+        self.highlighted = highlighted
+        frame.setProperty("selectedRun", highlighted)
+        if highlighted:
+            frame.setStyleSheet('QFrame#card[selectedRun="true"] { border: 2px solid #a99bff; background: #20253b; }')
         outer.addWidget(frame)
         game = catalog.games.get(run.game_id)
         top = QHBoxLayout()
@@ -69,6 +73,10 @@ class RunsPage(QWidget):
         self.cards = []
         self.visible_run_ids = []
         self.active_run_id = None
+        self.highlighted_run_id = None
+        self._highlight_scroll = QTimer(self)
+        self._highlight_scroll.setSingleShot(True)
+        self._highlight_scroll.timeout.connect(self._scroll_to_highlight)
         self._dialogs = {}
         layout = page_layout(self, "Mes parties", "Retrouvez chaque aventure avec ses propres règles, son équipe et son historique.")
         row = QHBoxLayout()
@@ -82,6 +90,9 @@ class RunsPage(QWidget):
         refresh.clicked.connect(self.refresh)
         row.addWidget(refresh)
         layout.addLayout(row)
+        self.creation_feedback = label("", "success")
+        self.creation_feedback.hide()
+        layout.addWidget(self.creation_feedback)
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("Rechercher une partie par son nom")
         self.search_edit.setClearButtonEnabled(True)
@@ -131,6 +142,39 @@ class RunsPage(QWidget):
     def set_active_run(self, run_id):
         self.active_run_id = run_id
         self._render()
+
+    def notify_created(self, run_id):
+        """Show a verified persisted run immediately, even after restrictive filters."""
+        self.refresh()
+        created = next((run for run in self.runs if run.run_id == run_id), None)
+        if created is None:
+            self.creation_feedback.hide()
+            self.warning.setText("La nouvelle partie n'a pas pu être relue dans la bibliothèque.")
+            self.warning.show()
+            return False
+        reset = not self._matches(created)
+        if reset:
+            controls = (self.search_edit, self.generation_combo, self.game_combo, self.challenge_combo, self.status_combo)
+            blockers = [QSignalBlocker(control) for control in controls]
+            self.search_edit.clear()
+            for combo in controls[1:]:
+                combo.setCurrentIndex(0)
+            del blockers
+        self.creation_feedback.setText("Partie créée" + (" · Filtres réinitialisés pour afficher la nouvelle partie." if reset else ""))
+        self.creation_feedback.show()
+        self.highlight_run(run_id)
+        return True
+
+    def highlight_run(self, run_id):
+        self.highlighted_run_id = run_id
+        self._render()
+        self._highlight_scroll.start(0)
+
+    def _scroll_to_highlight(self):
+        widget = next((item for item in self.cards if item.run_id == self.highlighted_run_id), None)
+        scroll = self.findChild(QScrollArea)
+        if scroll is not None and widget is not None:
+            scroll.ensureWidgetVisible(widget, 0, 24)
 
     def refresh(self, *_args):
         try:
@@ -187,12 +231,15 @@ class RunsPage(QWidget):
                 "name": lambda run: run.name.casefold(), "time": lambda run: run.total_play_seconds}
         runs.sort(key=keys.get(sorting, keys["last_played"]), reverse=sorting != "name")
         self.visible_run_ids = [run.run_id for run in runs]
-        self.summary.setText(f"{len(runs)} partie(s) affichée(s) · {len(self.runs)} enregistrée(s)")
+        visible_suffix = "s" if len(runs) != 1 else ""
+        total_suffix = "s" if len(self.runs) != 1 else ""
+        self.summary.setText(f"{len(runs)} partie{visible_suffix} affichée{visible_suffix} · {len(self.runs)} enregistrée{total_suffix}")
         self.empty_label.setText("Aucune partie pour le moment. Créez une partie Classique ou commencez depuis un profil."
                                  if not self.runs else "Aucune partie ne correspond à ces filtres.")
         self.empty_label.setVisible(not runs)
         for run in runs:
-            widget = RunCard(run, self.catalog, active=run.run_id == self.active_run_id)
+            widget = RunCard(run, self.catalog, active=run.run_id == self.active_run_id,
+                             highlighted=run.run_id == self.highlighted_run_id)
             widget.resume_requested.connect(self.resume_requested)
             widget.details_requested.connect(self.open_details)
             self.cards_layout.addWidget(widget)

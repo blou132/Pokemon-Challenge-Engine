@@ -46,12 +46,14 @@ class RunLaunchService:
         health = self.setup.health_check(run.game_id, options_override=values)
         if preparation_error:
             health["ready"] = False
+            health["launch_ready"] = False
             health["issues"].append(preparation_error)
         fingerprint = None
-        if health["ready"]:
+        if health["ready"] or health.get("launch_ready", False):
             fingerprint = file_hash(Path(values["rom_path"]))
             if run.rom_fingerprint and run.rom_fingerprint != fingerprint:
                 health["ready"] = False
+                health["launch_ready"] = False
                 health["issues"].append("La ROM a changé depuis la création de cette partie. Vérifiez son association avant de reprendre.")
         return {"game_id": run.game_id, "run_id": run.run_id, "profile": values,
                 "health": health, "rom_fingerprint": fingerprint, "actions": []}

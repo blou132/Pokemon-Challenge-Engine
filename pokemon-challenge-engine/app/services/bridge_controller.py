@@ -16,9 +16,13 @@ LOGGER = logging.getLogger(__name__)
 
 class _BridgeWorker(QObject):
     state_changed = Signal(object)
+    state_for_request = Signal(int, object)
     tracking_changed = Signal(object)
     prepared = Signal(str)
+    prepared_for_request = Signal(int, str)
+    preparation_failed = Signal(int, str)
     failed = Signal(str)
+    failure_for_request = Signal(int, str)
 
     def __init__(self, bridge: BridgeService, base_dir: Path) -> None:
         super().__init__()
@@ -29,6 +33,7 @@ class _BridgeWorker(QObject):
         self._last_state = BridgeState()
         self.tracking: TrackingService | None = None
         self._tracking_state = TrackingState()
+        self._request_id = 0
 
     def _tracking(self) -> TrackingService:
         if self.tracking is None:
@@ -51,6 +56,7 @@ class _BridgeWorker(QObject):
         if state != self._last_state:
             self._last_state = state
             self.state_changed.emit(state)
+            self.state_for_request.emit(self._request_id, state)
             try:
                 tracking = self._tracking().consume(state)
                 self._publish_tracking(tracking)
@@ -60,14 +66,15 @@ class _BridgeWorker(QObject):
                 LOGGER.exception("Suivi Nuzlocke suspendu ; observations conservées.")
                 self._publish_tracking(replace(self._tracking_state, status="error", message=str(exc)))
 
-    @Slot(str, str)
-    def start(self, game_id: str, rom_path: str) -> None:
+    @Slot(str, str, int)
+    def start(self, game_id: str, rom_path: str, request_id: int = 0) -> None:
         if self._timer is not None:
             self._timer.stop()
         if self.bridge.session_id is not None:
             self._publish(self.bridge.poll())
         self.bridge.stop()
         self._last_state = BridgeState()
+        self._request_id = request_id
         try:
             if self.emulator is None:
                 self.emulator = EmulatorService(self.base_dir, self.bridge)
@@ -81,6 +88,8 @@ class _BridgeWorker(QObject):
             message = str(exc) or "Préparation de la passerelle impossible."
             self._publish(BridgeState(status="error", expected_game=game_id, last_error=message))
             self.failed.emit(message)
+            self.failure_for_request.emit(request_id, message)
+            self.preparation_failed.emit(request_id, message)
             return
         if self._timer is None:
             # Le timer est créé ici, après moveToThread, dans son thread propriétaire.
@@ -88,6 +97,7 @@ class _BridgeWorker(QObject):
             self._timer.setInterval(200)
             self._timer.timeout.connect(self.poll)
         self.prepared.emit(str(script))
+        self.prepared_for_request.emit(request_id, str(script))
         self._publish(self.bridge.state)
         self._timer.start()
 
@@ -102,13 +112,17 @@ class _BridgeWorker(QObject):
             message = str(exc) or "Lecture de la passerelle impossible."
             self._publish(replace(self.bridge.state, status="error", party_size=None, party=None, last_error=message))
             self.failed.emit(message)
+            self.failure_for_request.emit(self._request_id, message)
 
     @Slot()
-    def stop(self) -> None:
+    @Slot(int)
+    def stop(self, request_id=None) -> None:
         if self._timer is not None:
             self._timer.stop()
         if self.bridge.session_id is not None:
             self._publish(self.bridge.poll())
+        if request_id is not None:
+            self._request_id = request_id
         self.bridge.stop()
         self._publish(self.bridge.state)
 
@@ -119,9 +133,11 @@ class BridgeController(QObject):
     state_changed = Signal(object)
     tracking_changed = Signal(object)
     prepared = Signal(str)
+    prepared_for_request = Signal(int, str)
+    preparation_failed = Signal(int, str)
     failed = Signal(str)
-    _start_requested = Signal(str, str)
-    _stop_requested = Signal()
+    _start_requested = Signal(str, str, int)
+    _stop_requested = Signal(int)
     _profile_requested = Signal(object)
 
     def __init__(self, base_dir: Path, parent: QObject | None = None, *, bridge: BridgeService | None = None) -> None:
@@ -133,6 +149,7 @@ class BridgeController(QObject):
         self._thread: QThread | None = None
         self._worker: _BridgeWorker | None = None
         self._closed = False
+        self.request_id = 0
 
     def _ensure_worker(self) -> None:
         if self._thread is not None:
@@ -144,10 +161,11 @@ class BridgeController(QObject):
         self._start_requested.connect(worker.start)
         self._stop_requested.connect(worker.stop)
         self._profile_requested.connect(worker.select_profile)
-        worker.state_changed.connect(self._receive_state)
+        worker.state_for_request.connect(self._receive_scoped_state)
         worker.tracking_changed.connect(self._receive_tracking)
-        worker.prepared.connect(self._receive_prepared)
-        worker.failed.connect(self._receive_failure)
+        worker.prepared_for_request.connect(self._receive_scoped_prepared)
+        worker.preparation_failed.connect(self._receive_preparation_failure)
+        worker.failure_for_request.connect(self._receive_scoped_failure)
         thread.finished.connect(worker.deleteLater)
         self._thread, self._worker = thread, worker
         thread.start()
@@ -170,6 +188,22 @@ class BridgeController(QObject):
             self.state = state
             self.state_changed.emit(state)
 
+    @Slot(int, object)
+    def _receive_scoped_state(self, request_id, state):
+        if request_id == self.request_id:
+            self._receive_state(state)
+
+    @Slot(int, str)
+    def _receive_scoped_prepared(self, request_id, path):
+        if not self._closed and request_id == self.request_id:
+            self._receive_prepared(path)
+            self.prepared_for_request.emit(request_id, path)
+
+    @Slot(int, str)
+    def _receive_preparation_failure(self, request_id, message):
+        if not self._closed and request_id == self.request_id:
+            self.preparation_failed.emit(request_id, message)
+
     @Slot(str)
     def _receive_prepared(self, path: str) -> None:
         if not self._closed:
@@ -180,17 +214,25 @@ class BridgeController(QObject):
         if not self._closed:
             self.failed.emit(message)
 
+    @Slot(int, str)
+    def _receive_scoped_failure(self, request_id, message):
+        if request_id == self.request_id:
+            self._receive_failure(message)
+
     @Slot(str, str)
-    def start(self, game_id: str, rom_path: str = "") -> None:
+    def start(self, game_id: str, rom_path: str = "") -> int | None:
         if self._closed:
             return
         self._ensure_worker()
-        self._start_requested.emit(game_id, rom_path)
+        self.request_id += 1
+        self._start_requested.emit(game_id, rom_path, self.request_id)
+        return self.request_id
 
     @Slot()
     def stop(self) -> None:
+        self.request_id += 1  # Invalidate every pending preparation immediately.
         if self._thread is not None and not self._closed:
-            self._stop_requested.emit()
+            self._stop_requested.emit(self.request_id)
 
     @Slot()
     def shutdown(self) -> None:

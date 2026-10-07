@@ -107,6 +107,9 @@ class GameModePage(QWidget):
         self._persistent_run = None
         self._autosave = {}
         self._panels_visible = True
+        self._session_phase = None
+        self._session_message = ""
+        self._launch_busy = False
         self.setObjectName("page")
         outer = QVBoxLayout(self)
         outer.setContentsMargins(18, 16, 18, 14)
@@ -115,10 +118,13 @@ class GameModePage(QWidget):
         title = QVBoxLayout()
         title.setSpacing(2)
         title.addWidget(label("MODE JEU", "eyebrow"))
-        title.addWidget(label("Votre aventure, à portée de main.", "gameTitle"))
+        main_title = label("Votre aventure, à portée de main.", "gameTitle")
+        main_title.setWordWrap(False)
+        title.addWidget(main_title)
         heading.addLayout(title)
         heading.addStretch()
         self.connection_badge = label("Lua · déconnecté", "badge")
+        self.connection_badge.setWordWrap(False)
         heading.addWidget(self.connection_badge)
         self.customize_button = QPushButton("Personnaliser")
         self.customize_button.clicked.connect(lambda: self.settings_requested.emit("interface"))
@@ -166,6 +172,12 @@ class GameModePage(QWidget):
         self.reconnect_button = QPushButton("Reconnecter Lua")
         self.reconnect_button.clicked.connect(self.reconnect_requested)
         recovery.addWidget(self.reconnect_button)
+        self.manual_lua_button = QPushButton("Ouvrir le mode manuel")
+        self.manual_lua_button.clicked.connect(lambda: self.settings_requested.emit("bridge"))
+        recovery.addWidget(self.manual_lua_button)
+        self.lua_diagnostic_button = QPushButton("Diagnostic")
+        self.lua_diagnostic_button.clicked.connect(lambda: self.settings_requested.emit("installation"))
+        recovery.addWidget(self.lua_diagnostic_button)
         self.change_game_button = QPushButton("Arrêter et changer de jeu")
         self.change_game_button.clicked.connect(self.stop_session_requested)
         recovery.addWidget(self.change_game_button)
@@ -182,20 +194,22 @@ class GameModePage(QWidget):
         self.center.setObjectName("gameStage")
         self.center.setMinimumWidth(280)
         self.window_title = label("Fenêtre externe", "sectionTitle")
+        self.session_status = label("PARTIE PRÊTE", "eyebrow")
+        center.addWidget(self.session_status)
         center.addWidget(self.window_title)
         center.addWidget(label("Votre jeu s'ouvre dans sa propre fenêtre.\nCe cadre indique la place réservée à DeSmuME.", "muted"))
         center.addStretch(1)
         screen = QFrame()
         screen.setObjectName("dsPlaceholder")
         screen.setMaximumWidth(410)
-        screen.setMinimumHeight(240)
+        screen.setMinimumHeight(180)
         screens = QVBoxLayout(screen)
         screens.setContentsMargins(15, 15, 15, 15)
         screens.setSpacing(12)
         for name in ("ÉCRAN SUPÉRIEUR", "ÉCRAN TACTILE"):
             text = label(name, "dsScreen")
             text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            text.setMinimumHeight(95)
+            text.setMinimumHeight(65)
             screens.addWidget(text, 1)
         center.addWidget(screen, 1, Qt.AlignmentFlag.AlignHCenter)
         center.addStretch(1)
@@ -265,11 +279,13 @@ class GameModePage(QWidget):
         self.controller_label = label("Manette : " + UNAVAILABLE, "muted")
         controls.addWidget(self.controller_label)
         buttons = QHBoxLayout()
+        self.controls_buttons = []
         for text in ("Modifier", "Réinitialiser"):
             button = QPushButton(text)
             button.clicked.connect(lambda checked=False, action=text: self.settings_requested.emit(
                 "controls_reset" if action == "Réinitialiser" else "controls"))
             buttons.addWidget(button)
+            self.controls_buttons.append(button)
         controls.addLayout(buttons)
 
         speed = self._block("speed")
@@ -431,6 +447,43 @@ class GameModePage(QWidget):
                                  f"Code : {state.game_code or UNAVAILABLE}\nProfil mémoire : {state.memory_profile or UNAVAILABLE}\n"
                                  f"Séquence : {state.sequence}\nPID : {self._run.pid or UNAVAILABLE}")
         self._render_persistent()
+        self._render_session()
+
+    def set_session_phase(self, phase, message="", *, busy=False):
+        self._session_phase = phase
+        self._session_message = message
+        self._launch_busy = busy
+        self._render_session()
+
+    def _render_session(self):
+        phase = self._session_phase or ("connected" if self._bridge.connected else
+            "waiting_script" if self._bridge.status == "waiting" else
+            "error" if self._bridge.status == "error" else "disconnected")
+        names = {"preparing": "préparation", "waiting_emulator": "attente de DeSmuME",
+                 "waiting_script": "attente du script", "connected": "connecté",
+                 "disconnected": "déconnecté", "ready": "déconnecté", "error": "erreur"}
+        self.connection_badge.setText("Lua · " + names[phase])
+        title = "DÉMARRAGE" if self._launch_busy else "EN JEU" if self._run.running and phase == "connected" else (
+            "ERREUR LUA" if self._run.running and phase in {"error", "disconnected"} else
+            "ATTENTE LUA" if self._run.running else "PARTIE PRÊTE")
+        self.session_status.setText(title)
+        self.launch_button.setText("DeSmuME en cours" if self._run.running else "Préparation…" if self._launch_busy else "Jouer  →")
+        self.launch_button.setToolTip("DeSmuME est déjà lancé. Le suivi attend les messages Lua."
+            if self._run.running and phase != "connected" else "DeSmuME est déjà lancé." if self._run.running
+            else "La préparation doit se terminer avant de jouer." if self._launch_busy else "Lancer cette partie et sa connexion Lua.")
+        terminal = self._persistent_run is not None and self._persistent_run.status not in {"preparing", "active"}
+        self.launch_button.setEnabled(not self._run.running and not self._launch_busy and not terminal)
+        if self._session_message:
+            self.status_label.setText(self._session_message)
+        self.manual_lua_button.setVisible(phase in {"error", "waiting_script", "disconnected"})
+        self.lua_diagnostic_button.setVisible(phase == "error")
+        if phase == "error":
+            self.recovery_row.show()
+            self.reconnect_button.show()
+            self.reconnect_button.setText("Réessayer la connexion")
+        else:
+            self.reconnect_button.setText("Reconnecter Lua")
+        self.reconnect_button.setEnabled(not self._launch_busy)
 
     def set_tracking_state(self, state: TrackingState):
         if self._persistent_run is not None:
@@ -465,6 +518,7 @@ class GameModePage(QWidget):
                                if state.game_id else "Session PCE : " + UNAVAILABLE)
         self.time_label.setToolTip("Temps écoulé depuis le lancement suivi par PCE ; distinct du temps de jeu enregistré dans Pokémon.")
         self._render_persistent()
+        self._render_session()
 
     def set_persistent_run(self, run, autosave=None):
         self._persistent_run = deepcopy(run)
@@ -511,7 +565,7 @@ class GameModePage(QWidget):
         self.stat_labels["deaths"].setToolTip("")
         if pending:
             self.stat_labels["deaths"].setText(self.stat_labels["deaths"].text() + f" · {len(pending)} à confirmer")
-            self.stat_labels["deaths"].setToolTip("Une observation à 0 PV demande confirmation dans Mes parties > Détails > Équipe.")
+            self.stat_labels["deaths"].setToolTip("Une observation à 0 PV demande confirmation dans Mes parties > Détails > Progression.")
         self.capture_count_label.setText("Captures · Manuel : " + (str(len(run.captures)) if run.captures is not None else "Non renseigné"))
         self.monotype_label.hide()
         self.randomizer_label.hide()
@@ -558,6 +612,8 @@ class GameModePage(QWidget):
             widget.setToolTip(value or UNAVAILABLE)
         self.controls_source.setText(source)
         self.controller_label.setText("Manette : " + (controller or UNAVAILABLE))
+        self.controls_buttons[0].setText("Modifier" if mapping else "Configurer les contrôles")
+        self.controls_buttons[1].setVisible(bool(mapping))
 
     def set_interface(self, settings: dict):
         self._interface = deepcopy(settings)

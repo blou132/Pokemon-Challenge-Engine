@@ -129,6 +129,9 @@ class LaunchProfilePage(QWidget):
         self.apply_settings = QCheckBox("Exporter ces réglages DeSmuME au lancement, avec backup de sa configuration")
         self.apply_settings.setToolTip("Export uniquement pour un build reconnu, émulateur arrêté, après sauvegarde de son INI.")
         box.addWidget(self.apply_settings)
+        self.auto_lua = QCheckBox("Connecter automatiquement Lua avec Jouer")
+        self.auto_lua.setToolTip("Une confirmation est demandée avant la première configuration de l'autoload DeSmuME.")
+        box.addWidget(self.auto_lua)
         self.game_mode = QCheckBox("Revenir au Mode Jeu après le lancement")
         box.addWidget(self.game_mode)
         box.addWidget(label("Sans export, ces choix restent configurés. Les données Pokémon et les sauvegardes ne sont jamais modifiées par ces réglages.", "muted"))
@@ -172,6 +175,7 @@ class LaunchProfilePage(QWidget):
         self.graphics_preset.setCurrentIndex(max(0, self.graphics_preset.findData(values["graphics_preset"])))
         self.speed_combo.setCurrentText(values["speed"])
         self.apply_settings.setChecked(values["apply_settings"])
+        self.auto_lua.setChecked(values.get("lua_connection", "ask") != "manual")
         self.game_mode.setChecked(values["game_mode"])
         self._fill_challenges(values.get("challenge_profile_id"))
         self.game_changed.emit(game_id)
@@ -185,5 +189,6 @@ class LaunchProfilePage(QWidget):
         values = {key: edit.text().strip() for key, edit in self.path_edits.items()}
         values.update(controls_profile=self.controls_profile.text().strip(), graphics_preset=self.graphics_preset.currentData(),
                       speed=self.speed_combo.currentText(), apply_settings=self.apply_settings.isChecked(),
+                      lua_connection="auto" if self.auto_lua.isChecked() else "manual",
                       challenge_profile_id=self.challenge_combo.currentData(), game_mode=self.game_mode.isChecked())
         self.settings_changed.emit(self.game_combo.currentData(), values)

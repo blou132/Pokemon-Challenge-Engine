@@ -323,12 +323,22 @@ class GameModeWindow(QMainWindow):
     def _begin_lua(self, game_id, *, reconnect=False):
         if not self.validate_requested_run():
             return
+        options = deepcopy(self.launch_options(game_id))
+        if self.persistent_run is None and not reconnect:
+            previous_choice = options.get("lua_connection", "ask")
+            self._resolve_lua_choice(options)
+            if options.get("lua_connection", "ask") != previous_choice:
+                try:
+                    self.service.save_launch_profile(game_id, {"lua_connection": options["lua_connection"]})
+                except (OSError, ValueError) as exc:
+                    self._play_failed(str(exc))
+                    return
         self._launch_generation += 1
         self.lua_timeout.stop()
         self._connection_session = None
         self._lua_message = ""
         self._lua_pipeline = {"generation": self._launch_generation, "game_id": game_id,
-            "run_id": self.requested_run_id, "options": deepcopy(self.launch_options(game_id)),
+            "run_id": self.requested_run_id, "options": options,
             "reconnect": reconnect, "request": None}
         self.page.set_session_phase("preparing", "Création d'une nouvelle session Lua…", busy=True)
         self._lua_pipeline["request"] = self.controller.start(game_id, self._lua_pipeline["options"]["rom_path"])

@@ -236,7 +236,7 @@ def test_missing_controls_offer_configuration_and_existing_mapping_replaces_it(m
 
 
 @pytest.mark.parametrize("accepted", [True, False])
-def test_first_consent_is_saved_once_and_reused_for_other_runs(mode, monkeypatch, accepted):
+def test_first_consent_is_saved_once_and_reused_for_other_runs(mode, qt_app, monkeypatch, accepted):
     monkeypatch.setattr("app.services.emulator_capabilities.detect_capabilities", lambda exe: SimpleNamespace(known_build=True))
     consent = [None]
     prompts = []
@@ -247,6 +247,15 @@ def test_first_consent_is_saved_once_and_reused_for_other_runs(mode, monkeypatch
         options = {"emulator_path": "fixture.exe", "lua_connection": "ask"}
         mode._resolve_lua_choice(options)
         assert options["lua_connection"] == ("auto" if accepted else "manual")
+    assert prompts == ["prompt"]
+    # A manually configured legacy launch (without AutoSetup) uses the same
+    # stored consent and must not bypass the automatic connection preference.
+    mode.service.save_launch_profile("white", {"lua_connection": "ask"})
+    mode._launch_process("white", prepare_lua=True)
+    until(qt_app, lambda: not mode.launch_busy)
+    assert mode.service.state.running
+    assert mode.service.config["launch_profiles"]["white"]["lua_connection"] == ("auto" if accepted else "manual")
+    assert next(item[2] for item in mode.test_calls if item[0] == "autoload") is accepted
     assert prompts == ["prompt"]
 
 

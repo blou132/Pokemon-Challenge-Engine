@@ -5,15 +5,26 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 ## Situation actuelle
 
-La branche active est `feat/v0.4-runs-permadeath`, issue de
-`feat/v0.3.6-auto-setup` au commit `58395b4607cc38270dd68b8a31d5a0fd44a880ea`,
-après confirmation des **1 167 tests réussis, aucun ignoré**.
-Application et scripts Lua `0.4.0`, protocole `2` avec compatibilité des anciens
+La branche active est `feat/v0.4.1-run-flow-autolua`, issue de
+`feat/v0.4-runs-permadeath` au commit `237614fe4269f1420e46c86c3de26758500b09f9`.
+La V0.4.1 compte **1 630 tests réussis, aucun ignoré**, dont les 1 511 cas V0.4.
+Le parcours réel Jouer avec autoload, le passage A/B et la restauration INI ont
+réussi sur copies isolées de Blanc. Les résultats et limites sont détaillés dans
+le [rapport de vérification](verification.md).
+Application `0.4.1`, scripts Lua `0.4.0`, protocole `2` avec compatibilité des anciens
 messages v1/v2, progression historique schéma `2` et nouveau Run schéma `1`.
 La V0.4 ajoute les parties indépendantes, leur bibliothèque, les sessions durables,
 l'autosave, l'identité PID/OT, les familles et la mort permanente virtuelle.
-Le prochain cycle V0.4.1 traitera les retours des essais utilisateur : reprise,
-reconnexion, plusieurs parties, crash, K.O./soin, évolutions et ergonomie.
+La V0.4.1 corrige la visibilité immédiate des parties créées, ajoute la configuration
+directe d'un challenge avec le moteur existant, sécurise l'activation et le passage
+entre parties, et relit les contrôles du lancement associé. **Jouer** prépare la
+session Lua et l'autoload officiel avant DeSmuME, après un accord mémorisé. Le
+heartbeat de la bonne session confirme seul la connexion. Le refus, l'absence de
+support ou une erreur d'autoload conservent un mode manuel explicite ; les anciens
+réglages Lua sont restaurables et aucune écriture INI n'est faite pendant que
+l'émulateur tourne. Les sources, tests synthétiques et essais réels sont distingués
+dans le rapport. K.O./soin, évolutions et scénarios non observés restent ouverts
+pour les essais utilisateur suivants.
 Les captures et badges restent manuels ; aucune règle stricte n'agit dans le jeu.
 Le moteur d'événements, les clauses optionnelles, la persistance et le panneau
 de profil actif sont implémentés et testés sur événements synthétiques.
@@ -73,7 +84,8 @@ dans `main` n'est effectuée**. `main` conserve la V0.1.
 | V0.3.5 | Mode Jeu, contrôles et graphismes documentés, backups, profils de lancement et panneaux | Non-régression V0.3, UI 1366/1920, lancement et copies isolées réels ; vitesse directe/manettes non disponibles |
 | V0.3.6 | Premier démarrage, installation Lua, ZIP, diagnostic, reconnexion et fiabilité des profils | Tests de régression, interface et essais réels isolés distingués dans le rapport |
 | V0.4 | Parties persistantes, sessions, bibliothèque, identité, familles et mort permanente virtuelle | Tests synthétiques et lectures réelles séparés ; parcours réel K.O./soin et évolution à valider par l'utilisateur |
-| V0.4.1 / V0.4.x | Corrections issues des essais utilisateur | Reproductions documentées, régressions et nouvelle vérification réelle lorsque nécessaire |
+| V0.4.1 | Création visible, challenge direct, activation de la bonne partie, Jouer avec autoload Lua, contrôles relus | Régressions de création et passage A/B, INI réversible, refus/repli/timeout, parcours réel Jouer → heartbeat sur copies isolées |
+| V0.4.x | Suite des corrections issues des essais utilisateur | K.O./soin, évolutions et autres scénarios réels encore ouverts ; reproductions documentées et non-régression |
 | V0.5 | Level Cap | Plafonds par progression, comportement strict testé |
 | V0.6 | Monotype appliqué | Modes Souple, Strict et Pur validés sur données réelles |
 | V0.7 | Restrictions en combat | Objets et soins détectés puis contraintes effectivement appliquées |
@@ -87,11 +99,18 @@ Une option visible ou un statut `future_strict` ne constitue jamais une fonction
 d'application en jeu. L'interface devra continuer à distinguer l'intention, la lecture
 réelle et la contrainte effectivement mise en œuvre.
 
-Le numéro d'application `0.4.0` ne change pas le format du challenge (`0.1.0`).
+Le numéro d'application `0.4.1` ne change pas le format du challenge (`0.1.0`).
 Le protocole Lua (`2`), la progression historique (`schema_version: 2`) et les
 parties (`schema_version: 1`) sont versionnés séparément.
 
 ## Suite du Mode Jeu
+
+L'autoload V0.4.1 utilise uniquement le mécanisme documenté du build DeSmuME
+reconnu. Il ne s'exécute pas à la création d'un script dans un processus déjà
+ouvert : une reconnexion exige alors de charger le nouveau script manuellement.
+L'absence de heartbeat ne ferme pas le jeu et ne se transforme pas en connexion
+validée. L'extension de ce mécanisme à d'autres builds exige des sources et des
+essais distincts. Voir [Support Lua](lua-runtime.md).
 
 Le frontend V0.3.5 ne clôt pas les lectures de combat encore manquantes de la V0.3.
 Restent à vérifier avant activation : pilotage et mesure de vitesse en direct,
@@ -109,6 +128,13 @@ d'autres générations ; le lecteur d'identité livré est limité à Gen V.
 Les anciens profils/progressions restent intacts. La création depuis un profil
 est explicite et ne prétend pas convertir des compteurs historiques en individus
 identifiés. Aucun ajout de Pokémon à l'équipe ne prouve une capture.
+
+La V0.4.1 permet aussi une configuration directe sans profil intermédiaire.
+La bibliothèque sélectionne la carte créée après sa persistance ; l'ouverture
+du Mode Jeu exige l'accord entre l'identifiant demandé, le contrôleur actif et
+`runs/active.json`. Une session A encore ouverte bloque la reprise de B avec une
+explication. Deux parties ne partagent une référence `.dsv` que par un choix
+explicite ; leurs règles, compteurs et historiques PCE restent indépendants.
 
 La V0.4 ne dépend pas de la disponibilité future des lectures de combat V0.3.
 Les familles préparent les clauses futures sans modifier le moteur de captures

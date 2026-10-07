@@ -1,13 +1,18 @@
-# Connexion DeSmuME / Lua — V0.3 en cours
+# Connexion DeSmuME / Lua — V0.4.1
 
-La V0.3.6 ajoute [Installation & diagnostic](first-run.md), les ZIP locaux et la
-réparation Lua confirmée. **Jouer** prépare la session pour les jeux configurés ;
-le chargement du script et **Run** restent manuels. **Copier le chemin** et
-**Ouvrir le dossier** donnent accès au script courant.
+La V0.4.1 prépare la session Bridge **avant** le lancement du jeu. L'option
+**Connecter automatiquement Lua avec Jouer** utilise, après consentement,
+l'autoload officiel du DeSmuME reconnu. Le loader porte le nom réel de la ROM
+préparée et référence le `connect.lua` de cette nouvelle session. L'INI est
+sauvegardé avant modification ; les scripts personnels restent intacts.
+Voir [le mécanisme, les deux clés INI et leur restauration](lua-runtime.md#chargement-automatique-avec-jouer).
+**Copier le chemin** et **Ouvrir le dossier** restent disponibles pour le mode manuel.
 
 **Reconnecter** arrête la session précédente puis génère un nouveau script lié
 à une configuration immuable. Un ancien script marqué stop ne récupère jamais
-silencieusement la nouvelle session. Le verrouillage du jeu explique désormais
+silencieusement la nouvelle session. Un nouveau loader est préparé sans modifier
+l'INI du processus actif : il faut ouvrir le nouveau `connect.lua` dans la console,
+car l'autoload se déclenche seulement au chargement de ROM. Le verrouillage du jeu explique
 son origine et propose l'arrêt confirmé de Lua ; un DeSmuME encore lancé doit
 être fermé séparément pour changer de jeu.
 
@@ -77,6 +82,19 @@ locaux et ne sont pas ajoutés au dépôt Pokemon Challenge Engine.
 
 ## Connexion depuis l'application
 
+Depuis une partie active, **Jouer** attend la préparation de la session, puis
+configure l'autoload accepté et lance DeSmuME. L'accord initial propose **Activer**
+ou **Conserver le mode manuel** et reste mémorisé pour ce binaire. Le statut passe
+par la préparation, l'attente de DeSmuME et l'attente du script ; **connecté** exige
+un heartbeat accepté. Un délai sans heartbeat propose une aide manuelle et une
+reconnexion sans arrêter le jeu.
+
+Si l'autoload est indisponible ou refusé, la session préparée et le lancement du
+jeu restent utilisables. Pour connecter manuellement, suivre les étapes ci-dessous.
+Choisir le mode manuel après une activation antérieure restaure les anciennes
+valeurs Lua lorsque DeSmuME est fermé et que l'utilisateur ne les a pas modifiées
+entre-temps. Un conflit conserve sa configuration et affiche la raison.
+
 1. Dans **Paramètres**, renseigner si possible le chemin de la ROM `.nds` du jeu.
    La préparation ne lit que son en-tête pour vérifier le code et la révision.
    Sans chemin de ROM, le jeu sélectionné reste contrôlé lors de la réception.
@@ -89,7 +107,7 @@ locaux et ne sont pas ajoutés au dépôt Pokemon Challenge Engine.
 5. Laisser le jeu s'exécuter. Vérifier le jeu détecté, le code, la région, la
    révision, le profil mémoire, le compteur d'instantanés et les éventuelles erreurs.
 
-Le chargement Lua est manuel. Le launcher du projet ne suppose pas l'existence
+Ce parcours de diagnostic permet le chargement manuel. Le launcher ne suppose pas l'existence
 d'une option DeSmuME `--lua`. Les fichiers `lua/common/*.lua` sont des modules :
 c'est le **`connect.lua` indiqué par la préparation** qu'il faut ouvrir.
 
@@ -100,10 +118,10 @@ automatiquement. Une fermeture brutale de l'émulateur peut empêcher ce dernier
 message ; le délai de déconnexion couvre ce cas.
 
 Après un arrêt, préparer une nouvelle connexion puis charger le nouveau
-`connect.lua` et cliquer sur **Run**. Une préparation crée toujours un nouvel
-identifiant de session. Un script encore actif peut aussi détecter une nouvelle
-configuration du même jeu au passage suivant ; ne pas dépendre de cela si la
-console est déjà arrêtée. Pour changer de jeu, arrêter puis préparer le jeu voulu.
+`connect.lua` et cliquer sur **Run**, ou fermer DeSmuME et utiliser **Jouer** avec
+autoload accepté. Une préparation crée toujours un nouvel identifiant de session.
+Le script immuable d'une ancienne session ne migre pas vers la nouvelle.
+Pour changer de jeu, arrêter puis préparer le jeu voulu.
 
 ## Validation prioritaire : Pokémon Blanc
 
@@ -355,7 +373,7 @@ les collisions possibles et les tests. Le numéro du protocole reste **2**.
 
 | Version | Valeur | Rôle |
 | --- | --- | --- |
-| Application | `0.4.0` | Version de Pokemon Challenge Engine. |
+| Application | `0.4.1` | Version de Pokemon Challenge Engine. |
 | Script Lua | `0.4.0` | Producteur v2 avec identité ; scripts 0.3.0/v2 et 0.2.0/v1 acceptés. |
 | Protocole | `2` | Structure et validation des échanges JSON ; réception v1 conservée. |
 | Schéma des profils de challenge | `0.1.0` | Champ `version` des challenges persistés ; les profils V0.1 restent compatibles. |

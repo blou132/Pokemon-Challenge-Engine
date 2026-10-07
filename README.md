@@ -1,7 +1,25 @@
-# Pokemon Challenge Engine — V0.4.0
+# Pokemon Challenge Engine — V0.4.1
 
 Le code de l'application, les tests et la documentation sont dans
 [`pokemon-challenge-engine/`](pokemon-challenge-engine/README.md).
+
+La V0.4.1 rend la nouvelle partie immédiatement visible dans **Mes parties**,
+avec confirmation, carte sélectionnée et filtres incompatibles réinitialisés.
+La création propose **Classique**, **Profil existant** ou **Configurer un challenge**
+directement, sans profil intermédiaire. Le Mode Jeu attend l'activation confirmée
+de l'identifiant demandé ; il ne reprend pas silencieusement l'ancienne partie.
+
+**Jouer** prépare maintenant la session Bridge et son loader **avant** de lancer
+DeSmuME. Sur le build reconnu, **Connecter automatiquement Lua avec Jouer** propose
+un accord mémorisé, sauvegarde l'INI et configure son autoload officiel. Les
+scripts personnels sont conservés et les deux anciens réglages Lua sont
+restaurables. Le mode manuel reste disponible en cas de refus ou d'impossibilité.
+Seul un heartbeat accepté confirme la connexion ; le lancement du processus
+ne suffit pas. Un délai de huit secondes sans connexion donne accès au nouvel
+essai, au mode manuel et au diagnostic sans fermer le jeu. Les contrôles sont
+relus depuis l'exécutable associé à la partie lors de sa reprise et à la
+réouverture du Mode Jeu. Les résultats V0.4.1 sont consignés dans le
+[rapport de vérification](pokemon-challenge-engine/docs/verification.md).
 
 La V0.4 ajoute **Mes parties** : parties indépendantes des profils, règles figées,
 sessions durables, autosave PCE, équipe observée et cimetière virtuel. La mort
@@ -15,7 +33,7 @@ ambiguïté demande confirmation. Captures, badges et notes restent manuels.
 La V0.3.6 conserve **Installation & diagnostic** : découverte RetroBat/DeSmuME,
 préparation des ZIP locaux dans un cache, installation Lua officielle confirmée,
 proposition des sauvegardes et contrôle avant **Jouer**. L'étape **Run** du script
-dans DeSmuME reste manuelle. Les ambiguïtés demandent un choix explicite.
+reste nécessaire dans le mode manuel. Les ambiguïtés demandent un choix explicite.
 
 Les corrections de profils sélectionnent le profil effectivement sauvegardé,
 conservent ses règles à la reprise et masquent les paramètres des règles inactives.
@@ -25,10 +43,10 @@ Un profil décrit un challenge ; chaque partie V0.4 en conserve sa propre copie.
 [Préparation automatique](pokemon-challenge-engine/docs/auto-setup.md) ·
 [Installation Lua vérifiée](pokemon-challenge-engine/docs/lua-runtime.md).
 
-**1 511 tests réussis, aucun ignoré** : les 1 167 historiques sont conservés,
-avec 344 nouveaux cas. Compilation, démarrage Windows et rendus Qt vérifiés.
-L'essai réel V0.4 sur copie de Blanc confirme équipe, identité individuelle,
-temps et autosave/reprise. K.O./soin, évolution et zone nommée dans ce nouveau
+La V0.4.1 compte **1 630 tests réussis, aucun ignoré**, dont les 1 511 cas historiques,
+avec compilation, démarrage Windows et rendus Qt vérifiés. L'essai réel sur copies
+de Blanc confirme le lancement Lua automatique avec Jouer, la séparation A/B,
+l'équipe, le temps, l'autosave et la restauration INI. K.O./soin, évolution et zone nommée dans ce nouveau
 parcours restent **En attente de validation sur la machine utilisateur.**
 
 Pour lancer avec l'environnement déjà préparé dans cet espace de travail :
@@ -59,9 +77,8 @@ séparément et des tests synthétiques. Le profil `white_fr_rev0` porte le stat
 `source_documented`. Noir et Blanc 2 n'ont pas été validés dans un émulateur.
 La V0.2 reste sur `feat/v0.2-desmume-bridge` et la V0.3 sur
 `feat/v0.3-nuzlocke-tracking`. La branche de travail est désormais
-`feat/v0.4-runs-permadeath`, créée depuis la V0.3.6
-`58395b4607cc38270dd68b8a31d5a0fd44a880ea`
-après vérification des **1 167 tests existants, tous réussis et aucun ignoré**.
+`feat/v0.4.1-run-flow-autolua`, créée depuis la V0.4
+`237614fe4269f1420e46c86c3de26758500b09f9` sur `feat/v0.4-runs-permadeath`.
 Aucune fusion dans `main`.
 
 La V0.3 ajoute le moteur d'événements Nuzlocke, la Species Clause optionnelle,
@@ -72,7 +89,7 @@ documentées** : cette livraison ne détecte pas encore les captures réelles.
 La chaîne réelle zone → rencontre → résultat n'est donc pas validée et la V0.3
 n'est pas terminée. **En attente de validation sur la machine utilisateur.**
 
-Application : `0.4.0` ; scripts Lua : `0.4.0` ; challenge conservé : `0.1.0` ;
+Application : `0.4.1` ; scripts Lua : `0.4.0` ; challenge conservé : `0.1.0` ;
 progression historique : schéma `2` ; partie Run : schéma `1`, sans migration forcée
 des profils. Protocole Lua : `2`, compatible avec les anciens messages v1/v2.
 

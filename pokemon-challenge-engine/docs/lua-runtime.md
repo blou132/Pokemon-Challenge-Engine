@@ -1,4 +1,4 @@
-# Support Lua local — V0.3.6
+# Support Lua local — V0.4.1
 
 Le diagnostic trouve DeSmuME dans les dossiers proposés par la détection RetroBat
 ou déjà configurés. Il inspecte le contenu PE de l'exécutable sans le charger :
@@ -105,7 +105,7 @@ téléchargements restent ignorés par Git.
 `memory.readbyte` ou `emu.frameadvance`. Un heartbeat et des lectures réelles sont
 nécessaires pour annoncer la connexion en fonctionnement.
 
-## Chargement du script : capacité étudiée
+## Chargement automatique avec Jouer
 
 Le frontend Windows appelle `LoadLibrary("lua51.dll")` dans
 [DemandLua](https://github.com/TASEmulators/desmume/blob/1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a/desmume/src/frontend/windows/main.cpp#L1618).
@@ -114,12 +114,66 @@ script `<nom-ROM-sans-extension>.lua` dans `[PathSettings] Lua` lors du chargeme
 de la ROM. Voir
 [la branche AutoLoad](https://github.com/TASEmulators/desmume/blob/1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a/desmume/src/frontend/windows/main.cpp#L3026).
 
-Cette étude n'autorise aucune modification silencieuse d'un INI existant ni le
-remplacement d'un script personnel. L'installateur de DLL n'active pas l'autoload.
-Le parcours de connexion retenu est décrit dans [first-run.md](first-run.md) :
-la session est préparée par PCE, avec accès direct à son dossier et au chemin du
-script ; l'étape Run reste manuelle lorsque l'autoload n'a pas été configuré et
-testé explicitement. Aucune option CLI Lua inventée n'est utilisée.
+La lecture de `Lua` est définie dans
+[path.cpp, ReadPathSettings](https://github.com/TASEmulators/desmume/blob/1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a/desmume/src/path.cpp#L268).
+Le mécanisme fonctionne au chargement de la ROM ; créer un nouveau loader pendant
+que le jeu tourne ne l'exécute pas. Aucune option CLI Lua n'est ajoutée.
+
+Sources relues pour la V0.4.1, sans modification du lecteur :
+
+| Fichier au commit `1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a` | SHA-256 des octets source |
+|---|---|
+| `frontend/windows/main.cpp` (203 787 octets) | `bdb05695190e034eda323155593f445f145f42fdd2a0bca356b96993f05c85d6` |
+| `path.cpp` (13 063 octets) | `0a1117a52170b5d32fbba024790ae94481da75ba0020e8ce1de423daedfb91d9` |
+
+L'option **Connecter automatiquement Lua avec Jouer** propose **Activer** ou
+**Conserver le mode manuel** lors du premier lancement compatible. L'accord est
+enregistré localement pour le chemin et l'empreinte de ce binaire ; un exécutable
+remplacé ne récupère pas silencieusement l'accord précédent. L'installateur de DLL
+n'active pas lui-même cet autoload.
+
+`LuaAutoLoadService` crée d'abord, dans le dossier local PCE,
+`runtime/lua-autoload/<session_id>/<nom réel de la ROM préparée sans extension>.lua`.
+Ce petit loader appelle seulement le `runtime/bridge/<session_id>/connect.lua`
+de la même session. Il n'utilise pas le nom affiché du jeu. Un ancien script avec
+marqueur `stop`, un identifiant incompatible, un chemin redirigé par lien ou une
+collision avec un fichier différent sont refusés.
+
+Une fois le consentement vérifié, le build reconnu, les DLL vérifiées et DeSmuME
+fermé, seules ces deux valeurs INI sont configurées :
+
+```ini
+[Scripting]
+AutoLoad=1
+[PathSettings]
+Lua=<chemin absolu du dossier PCE de cette session>
+```
+
+L'adaptateur INI existant conserve les lignes inconnues, les commentaires, le BOM
+compatible et les fins de ligne. Les valeurs texte Windows ne traitent pas un
+point-virgule comme un commentaire : l'ancienne ligne `Lua` entière est conservée
+dans le journal et le backup, sans suffixe ajouté au nouveau chemin. Un backup
+adjacent `desmume.ini.pce-backup[.N]` est écrit et synchronisé avant le remplacement
+atomique de l'INI. Le service revérifie l'arrêt du processus et le contenu INI
+juste avant ce remplacement. Aucun script personnel n'est écrasé ni supprimé.
+
+Le fichier ignoré `lua-autoload.local.json` contient le consentement et les deux
+lignes précédentes, y compris leur absence éventuelle. Ce journal est publié
+atomiquement **avant** l'INI : une interruption après cette étape laisse assez
+d'informations pour restaurer ou recommencer. Passer au mode manuel restaure
+ces deux clés, sans annuler les autres réglages ajoutés depuis. Si l'utilisateur
+a changé ces clés hors de PCE, la restauration refuse de les écraser et conserve
+le backup pour inspection. Elle exige elle aussi l'arrêt de DeSmuME.
+
+Build inconnu, DLL non vérifiées, accès refusé, INI ambigu, chemin trop long ou non
+représentable : la connexion passe au mode manuel avec la raison. La ROM peut
+toujours être lancée et le `connect.lua` courant reste accessible. Une reconnexion
+prépare un loader neuf sans écrire dans l'INI du processus actif ; il faut charger
+manuellement ce nouveau `connect.lua`. Un prochain **Jouer**, après fermeture,
+pourra réinstaller le dossier courant. Aucun heartbeat n'est déduit de l'existence
+du loader ou des DLL.
+
+Le lecteur reste **0.4.0**, le protocole **2**. Les adresses mémoire ne changent pas.
 
 ## Vérifications réalisées
 
@@ -129,9 +183,17 @@ complète ou partielle, DLL d'une mauvaise architecture, refus du remplacement,
 backup déjà existant, copie verrouillée, rollback, réinstallation idempotente,
 téléchargement interrompu, redirection, mauvaise empreinte et cache corrompu.
 
+Les tests autoload utilisent uniquement des fichiers synthétiques : consentement
+persistant, nom réel de ROM préparée, deux sessions distinctes, ancienne session
+arrêtée, restauration ciblée, émulateur actif, encodages INI, fichiers verrouillés,
+écriture concurrente, interruption entre journal et INI, chemins et fichiers
+refusés. Ils ne valident pas l'exécution du loader dans un émulateur réel.
+
 Sur une **copie isolée** du DeSmuME connu, l'installation réelle est passée de DLL
 absentes à deux DLL officiellement vérifiées ; un second appel n'a rien réécrit.
 L'exécutable original a conservé son hash et sa date de modification. L'archive
 officielle et les quatre DLL ont été examinées réellement ; l'exécution x86 dans
 DeSmuME n'a pas été testée. Les essais de lancement et connexion Pokémon Blanc
 sur copie sont rapportés séparément dans [verification.md](verification.md).
+La validation réelle du nouveau parcours **Jouer → autoload → heartbeat** doit
+être distinguée de ces preuves antérieures et des tests synthétiques dans ce rapport.

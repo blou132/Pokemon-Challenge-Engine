@@ -1,4 +1,153 @@
-# Vérification V0.4 et historique V0.3.6 / V0.3.5 / V0.3 / V0.2 / V0.1
+# Vérification V0.4.1 et historique V0.4 / V0.3.6 / V0.3.5 / V0.3 / V0.2 / V0.1
+
+## V0.4.1 — création, activation exacte et autoload Lua, 7 octobre 2026
+
+Base exacte : `237614fe4269f1420e46c86c3de26758500b09f9`, dépôt propre sur
+`feat/v0.4-runs-permadeath`, puis branche `feat/v0.4.1-run-flow-autolua`.
+Aucune fusion dans `main`. Application **0.4.1**, lecteur Lua **0.4.0**,
+protocole **2**, Run **schéma 1** et challenge **0.1.0**.
+
+### État de référence et non-régression
+
+Avant modification, la suite source a donné **1 510 réussites et un échec** :
+`test_incomplete_identity_keeps_tracking_waiting_without_writes` a dépassé son
+délai Qt de trois secondes. Les **20 tests du module concerné** ont ensuite
+réussi sans modification. La compilation et le démarrage natif Windows ont réussi.
+Ce résultat de référence n'est pas présenté comme une première exécution verte.
+
+Résultat de la suite complète : **1 630 tests réussis, aucun échec, aucun ignoré**,
+avec **1 511 cas historiques conservés et 119 nouveaux cas**. Rapport local
+`runtime/v041-tests-final.xml`. Un complément de **81 tests ciblés**, tous réussis,
+vérifie aussi le dernier ajustement du consentement dans les lancements configurés
+sans AutoSetup. `compileall app tools` et le démarrage natif `app.main` sur données
+isolées sont réussis après cet ajustement (fermeture propre, code 0).
+
+Une première suite intermédiaire avait donné 1 610 réussites et un dépassement
+du même délai de préparation Qt, dans un autre cas de `test_tracking_ui.py`.
+Le helper de test cède désormais explicitement le GIL aux workers après le
+traitement des événements Qt. Le délai maximal de trois secondes et les assertions
+restent inchangés ; aucun test n'est désactivé. La suite complète ci-dessus a
+ensuite réussi. Les attentes hors test et interruptions de session ne constituent
+pas une mesure de performance de l'application.
+
+Deux tests existants ont été adaptés
+au lancement désormais asynchrone et à l'ordre Bridge avant processus ; leurs
+vérifications de fond sont conservées. Les assertions du diagnostic sont enrichies
+pour distinguer un jeu lançable d'un support Lua prêt. Aucun test n'a été supprimé pour faire
+passer la suite.
+
+| Nouveaux cas | Nombre |
+| --- | ---: |
+| Service d'autoload, consentement, INI et erreurs atomiques | 42 |
+| Sources de création, éditeur existant et bibliothèque | 26 |
+| Activation et navigation entre parties | 13 |
+| Orchestration Jouer, heartbeat, timeout, reconnexion et contrôles | 19 |
+| Verrouillage temporaire de l'accusé Windows | 10 |
+| Disposition verticale du Mode Jeu avec partie et récupération Lua | 9 |
+
+Les nouveaux tests couvrent les trois sources de création, snapshot indépendant,
+filtres masquants, carte et compteur immédiats, A/B, restauration de sélection,
+échecs atomiques de `active.json`, publications asynchrones périmées, ordre
+bridge/autoload/processus, consentement, timeout, arrêt pendant préparation,
+reconnexion, refus des anciennes sessions, sauvegarde/restauration INI et
+verrouillage Windows temporaire de l'accusé Lua. Ce sont des **tests synthétiques**.
+
+### Causes reproduites et correction du parcours
+
+- La bibliothèque était déjà relue après création, mais ses filtres pouvaient
+  masquer la nouvelle partie et l'ouverture du Mode Jeu recouvrait la page sans
+  confirmation. La carte est maintenant relue, comptée, surlignée et rendue visible,
+  avec « Partie créée » ; seuls les filtres qui la masqueraient sont réinitialisés.
+- Une session A occupée pouvait refuser la reprise de B tout en conservant la
+  fenêtre A. Le traitement d'activation ouvrait aussi cette ancienne fenêtre
+  avant de lui associer B. L'intention de reprise est désormais mémorisée dès le
+  clic, les signaux périmés sont ignorés et B est associée avant affichage.
+  Une confirmation interne du worker précède l'écriture atomique de la sélection ;
+  la publication finale et l'ouverture attendent son succès. Les identifiants
+  demandé, contrôleur et `active.json` doivent correspondre, sinon les actions
+  « Réessayer » et « Retour à Mes parties » sont proposées.
+- Le lancement préparait auparavant Lua après avoir démarré DeSmuME. Il prépare
+  maintenant la session, son `connect.lua` et l'autoload avant le processus.
+- Les parties persistantes évitaient la lecture des contrôles dans `_game_changed`
+  et `set_persistent_run` ne la remplaçait pas. La configuration de l'exécutable
+  de la partie est relue à l'association, au changement d'environnement et à la
+  réouverture. L'absence réelle de mapping propose « Configurer les contrôles ».
+
+Le challenge direct réutilise `ChallengePage` et `ChallengeEngine`, garde
+`profile_id = null` et fige toutes les règles et paramètres. Aucun nouveau moteur,
+offset ou mécanisme d'application des règles n'est ajouté.
+
+### Essai réel du bouton Jouer sur copies isolées
+
+Rapport local : `runtime/v041/t04/report.json`, harnais `runtime/v041_verify.py`,
+exclus de Git. Un dossier neuf contient les copies de l'EXE, des DLL vérifiées,
+de Pokémon Blanc FR rev0 et d'une sauvegarde explicitement partagée entre A et B.
+L'INI de départ a **AutoLoad=0** et un script personnel témoin conservé dans son
+propre dossier Lua. Le harnais utilise les widgets Qt de PCE : formulaire de
+création, bouton Jouer et bouton Activer du dialogue de consentement. Il n'envoie
+aucune entrée au système ou au jeu et ne remplace aucun service de production.
+Il ne prépare pas l'autoload à la place de l'application et n'ouvre pas Lua Scripting.
+
+Build testé : DeSmuME x64 0.9.14 git#a779eb7, SHA-256
+`34fe290e387722f1b4320751bf0b0f50844079833c7dce57c273d6b054becac0`.
+Les sources du mécanisme officiel restent distinctes de cette preuve réelle,
+dans [lua-runtime.md](lua-runtime.md) et [desmume-bridge.md](desmume-bridge.md).
+
+| Contrôle | Résultat réel du dernier essai |
+| --- | --- |
+| Création A puis B | Cartes présentes immédiatement ; compteurs 1/1 puis 2/2 ; confirmation et surlignage |
+| Partie affichée | B avant son lancement ; A après reprise explicite, jamais A à la place de B |
+| Jouer | Un seul clic pour B, puis un seul pour A ; aucun chargement manuel de script |
+| Consentement | Un clic Activer lors de B ; choix réutilisé pour A, aucune seconde demande |
+| Identité | `IRAF / FR / 0`, lecteur `0.4.0`, sessions Lua distinctes |
+| Heartbeat | 34 messages pour B et 32 pour A au relevé ; interface « Lua · connecté » / « EN JEU » |
+| Équipe | Feuillajou 511 N18, PV 48/48 ; Tritonde 535 N15, PV 42/42 ; Grotichon 499 N23, PV 79/79 |
+| Durée et autosave | Plus de six secondes suivies dans chaque partie ; équipe enregistrée sur disque avant fermeture |
+| Séparation A/B | A reste vide pendant le jeu de B ; statistiques de B inchangées pendant le jeu de A |
+| Redémarrage PCE | Sélection B restaurée, puis reprise explicite de A |
+| Contrôles | Mapping INI relu, touches disponibles dans les deux parties ; les entrées de jeu ne sont pas testées |
+| Restauration | AutoLoad revient à 0 et Lua à son dossier précédent ; script personnel témoin inchangé |
+| Intégrité | EXE/INI/DLL/ROM/save originaux inchangés par empreintes avant/après ; ROM et save copiées inchangées aussi |
+
+Les premiers passages de ce harnais ont nécessité des corrections de vérification :
+attente Qt qui ne cédait pas assez le GIL aux lectures de fichiers, attente de
+l'enregistrement des références avant le clic Jouer, puis appel au lecteur INI
+sans son argument de valeur par défaut. Ils ne sont pas comptés
+comme des essais complets réussis. Le dernier passage se termine avec code 0.
+Un verrou Windows ponctuel sur `ack.txt` observé dans le passage précédent a
+motivé trois essais bornés de remplacement atomique (5 puis 10 ms d'attente),
+avec propagation de toute erreur persistante ; les autres erreurs ne sont pas masquées.
+
+### INI, repli manuel et limites
+
+Après accord lié au chemin et à l'empreinte de l'exécutable, seuls
+`[Scripting] AutoLoad=1` et `[PathSettings] Lua=<dossier PCE de cette session>`
+sont configurés. Le loader porte le vrai nom `Path.stem` de la ROM préparée.
+Un backup complet précède le remplacement atomique ; le journal local conserve
+les anciennes lignes des deux clés. La restauration préserve les autres réglages
+et refuse d'écraser une modification externe de ces clés. Aucun INI n'est édité
+pendant l'exécution de DeSmuME. Désactiver l'option restaure les réglages avant le
+prochain lancement manuel, émulateur fermé.
+
+Build inconnu, support Lua non vérifié ou impossibilité d'autoload : repli manuel
+explicite. Le jeu peut démarrer si ses autres références sont valides ; le support
+Lua manquant doit être réparé pour obtenir des messages. Sans heartbeat au bout
+de huit secondes, l'interface propose réessai, mode manuel et diagnostic sans
+tuer DeSmuME. Reconnecter crée une nouvelle session et un nouveau loader ; dans
+un processus déjà ouvert, l'exécution manuelle est nécessaire et l'INI reste intact.
+
+Les neuf rendus Qt **Windows** inspectés couvrent les états attente/erreur/connecté,
+1366×768 compact et standard, puis 1920×1080 standard. Le décor central s'adapte
+sans chevauchement avec Jouer. Les grandes dimensions sont des widgets enfants
+à taille exacte, pas la preuve d'un écran physique 1920. Preuves locales :
+`runtime/v041-ui/review-geometry.json` et PNG associés, exclus de Git.
+
+L'essai réel ne provoque ni variation de PV, K.O., soin après mort, capture,
+combat ou changement de zone. Aucune zone nommée n'a été reçue ; aucune validation
+réelle supplémentaire de ces lectures n'est revendiquée. Les autres jeux/builds,
+longs chemins particuliers et configurations personnelles non testés restent
+**En attente de validation sur la machine utilisateur.** Aucune écriture RAM,
+aucune modification de ROM ou sauvegarde utilisateur, aucune commande de jeu.
 
 ## V0.4 — parties et mort permanente, 3 octobre 2026
 

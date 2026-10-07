@@ -1,4 +1,4 @@
-# Pokemon Challenge Engine — V0.4.0
+# Pokemon Challenge Engine — V0.4.1
 
 Application Windows en français pour préparer des challenges **Pokémon Noir**,
 **Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, enregistrer des profils,
@@ -13,16 +13,25 @@ pour les versions suivantes. La règle Randomizer est uniquement prévue et conf
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)
 
-## Mes parties — V0.4
+## Mes parties — V0.4.1
 
-**Mes parties → Nouvelle partie** crée une partie classique sans règle ou une
-partie issue d'un profil. **Profils → Commencer une partie** copie sa configuration.
+**Mes parties → Nouvelle partie** propose une partie classique sans règle, un
+profil existant ou **Configurer un challenge** directement. Ce dernier choix
+réutilise l'éditeur de règles et son moteur : preset, obligations/possibilités/
+interdictions, nombre de règles, seed et paramètres des règles actives. Le résultat
+est figé dans la partie, sans écrire de profil intermédiaire.
+**Profils → Commencer une partie** copie la configuration sélectionnée.
 Chaque partie reçoit un UUID, ses règles figées, ses sessions, son équipe observée,
 ses Pokémon connus, sa progression et son historique. Modifier un profil ensuite
 ne change aucune partie existante. Plusieurs parties du même jeu sont possibles.
 
-**Reprendre** sélectionne la même partie, vérifie son environnement et ouvre le
-Mode Jeu. **Jouer** lance DeSmuME ; le temps commence uniquement avec les messages
+La création attend l'écriture et la relecture réussies avant de montrer la carte,
+le compteur actualisé et **Partie créée**. Les filtres qui masqueraient cette carte
+sont réinitialisés avec une indication. **Reprendre** sélectionne la même partie,
+vérifie son environnement et attend l'activation confirmée avant d'ouvrir le Mode
+Jeu. Une incohérence entre la partie demandée, le contrôleur et la sélection
+persistée affiche une erreur ; aucun compteur n'est repris de l'ancienne partie.
+**Jouer** lance DeSmuME ; le temps commence uniquement avec les messages
 valides du jeu correspondant et le processus lancé par PCE. Fermez DeSmuME et
 arrêtez Lua avant de changer de partie. Une fenêtre DeSmuME lancée ailleurs n'est
 pas associée automatiquement à ce chronomètre.
@@ -50,10 +59,12 @@ scripts Lua **0.4.0** ; les anciens messages restent acceptés.
 [Mort permanente](docs/permanent-death.md) · [Autosave](docs/run-autosave.md) ·
 [Sources de l'identité et des évolutions](docs/pokemon-identity-sources.md).
 
-Branche : `feat/v0.4-runs-permadeath`, depuis
-`58395b4607cc38270dd68b8a31d5a0fd44a880ea`, sans fusion dans `main`.
-**1 511 tests réussis, aucun ignoré** : 1 167 historiques conservés et 344 nouveaux.
-Le [rapport V0.4](docs/verification.md) distingue tests synthétiques, rendus Qt
+Branche : `feat/v0.4.1-run-flow-autolua`, depuis la V0.4
+`237614fe4269f1420e46c86c3de26758500b09f9`, sans fusion dans `main`.
+La suite V0.4.1 compte **1 630 tests réussis, aucun ignoré** : les 1 511 cas historiques
+et 119 nouveaux. L'essai réel sur copies de Blanc confirme Jouer avec autoload,
+le passage A/B, l'autosave et la restauration des réglages Lua.
+Le [rapport de vérification](docs/verification.md) distingue tests synthétiques, rendus Qt
 et lectures réelles sur copie isolée. La séquence réelle K.O. → mort PCE → soin
 et les évolutions restent **En attente de validation sur la machine utilisateur.**
 
@@ -67,9 +78,11 @@ provient exclusivement de l'archive officielle épinglée ; un remplacement de D
 différente exige une seconde confirmation et crée un backup.
 
 Les ROM ZIP sont préparées dans un cache vérifié, sans changer l'archive source.
-**Jouer** revérifie l'installation, lance DeSmuME et prépare une nouvelle session
-Lua. Copiez le chemin du script avec le bouton prévu, puis chargez-le et cliquez
-**Run** dans DeSmuME. Cette dernière étape reste manuelle. Le diagnostic distingue
+**Jouer** revérifie l'installation, prépare une nouvelle session Lua et son loader,
+puis lance DeSmuME. Sur le build reconnu, **Connecter automatiquement Lua avec
+Jouer** utilise l'autoload officiel après un accord mémorisé. En mode manuel,
+copiez le chemin du script puis chargez-le et cliquez **Run** dans DeSmuME.
+Le diagnostic distingue
 les fichiers vérifiés de la connexion réellement reçue. Le nettoyage confirmé ne
 concerne que les caches et sessions arrêtées reconnus comme appartenant à PCE.
 
@@ -88,20 +101,24 @@ Level Cap et Catch Limit sont exclues du challenge final si leurs règles ne son
 pas actives. « Niveau de support » et « Suivi uniquement » décrivent les capacités
 actuelles : aucune règle n'est imposée dans le jeu.
 
-## Mode Jeu — V0.3.5
+## Mode Jeu
 
 Le **Mode Jeu** ouvre un frontend autour de la fenêtre externe de DeSmuME.
-Les panneaux affichent le challenge, la seed, les compteurs du profil, l'équipe
-reçue par Lua et le suivi Nuzlocke V0.3. Les données absentes restent « Non
+Les panneaux affichent les règles figées, la seed, les compteurs de la partie
+sélectionnée et son équipe observée. Le parcours historique conserve le profil
+et son suivi Nuzlocke V0.3. Les données absentes restent « Non
 disponible ». Les dispositions compacte, standard et large, la visibilité des
 blocs et leur côté gauche/droit sont configurables ; le plein écran concerne PCE.
 
 Les réglages regroupent cinq onglets :
 
-- **Lancement** : un profil par jeu avec ROM, émulateur, challenge, contrôles,
-  graphismes et vitesse demandée ; export INI uniquement sur activation explicite.
+- **Lancement** : ROM, émulateur, challenge, contrôles, graphismes et vitesse
+  demandée, plus l'option de connexion Lua automatique ; les réglages INI
+  nécessitent leur activation explicite.
 - **Contrôles** : clavier, profils locaux, conflits et raccourcis de l'application.
-  Le format DeSmuME est vérifié avant tout export, précédé d'un backup.
+  Le mapping de l'exécutable associé est relu à la reprise et à la réouverture.
+  Une lecture indisponible propose **Configurer les contrôles**. Le format DeSmuME
+  est vérifié avant tout export, précédé d'un backup.
 - **Graphismes** : options documentées et presets composés de réglages existants,
   réservés au binaire DeSmuME identifié ; leur effet visuel n'est pas garanti.
 - **Sauvegardes** : fichier `.dsv` choisi explicitement, inventaire des slots,
@@ -110,7 +127,8 @@ Les réglages regroupent cinq onglets :
 - **Interface en jeu** : blocs visibles, disposition, écran mémorisé et
   organisation facultative des fenêtres.
 
-Les préférences sont locales : `game-mode.local.json`, `controls.local.json` et
+Les préférences sont locales : `game-mode.local.json`, `controls.local.json`,
+`lua-autoload.local.json` et
 le dossier des backups restent exclus de Git. Les chemins RetroBat existants
 sont conservés. Les boutons x1/x2/x4/MAX affichent un **état demandé**, sans
 pilotage direct ni mesure de vitesse réelle. L'export vérifié de x1/MAX prépare
@@ -173,7 +191,7 @@ machine utilisateur.** Noir 2 ne disposait pas d'une équipe chargée lors de so
 essai de transport. Noir et Blanc 2 n'ont pas été validés en émulateur.
 Voir le [rapport de vérification](docs/verification.md) pour les preuves et les limites exactes.
 
-Les versions sont distinctes : application **`0.4.0`**, scripts Lua **`0.4.0`**, challenge
+Les versions sont distinctes : application **`0.4.1`**, scripts Lua **`0.4.0`**, challenge
 **`0.1.0`** conservé, progression historique **schéma `2`**, partie **schéma `1`**,
 protocole **`2`**. Python accepte les anciens scripts `0.3.0/v2` et
 aussi les messages v1 des scripts `0.2.0`, sans observations Nuzlocke.
@@ -264,6 +282,25 @@ vous jouez. Aucun émulateur, jeu, ROM ou asset Pokémon officiel n'est fourni.
 Il faut un build DeSmuME standalone proposant le menu **Tools > Lua Scripting**.
 La présence d'un exécutable DeSmuME ne garantit pas son support Lua. L'application
 n'ajoute aucun argument de lancement Lua supposé et ne pilote pas les menus de l'émulateur.
+
+Depuis le Mode Jeu, **Jouer** prépare `connect.lua` avant de lancer le processus.
+L'accord **Activer** configure `[Scripting] AutoLoad=1` et `[PathSettings] Lua`
+vers un dossier de loader géré par PCE. Le fichier porte le nom réel de la ROM
+préparée sans son extension. L'INI est sauvegardé avant son remplacement atomique,
+et aucun script personnel n'est remplacé. **Conserver le mode manuel** laisse
+ce parcours disponible. Les réglages précédents sont restaurables lors du retour
+au mode manuel, DeSmuME fermé, en préservant les autres modifications de l'INI.
+
+L'état distingue préparation, attente de DeSmuME, attente du script, connecté,
+déconnecté et erreur. Après huit secondes sans heartbeat de la session courante,
+PCE propose de réessayer, le mode manuel et le diagnostic sans fermer le jeu.
+**Reconnecter Lua** arrête l'ancienne session et prépare le nouveau script ;
+dans un processus déjà ouvert, chargez-le manuellement. L'autoload ne s'exécute
+qu'au chargement de ROM. Le
+[guide Lua](docs/lua-runtime.md#chargement-automatique-avec-jouer) décrit sources,
+consentement, backup, restauration et limites.
+
+Pour le parcours manuel ou le diagnostic indépendant :
 
 1. Dans **Connexion DeSmuME**, choisir le profil actif, ou le diagnostic sans
    profil, puis sélectionner Noir, Blanc, Noir 2 ou Blanc 2 et

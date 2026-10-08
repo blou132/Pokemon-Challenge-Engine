@@ -47,6 +47,9 @@ individu identifié crée une mort dans le **cimetière virtuel PCE**. Un soin d
 Pokémon ne l'annule pas. Une identité ambiguë ou une première observation à zéro
 demande confirmation. Les captures et badges sont **manuels** ; notes, morts
 manuelles et corrections confirmées restent dans l'historique.
+Le menu secondaire **Actions manuelles** regroupe ces saisies. La mort automatique
+reste conditionnée aux règles actives, à l'identité fiable et à la transition de PV ;
+son ajout manuel est un secours, sa correction reste accessible dans les détails.
 
 La progression se trouve dans `runs/<uuid>/run.json`, hors des caches et exclue de
 Git. L'autosave PCE est atomique ; elle ne force aucune sauvegarde Pokémon.
@@ -66,28 +69,44 @@ scripts Lua **0.4.0** ; les anciens messages restent acceptés.
 
 Branche : `feat/v0.4.1-run-flow-autolua`, depuis la V0.4
 `237614fe4269f1420e46c86c3de26758500b09f9`, sans fusion dans `main`.
-La suite V0.4.1 compte **1 644 tests réussis, aucun ignoré** : les 1 511 cas historiques
-et 133 nouveaux, dont 14 pour le parcours Mes parties / Modèles de challenge.
+La V0.4.1 compte **1 716 tests réussis, aucun ignoré**, dont 72 nouveaux cas pour
+la préparation automatique et les actions manuelles. Les résultats sont détaillés
+dans le rapport de vérification.
 L'essai réel antérieur sur copies de Blanc confirme Jouer avec autoload,
 le passage A/B, l'autosave et la restauration des réglages Lua.
 Le [rapport de vérification](docs/verification.md) distingue tests synthétiques, rendus Qt
 et lectures réelles sur copie isolée. La séquence réelle K.O. → mort PCE → soin
 et les évolutions restent **En attente de validation sur la machine utilisateur.**
 
-## Premier démarrage — V0.3.6
+## Installation automatique — V0.4.1
 
-Ouvrez **Installation & diagnostic** au premier lancement ou depuis Paramètres.
-PCE recherche les installations locales et propose les jeux et sauvegardes trouvés.
-Choisissez un candidat lorsque plusieurs existent, puis **Préparer et enregistrer**,
-ou **Réparer l'installation** si le support Lua manque. Le téléchargement Lua
-provient exclusivement de l'archive officielle épinglée ; un remplacement de DLL
-différente exige une seconde confirmation et crée un backup.
+PCE recherche les installations locales dès le démarrage, en arrière-plan, puis
+affiche l'état des quatre jeux. Une seule installation DeSmuME valide et un jeu
+local compatible suffisent pour une préparation automatique. Un unique candidat
+de sauvegarde à forte confiance est sélectionné ; aucune sauvegarde existante
+n'est requise pour commencer. Plusieurs choix crédibles restent à départager.
+À la création d'une partie, le jeu prêt et sa sauvegarde détectée sont proposés ;
+un choix déjà effectué par l'utilisateur est conservé.
 
-Les ROM ZIP sont préparées dans un cache vérifié, sans changer l'archive source.
-**Jouer** revérifie l'installation, prépare une nouvelle session Lua et son loader,
+**Paramètres** présente l'installation et les jeux trouvés. **Installation &
+diagnostic** est une vue d'état avec **Jouer** pour le jeu prêt. Les chemins manuels
+et les outils de secours restent dans **Avancé** ; aucun bouton **Tester les chemins**
+n'est nécessaire dans le parcours normal. Si Blanc est prêt et les trois autres
+jeux absents, l'installation est prête pour Blanc. Un jeu manquant invite à ajouter
+une copie locale à la bibliothèque RetroBat, sans téléchargement de ROM.
+
+Les ZIP sont préparés automatiquement dans un cache vérifié, sans changer
+l'archive source. La vérification légère est relancée à l'ouverture de **Mes
+parties** et après un changement de configuration ; elle réutilise les signatures
+des fichiers et dossiers connus. **Jouer** contrôle uniquement la partie concernée,
+prépare une nouvelle session Lua et son loader,
 puis lance DeSmuME. Sur le build reconnu, **Connecter automatiquement Lua avec
 Jouer** utilise l'autoload officiel après un accord mémorisé. En mode manuel,
 copiez le chemin du script puis chargez-le et cliquez **Run** dans DeSmuME.
+Si le support Lua manque, **Installer automatiquement le support Lua** demande
+confirmation. Le téléchargement provient exclusivement de l'archive officielle
+épinglée ; une DLL différente exige une seconde confirmation et un backup.
+Lua déjà conforme ne redemande pas cette installation.
 Le diagnostic distingue
 les fichiers vérifiés de la connexion réellement reçue. Le nettoyage confirmé ne
 concerne que les caches et sessions arrêtées reconnus comme appartenant à PCE.
@@ -127,7 +146,7 @@ Les réglages regroupent cinq onglets :
   est vérifié avant tout export, précédé d'un backup.
 - **Graphismes** : options documentées et presets composés de réglages existants,
   réservés au binaire DeSmuME identifié ; leur effet visuel n'est pas garanti.
-- **Sauvegardes** : fichier `.dsv` choisi explicitement, inventaire des slots,
+- **Sauvegardes** : fichier `.dsv` détecté ou choisi, association conservée par partie, inventaire des slots,
   backups manuels ou automatiques activés par l'utilisateur, rétention et
   restauration avec confirmation. Aucun original n'est supprimé par la rétention.
 - **Interface en jeu** : blocs visibles, disposition, écran mémorisé et
@@ -248,8 +267,9 @@ pour éviter une console Python supplémentaire :
 2. Choisir **Partie classique**, **Depuis un modèle existant** ou **Challenge personnalisé**.
 3. Pour un challenge personnalisé, ouvrir **Configurer les règles**, choisir un preset
    ou régler les règles, puis valider avec **Utiliser cette configuration**.
-4. Donner un nom à la partie, vérifier ses références de lancement et la créer.
-5. Préparer le jeu dans **Installation & diagnostic** si nécessaire, puis cliquer **Jouer**.
+4. Donner un nom à la partie et la créer ; l'environnement détecté est proposé.
+5. Cliquer **Jouer** lorsque le jeu est prêt. **Installation & diagnostic** indique
+   l'action nécessaire si Lua manque ou qu'un choix reste ambigu.
 6. Retrouver la partie dans **Mes parties** pour la reprendre ou consulter ses règles
    dans ses détails. Les boutons de création de l'Accueil ouvrent ce même parcours.
 
@@ -274,20 +294,25 @@ parties existantes gardent leurs propres règles et leur progression.
 
 ## RetroBat et DeSmuME
 
-Le diagnostic recherche des structures RetroBat réelles aux racines de disques et
-dans les chemins déjà configurés, sans scanner tout le disque. Les chemins proposés
-sont vérifiés ; plusieurs candidats restent à choisir. Les paramètres historiques
-permettent toujours de saisir les chemins manuellement. `.nds` et `.zip` sont pris
-en charge par l'assistant ; les ROM `.7z` ne le sont pas.
+La recherche automatique vérifie des structures RetroBat réelles aux racines de
+disques et dans les chemins déjà configurés, sans scanner tout le disque. Les
+en-têtes identifient séparément le jeu, le code, la région et la révision ; le nom
+du fichier ne suffit pas. Les choix explicites valides passent avant la configuration
+déjà vérifiée puis la découverte d'un candidat unique. Les chemins de secours sont
+dans **Paramètres → Afficher les chemins manuels · Avancé**. `.nds` et `.zip` sont
+pris en charge ; les ROM `.7z` ne le sont pas.
 
 Le launcher lance **directement DeSmuME standalone** avec la ROM configurée, même si cet
 émulateur est aussi utilisé depuis RetroBat. Elle ne modifie pas la configuration de
-RetroBat et ne le pilote pas. Le champ RetroBat sert de repère local pour l'intégration
-future. Le bouton Tester contrôle les chemins, sans démarrer un jeu.
+RetroBat et ne le pilote pas. Son dossier sert à retrouver la bibliothèque et
+les installations existantes. **Relancer la détection** est disponible dans les
+outils avancés et dans le diagnostic, sans démarrer un jeu.
 
-Le chemin des sauvegardes est informatif : aucune sauvegarde n'est redirigée, supprimée,
-copiée ou écrasée par cette application. DeSmuME conserve son comportement normal lorsque
-vous jouez. Aucun émulateur, jeu, ROM ou asset Pokémon officiel n'est fourni.
+Le dossier de sauvegardes manuel est un indice de recherche ; l'INI DeSmuME détermine
+le fichier réellement attendu. La découverte ne redirige, ne déplace et n'écrase
+aucune sauvegarde. Les backups et restaurations conservent leurs confirmations
+distinctes. DeSmuME garde son comportement normal lorsque vous jouez. Aucun émulateur,
+jeu, ROM, BIOS ou asset Pokémon officiel n'est fourni.
 
 ## Connecter Lua
 

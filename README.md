@@ -13,6 +13,15 @@ est conservé. Le challenge personnalisé se prépare directement, sans profil
 intermédiaire. Le Mode Jeu attend l'activation confirmée
 de l'identifiant demandé ; il ne reprend pas silencieusement l'ancienne partie.
 
+La recherche locale démarre automatiquement avec PCE. RetroBat, DeSmuME, Lua,
+les jeux `.nds`/`.zip`, l'INI et les sauvegardes sont vérifiés dans des emplacements
+bornés. Un candidat unique est préparé dans le cache PCE ; les choix manuels
+valides sont conservés. Chaque jeu affiche son état : **Prêt**, **Jeu non trouvé**
+ou l'action nécessaire. Les jeux absents ne bloquent pas celui que vous possédez.
+**Paramètres → Installation & diagnostic** présente ces résultats ; les chemins
+manuels sont regroupés dans **Avancé**. Aucun jeu, BIOS ou fichier de sauvegarde
+n'est téléchargé.
+
 **Jouer** prépare maintenant la session Bridge et son loader **avant** de lancer
 DeSmuME. Sur le build reconnu, **Connecter automatiquement Lua avec Jouer** propose
 un accord mémorisé, sauvegarde l'INI et configure son autoload officiel. Les
@@ -28,16 +37,20 @@ réouverture du Mode Jeu. Les résultats V0.4.1 sont consignés dans le
 La V0.4 ajoute **Mes parties** : parties indépendantes des profils, règles figées,
 sessions durables, autosave PCE, équipe observée et cimetière virtuel. La mort
 permanente utilise les transitions de PV et l'identité PID/OT documentée ; une
-ambiguïté demande confirmation. Captures, badges et notes restent manuels.
+ambiguïté demande confirmation. Le menu secondaire **Actions manuelles** regroupe
+les captures, badges, notes et l'ajout d'une mort en secours. Les captures et
+badges ne sont pas détectés automatiquement.
 
 [Guide des parties](pokemon-challenge-engine/docs/run-manager.md) ·
 [Mort permanente](pokemon-challenge-engine/docs/permanent-death.md) ·
 [Autosave et récupération](pokemon-challenge-engine/docs/run-autosave.md).
 
-La V0.3.6 conserve **Installation & diagnostic** : découverte RetroBat/DeSmuME,
-préparation des ZIP locaux dans un cache, installation Lua officielle confirmée,
-proposition des sauvegardes et contrôle avant **Jouer**. L'étape **Run** du script
-reste nécessaire dans le mode manuel. Les ambiguïtés demandent un choix explicite.
+Les services de découverte V0.3.6 deviennent le parcours normal de la V0.4.1 :
+préparation des ZIP locaux et sélection d'une sauvegarde unique à forte confiance
+sans étape de configuration imposée. **Jouer** vérifie seulement la partie
+concernée. Lua déjà conforme ne demande rien ; son installation externe garde
+sa confirmation. L'étape **Run** du script reste nécessaire dans le mode manuel.
+Les ambiguïtés demandent un choix explicite.
 
 Les corrections de profils sélectionnent le profil effectivement sauvegardé,
 conservent ses règles à la reprise et masquent les paramètres des règles inactives.
@@ -47,10 +60,10 @@ Un profil décrit un challenge ; chaque partie V0.4 en conserve sa propre copie.
 [Préparation automatique](pokemon-challenge-engine/docs/auto-setup.md) ·
 [Installation Lua vérifiée](pokemon-challenge-engine/docs/lua-runtime.md).
 
-La V0.4.1 compte **1 644 tests réussis, aucun ignoré**, dont 14 cas ajoutés pour
-le parcours unifié Mes parties / Modèles de challenge et les 1 511 cas historiques,
-avec compilation, démarrage Windows et rendus Qt vérifiés. L'essai réel sur copies
-de Blanc confirme le lancement Lua automatique avec Jouer, la séparation A/B,
+La V0.4.1 compte **1 716 tests réussis, aucun ignoré**, dont 72 nouveaux cas pour
+la préparation automatique et les actions manuelles. Compilation, démarrage Windows
+et rendus Qt sont vérifiés ; le rapport distingue ces tests des essais réels.
+L'essai réel antérieur sur copies de Blanc confirme le lancement Lua automatique avec Jouer, la séparation A/B,
 l'équipe, le temps, l'autosave et la restauration INI. K.O./soin, évolution et zone nommée dans ce nouveau
 parcours restent **En attente de validation sur la machine utilisateur.**
 

@@ -7,8 +7,10 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 La branche active est `feat/v0.4.1-run-flow-autolua`, issue de
 `feat/v0.4-runs-permadeath` au commit `237614fe4269f1420e46c86c3de26758500b09f9`.
-La V0.4.1 compte **1 644 tests réussis, aucun ignoré**, dont les 1 511 cas V0.4
-et 14 nouveaux cas pour le parcours unifié Mes parties / Modèles de challenge.
+La V0.4.1 compte **1 716 tests réussis, aucun ignoré**, dont les 1 644 cas
+précédents et 72 nouveaux pour l'installation automatique et les actions
+manuelles. Les résultats du 8 octobre 2026 sont consignés séparément dans
+le rapport de vérification.
 Le parcours réel Jouer avec autoload, le passage A/B et la restauration INI ont
 réussi sur copies isolées de Blanc. Les résultats et limites sont détaillés dans
 le [rapport de vérification](verification.md).
@@ -26,6 +28,25 @@ réglages Lua sont restaurables et aucune écriture INI n'est faite pendant que
 l'émulateur tourne. Les sources, tests synthétiques et essais réels sont distingués
 dans le rapport. K.O./soin, évolutions et scénarios non observés restent ouverts
 pour les essais utilisateur suivants.
+
+L'ajout du **8 octobre 2026** fait de la découverte locale le parcours normal :
+recherche automatique au démarrage, états indépendants des quatre jeux,
+préparation des ZIP simples et sauvegarde unique à forte confiance sélectionnée.
+Une vérification légère à l'ouverture de Mes parties réutilise les signatures
+des fichiers et dossiers connus ; les changements ou une demande explicite
+relancent la recherche bornée. Avant Jouer, seuls les références, l'environnement
+et la sauvegarde de la partie concernée sont contrôlés. Un jeu absent ne bloque
+pas les autres. Les choix manuels valides priment sur les nouvelles découvertes.
+
+Paramètres et Installation & diagnostic présentent l'état avant les outils
+avancés. Les ambiguïtés restent explicites, l'installation Lua externe reste
+confirmée et aucun téléchargement de ROM, jeu, BIOS ou sauvegarde n'est proposé.
+Le menu secondaire **Actions manuelles** regroupe captures, badges, notes et
+ajout d'une mort en secours. Le moteur existant continue de déduire une mort
+virtuelle d'une transition fiable de PV lorsque les deux règles sont actives.
+Les tests synthétiques de ces parcours ne valident pas les captures réelles,
+les badges ni de nouveaux scénarios réels de mort permanente.
+
 Les captures et badges restent manuels ; aucune règle stricte n'agit dans le jeu.
 Le moteur d'événements, les clauses optionnelles, la persistance et le panneau
 de profil actif sont implémentés et testés sur événements synthétiques.
@@ -85,7 +106,7 @@ dans `main` n'est effectuée**. `main` conserve la V0.1.
 | V0.3.5 | Mode Jeu, contrôles et graphismes documentés, backups, profils de lancement et panneaux | Non-régression V0.3, UI 1366/1920, lancement et copies isolées réels ; vitesse directe/manettes non disponibles |
 | V0.3.6 | Premier démarrage, installation Lua, ZIP, diagnostic, reconnexion et fiabilité des profils | Tests de régression, interface et essais réels isolés distingués dans le rapport |
 | V0.4 | Parties persistantes, sessions, bibliothèque, identité, familles et mort permanente virtuelle | Tests synthétiques et lectures réelles séparés ; parcours réel K.O./soin et évolution à valider par l'utilisateur |
-| V0.4.1 | Création visible, challenge direct, activation de la bonne partie, Jouer avec autoload Lua, contrôles relus | Régressions de création et passage A/B, INI réversible, refus/repli/timeout, parcours réel Jouer → heartbeat sur copies isolées |
+| V0.4.1 | Mes parties unifié, création directe, installation locale automatique, états par jeu, manuel avancé, Actions manuelles, Jouer avec autoload Lua | Régressions de création et passage A/B, découverte bornée/cache/ambiguïtés/choix préservés, contrôle ciblé, INI réversible ; preuves réelles distinguées pour chaque parcours observé |
 | V0.4.x | Suite des corrections issues des essais utilisateur | K.O./soin, évolutions et autres scénarios réels encore ouverts ; reproductions documentées et non-régression |
 | V0.5 | Level Cap | Plafonds par progression, comportement strict testé |
 | V0.6 | Monotype appliqué | Modes Souple, Strict et Pur validés sur données réelles |
@@ -140,8 +161,9 @@ La V0.4.1 permet aussi une configuration directe sans profil intermédiaire.
 La bibliothèque sélectionne la carte créée après sa persistance ; l'ouverture
 du Mode Jeu exige l'accord entre l'identifiant demandé, le contrôleur actif et
 `runs/active.json`. Une session A encore ouverte bloque la reprise de B avec une
-explication. Deux parties ne partagent une référence `.dsv` que par un choix
-explicite ; leurs règles, compteurs et historiques PCE restent indépendants.
+explication. La sauvegarde détectée peut être préremplie à la création ; deux
+parties confirmées avec cette même référence partagent le fichier `.dsv`, mais
+leurs règles, compteurs et historiques PCE restent indépendants.
 
 La V0.4 ne dépend pas de la disponibilité future des lectures de combat V0.3.
 Les familles préparent les clauses futures sans modifier le moteur de captures

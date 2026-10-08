@@ -10,6 +10,12 @@ reprendre et gérer ses aventures. La gestion des modèles est un accès seconda
 depuis cette bibliothèque. Cette organisation ne modifie ni le stockage des
 profils et des parties, ni les données existantes.
 
+La bibliothèque affiche également l'état de l'installation et des quatre jeux.
+La recherche démarre automatiquement avec PCE et une vérification légère se
+relance à l'ouverture de **Mes parties**. Un seul jeu prêt suffit : les autres
+restent **Jeu non trouvé** sans empêcher sa création ou son lancement. Le diagnostic
+est accessible pour une ambiguïté, un support Lua manquant ou un choix avancé.
+
 ## Créer une partie
 
 Dans **Mes parties → Nouvelle partie**, choisissez le jeu et une source :
@@ -36,12 +42,18 @@ Une configuration directe crée un `rules_snapshot` complet, avec
 preset d'origine restent conservés dans le snapshot et la partie.
 
 Choisissez ensuite le nom et, facultativement, la sauvegarde Pokémon liée.
-Le champ de sauvegarde commence vide. **Utiliser la sauvegarde configurée**
-permet de reprendre explicitement la référence existante ; **Choisir** permet
-de désigner un autre fichier. Aucun fichier n'est copié ni créé par ce choix.
-L'environnement de lancement enregistré pour ce jeu est proposé. Sans
-environnement prêt, la partie peut être créée mais son lancement nécessite
-**Installation & Diagnostic**.
+Quand la découverte a résolu l'installation, le premier jeu prêt est proposé
+depuis l'entrée générale **Nouvelle partie**, et sa sauvegarde unique à forte
+confiance est préremplie. Un jeu ou modèle explicitement demandé conserve la priorité.
+Une modification manuelle du champ n'est pas remplacée par un rafraîchissement.
+**Choisir** permet de désigner un autre fichier ; sans résultat de découverte,
+**Utiliser la sauvegarde configurée** reste disponible. Aucun fichier n'est copié
+ni créé par cette association.
+
+L'environnement de lancement détecté pour le jeu est proposé. Sans sauvegarde
+existante, une nouvelle partie reste possible. Sans environnement prêt, la partie
+peut être créée ; le lancement explique l'élément manquant dans **Installation &
+diagnostic**. Aucun chemin n'est exigé pour les autres jeux non installés.
 
 Après l'écriture atomique et la relecture réussies, **Mes parties** affiche
 immédiatement la nouvelle carte, son compteur mis à jour et **Partie créée**.
@@ -65,8 +77,8 @@ manuel historique et le lancement direct dans DeSmuME pour les profils existants
 Une partie **Classique** possède zéro règle active. Elle conserve néanmoins
 ses sessions, son temps suivi, son équipe observée, sa zone, ses notes et ses
 événements manuels. Créer une partie PCE ne crée pas une nouvelle sauvegarde
-Pokémon et ne redémarre pas le jeu : choisissez explicitement le fichier `.dsv`
-à utiliser. Deux parties liées au même fichier partagent cette sauvegarde du
+Pokémon et ne redémarre pas le jeu : vérifiez le fichier `.dsv` proposé à la
+création. Deux parties liées au même fichier partagent cette sauvegarde du
 jeu, mais leurs progressions PCE restent distinctes.
 
 ## Retrouver et reprendre
@@ -79,6 +91,13 @@ dernière session, la création, le nom et le temps suivi.
 prépare le Mode Jeu avec le contrôle de l'environnement V0.3.6. Cette action ne
 crée pas une nouvelle partie. Un changement de partie suivie est explicite ;
 une connexion d'un autre jeu ne doit pas alimenter la progression actuelle.
+
+La vérification porte uniquement sur cette partie. Ses références encore valides
+priment sur les préférences globales éventuellement modifiées pour un autre
+lancement. Si une ROM ou un exécutable a disparu, une recherche locale bornée
+peut retrouver un candidat unique. Une ROM récupérée doit respecter l'empreinte
+figée de la partie ; une ambiguïté ou une autre copie bloque la reprise avec une
+explication. La sauvegarde déjà liée n'est pas remplacée par une autre détection.
 
 L'ouverture du Mode Jeu attend la confirmation de l'activation demandée. Le
 UUID demandé, celui du contrôleur et celui de `runs/active.json` doivent
@@ -123,6 +142,12 @@ suivies par PCE, et non la durée enregistrée à l'intérieur du jeu.
 
 ## Actions et cimetière
 
+Le menu **Actions manuelles** du Mode Jeu regroupe captures, ajout de mort en
+secours, ajout/retrait de badge et notes. Les captures et badges restent clairement
+manuels ; les lectures de combat/capture et de badges ne sont pas validées.
+La mort permanente est automatique seulement avec Nuzlocke et Mort permanente
+actifs, une identité fiable et une transition reçue de PV positifs vers zéro.
+
 Les captures, morts et notes disposent d'un formulaire. Pour une mort, la
 sélection d'un individu connu conserve son identité technique ; saisir un nom
 libre crée une déclaration manuelle sans attribuer arbitrairement un individu
@@ -148,7 +173,7 @@ des parties. Le fichier `.dsv` est une référence séparée. Le gestionnaire
 existant conserve ses confirmations de restauration et ses contrôles de
 fermeture de DeSmuME. PCE ne force aucune sauvegarde en jeu.
 
-Les boutons rapides du Mode Jeu utilisent les mêmes formulaires. La V0.4.1
+Les entrées **Actions manuelles** du Mode Jeu utilisent les mêmes formulaires. La V0.4.1
 prépare l'autoload Lua avec **Jouer** lorsqu'il a été accepté pour un
 environnement compatible. Le mode manuel reste disponible si cette préparation
 est impossible ou n'a pas été activée. Le statut connecté exige toujours un

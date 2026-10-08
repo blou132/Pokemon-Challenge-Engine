@@ -1,5 +1,93 @@
 # Vérification V0.4.1 et historique V0.4 / V0.3.6 / V0.3.5 / V0.3 / V0.2 / V0.1
 
+## Installation automatique et actions manuelles — 8 octobre 2026
+
+Base : `ef93ce13bbfef5115180e4b86b1487fa5c45c9e0`, branche
+`feat/v0.4.1-run-flow-autolua`. La séparation interne Profile/Run et les versions
+de l'application, du protocole et du lecteur Lua sont conservées.
+Environnement de vérification : Windows, Python 3.13.7, PySide6 6.11.2 et pytest 9.1.1.
+
+La recherche bornée devient le parcours normal : démarrage sans assistant imposé,
+états par jeu, préparation des ZIP simples et sauvegarde unique préremplie à la
+création. Les choix manuels restent disponibles dans Avancé. Une partie existante
+conserve ses références et son empreinte ; seuls les chemins manquants peuvent
+être retrouvés, sans changer silencieusement de ROM ou de sauvegarde. Le choix de
+ne lier aucune sauvegarde est également conservé. Les saisies du Mode Jeu sont
+regroupées dans Actions manuelles, avec les conditions du suivi automatique des
+morts indiquées séparément.
+
+### Tests synthétiques et interface
+
+Les nouveaux tests utilisent des en-têtes ROM, des exécutables PE, des DLL et des
+sauvegardes synthétiques dans des dossiers temporaires. Les lecteurs système sont
+remplacés par un lecteur temporaire borné ; aucun téléchargement ni lancement de
+jeu n'est autorisé par ces fixtures.
+
+| Cas demandés | Vérification exécutée |
+| --- | --- |
+| A, B, E, G | Vrais widgets MainWindow et vrais services : démarrage avec configuration vide, RetroBat synthétique, Blanc ZIP, exécutable et sauvegarde uniques ; préparation sans popup, originaux identiques et nouvelle Run persistée avec ses références |
+| C | Bibliothèque vide : quatre états Jeu non trouvé, création accessible, aucun popup d'erreur globale |
+| D, F | Émulateurs ou sauvegardes multiples : choix explicite ; absence de choix arbitraire et préparation après résolution |
+| H | Chemins manuels, préférences, sauvegarde explicite et absence d'association conservés ; modification pendant une recherche puis échec d'écriture et nouvelle tentative |
+| I | Source déplacée : récupération bornée d'une copie unique compatible avec l'empreinte ; refus des ambiguïtés et copies différentes |
+| Avant Jouer | Vérification de la partie demandée, sauvegarde figée indépendante des candidats globaux et absence de blocage dû à un autre jeu |
+| Interface | Champs avancés repliés, choix Lua consenti, menu Actions manuelles, navigation et timers réactifs pendant la recherche |
+
+- **72 cas ajoutés** dans cinq modules : 23 pour la préparation automatique,
+  13 pour le diagnostic/paramètres, 10 pour le démarrage complet, 13 pour la
+  récupération d'une partie et 13 pour le menu manuel.
+- Passe finale du démarrage : **10 tests réussis**, 48,17 s. Elle couvre aussi le
+  contrôle périodique sans navigation, la reprise différée après arrêt de session
+  et l'absence de nouveau worker pendant la fermeture.
+- Passe UI ciblée : **92 tests réussis**, 24,89 s, dans
+  `test_automatic_installation_ui`, `test_game_mode_ui`, `test_bridge_ui`,
+  `test_runs_navigation` et `test_run_creation`.
+- Suite complète finale : **1 716 tests réussis, aucun échec ni ignoré**, 691,99 s.
+  Commande : `python -m pytest -q --durations=10 --junitxml=runtime/automatic-startup-review/tests-full-final.xml`.
+  La suite inclut les 1 644 cas précédents et les 72 nouveaux cas.
+- `compileall -q app tools` : réussi. `tools.verify_ui --entrypoint` : véritable
+  fenêtre Windows affichée, recherche sur données isolées, fermeture propre,
+  code 0. Aucun packaging exécutable effectué ; aucun build supplémentaire n'est
+  configuré pour cette application Python.
+- `tools.audit_repository` exécuté après indexation des nouveaux tests : exclusions
+  Git vérifiées, aucun fichier local interdit suivi ni format de secret usuel
+  détecté. `git diff --check` : réussi. ROM, sauvegardes, configurations et preuves
+  locales restent exclus de Git ; aucune fusion dans `main`.
+- Rendus Qt relus : bibliothèque à 1280×700 et 1060×640, paramètres, création à
+  700×610, diagnostic à 980×720 et 760×560, page Mode Jeu et menu manuel. Les polices
+  Segoe UI sont chargées pour les rendus hors écran. Artefacts locaux ignorés :
+  `runtime/automatic-startup-review/`, `runtime/automatic-ui-review/` et
+  `runtime/manual-events-*.png`.
+
+Une première passe complète a donné **1 712 réussites et un échec** : le délai du
+nouveau test de deux recherches successives expirait pendant les vérifications
+de chemins. La pile du worker montrait `local_path`/`is_junction`, sans échec de
+persistance ni perte du choix ; la deuxième recherche avait commencé. Le harnais
+cède désormais davantage le GIL et attend les deux opérations avec un délai
+adapté. Les assertions sur le nombre de recherches, la réactivité, les chemins
+persistés et l'absence de relance en boucle sont conservées. Ce cas passe dans la
+passe ciblée finale. Le premier test de création a aussi été corrigé pour comparer
+`Run.active_rules` à son type réel tuple, sans changer le modèle.
+
+### Fichiers réellement installés — portée limitée
+
+Avec une configuration vide et une base PCE isolée, les services de production
+ont détecté **un RetroBat, un DeSmuME x64 et les DLL Lua vérifiées**. SHA256, taille
+et date de modification de l'exécutable, de l'INI et des deux DLL sont identiques
+avant et après. Aucun lancement d'émulateur, installation ou téléchargement n'a
+été effectué. Préparation : 0,901 s ; appel suivant avec rapport en cache : 0,011 s.
+
+Le parcours borné de `roms/nds` ne contenait **aucun fichier .nds ou .zip** à sa
+racine, sans avertissement de lecture. Les quatre jeux ont donc correctement
+gardé l'état Jeu non trouvé. Les sous-dossiers ne sont pas parcourus récursivement.
+Rapport agrégé local ignoré : `runtime/automatic-real-files-e2d78972/report.json`.
+
+L'extraction d'une ROM réelle, l'association d'une sauvegarde réelle, le lancement
+de Blanc, le heartbeat et les lectures d'équipe dans ce nouveau parcours restent
+**En attente de validation sur la machine utilisateur.** Les succès synthétiques
+ne remplacent pas cet essai. Les validations réelles antérieures ci-dessous
+conservent leur portée historique.
+
 ## Simplification Mes parties / Modèles de challenge — 7 octobre 2026
 
 Base : `c7f8ecba578e1da5b3298de63ce3e06efbb94dc3`, branche

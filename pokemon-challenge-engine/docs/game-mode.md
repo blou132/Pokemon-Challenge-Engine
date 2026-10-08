@@ -5,10 +5,17 @@
 Depuis **Mes parties**, créez ou reprenez une partie. Pour réutiliser une
 configuration, choisissez **Depuis un modèle existant** à la création ou ouvrez
 **Modèles de challenge → Créer une partie** depuis la bibliothèque.
-Le Mode Jeu affiche son nom, ses règles figées, son temps
-cumulé, sa dernière équipe, sa zone et son autosave PCE. Les boutons **Capture**,
-**Mort**, **Badge +/−** et **Note** ouvrent les saisies manuelles. Une première
-saisie de badges demande le total ; une donnée absente reste « Non renseigné ».
+Le Mode Jeu affiche son nom, ses règles figées, son temps cumulé, sa dernière
+équipe, sa zone et son autosave PCE. Le menu secondaire **Actions manuelles**
+regroupe **Capture · manuel**, **Ajouter une mort · secours manuel**, ajout/retrait
+d'un badge et note. Une première saisie de badges demande le total ; une donnée
+absente reste « Non renseigné ». Pour corriger une mort, ouvrez **Mes parties →
+Détails → Progression** : la correction conserve sa confirmation et son historique.
+
+Avec Nuzlocke et Mort permanente actifs, une transition reçue **PV > 0 → 0** pour
+un individu fiable produit automatiquement une mort virtuelle PCE. Le menu manuel
+est un secours. Captures et badges restent manuels : l'agrandissement de l'équipe
+ne prouve pas une capture et aucune adresse de badges n'est annoncée comme validée.
 
 La création propose **Partie classique**, **Depuis un modèle existant** ou
 **Challenge personnalisé** avec l'éditeur existant. Après l'enregistrement confirmé,
@@ -51,9 +58,19 @@ Ancien suivi par profil**.
 
 ## Parcours simplifié
 
-**Installation & diagnostic** détecte les jeux locaux, prépare les ZIP, propose
-la sauvegarde et installe Lua après confirmation. Une fois le jeu préparé, **Jouer**
-revérifie l'environnement, prépare une nouvelle session Bridge et son `connect.lua`,
+La découverte démarre avec PCE et propose directement les jeux prêts dans
+**Mes parties**. Les ZIP simples sont préparés automatiquement ; une sauvegarde
+unique à forte confiance est sélectionnée. **Installation & diagnostic** affiche
+l'état et les seuls choix restant à résoudre. Lua déjà conforme ne demande rien ;
+son installation conserve une confirmation. Les chemins manuels restent dans les
+options avancées.
+
+**Jouer** revérifie les références de la partie concernée : ROM, DeSmuME, Lua,
+INI et sauvegarde liée. L'absence des autres jeux n'est pas bloquante. Une source
+disparue déclenche une recherche bornée ; la réparation conserve les références
+encore valides et vérifie l'empreinte de ROM enregistrée. Une copie différente ou
+une ambiguïté est expliquée, sans remplacer silencieusement le jeu ou la sauvegarde.
+PCE prépare ensuite une nouvelle session Bridge et son `connect.lua`,
 prépare l'autoload, puis lance DeSmuME. Le processus lancé ne prouve pas la connexion :
 PCE attend les messages valides du jeu et de la session courante.
 
@@ -103,11 +120,20 @@ Le bouton **Mode Jeu** ouvre une fenêtre dédiée, en conservant les six pages 
 
 ## Préparer une session
 
-1. Reprendre la partie voulue depuis **Mes parties**. Dans le parcours historique sans partie, choisir Pokémon Noir, Blanc, Noir 2 ou Blanc 2 dans le Mode Jeu.
-2. Ouvrir **Profil de lancement** et renseigner la ROM, l'exécutable DeSmuME et, au besoin, le fichier INI vérifié. Choisir le profil de contrôles, le preset graphique, la vitesse demandée et le challenge associé.
-3. Dans **Sauvegardes**, renseigner les chemins propres à ce jeu. Les backups automatiques sont désactivés par défaut et s'activent explicitement. Les détails de restauration et de rétention sont dans [save-manager.md](save-manager.md).
-4. Enregistrer puis cliquer **Jouer**. La préférence **Revenir au Mode Jeu après le lancement** affiche les panneaux ; décochée, elle masque la fenêtre sans arrêter le suivi du processus ou les backups activés.
-5. Attendre la confirmation de connexion Lua. Si le mode manuel est choisi ou nécessaire, ouvrir sa page depuis le Mode Jeu puis charger le script courant dans DeSmuME. Une connexion déjà active conserve son jeu et sa configuration.
+1. Créer ou reprendre la partie voulue depuis **Mes parties**. L'environnement
+   détecté est proposé à la création ; une partie existante conserve ses références.
+2. Si le jeu est prêt, cliquer **Jouer**. Si un choix ou l'installation Lua reste
+   nécessaire, le diagnostic indique l'action correspondante.
+3. Attendre la confirmation de connexion Lua. Si le mode manuel est choisi ou
+   nécessaire, ouvrir sa page depuis le Mode Jeu puis charger le script courant
+   dans DeSmuME. Une connexion active conserve son jeu et sa configuration.
+
+**Profil de lancement** reste disponible pour un changement explicite de chemins,
+contrôles, graphismes ou vitesse. **Sauvegardes** gère la référence liée et les
+backups ; les backups automatiques sont désactivés par défaut et s'activent
+explicitement. Les détails sont dans [save-manager.md](save-manager.md).
+La préférence **Revenir au Mode Jeu après le lancement** affiche les panneaux ;
+décochée, elle masque la fenêtre sans arrêter le suivi ou les backups activés.
 
 Les associations de challenge enregistrées sont restaurées lors du choix d'un jeu. Choisir explicitement **Sans profil** reste possible : ce choix est conservé pour le lancement. Le jeu et le challenge sont verrouillés tant qu'une session lancée est suivie ou que la connexion Lua n'est pas arrêtée. Ouvrir le Mode Jeu ne remplace pas un profil déjà sélectionné dans Connexion DeSmuME.
 
@@ -118,8 +144,8 @@ de l'INI avant le lancement, avec backup et contrôles. Sans ces activations ni
 restauration d'un ancien autoload PCE, le lancement PCE ne réécrit pas l'INI.
 Voir [emulator-settings.md](emulator-settings.md).
 Les préférences globales se trouvent dans `game-mode.local.json`, exclu de Git ;
-une partie possède sa propre copie des références de lancement. La simple ouverture
-ne réécrit pas ces références.
+une partie possède sa propre copie des références de lancement. Une référence
+encore valide n'est pas remplacée à la simple ouverture du Mode Jeu.
 
 ## Lire les panneaux
 
@@ -164,6 +190,12 @@ contrôles. Les fichiers INI et messages de ces tests sont synthétiques ; ils n
 prouvent pas l'exécution du loader dans DeSmuME. Les résultats du parcours réel
 **Jouer → autoload → heartbeat** sur copie isolée figurent séparément dans le
 [rapport de vérification](verification.md).
+
+Les tests de la découverte automatique, du contrôle limité au jeu demandé et du
+menu **Actions manuelles** utilisent des fichiers ou événements synthétiques.
+Ils ne constituent pas une nouvelle validation réelle de capture, de badges ou
+de mort permanente. Les essais de cette évolution sont distingués des preuves
+antérieures dans le même rapport.
 
 Des fenêtres Qt natives Windows ont été rendues et inspectées à 1366 × 768 et 1920 × 1080 avec des données explicitement synthétiques. Les trois colonnes, les touches, les six emplacements et le défilement des informations de run ont été vérifiés visuellement. Les captures et le script de revue restent dans `runtime/`, exclu de Git. Cette vérification de rendu ne valide pas une ROM, une vitesse réelle ni le placement d'une fenêtre DeSmuME.
 

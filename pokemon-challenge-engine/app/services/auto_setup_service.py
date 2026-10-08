@@ -1,10 +1,11 @@
-"""Explicit setup orchestration. Discovery is read-only; prepare is user initiated.
+"""Bounded local setup, with automatic preparation of unambiguous installations.
 
 No ROM/save downloads, no implicit INI changes, and no emulator or game input.
 The Qt adapter runs these bounded filesystem/network operations in a worker.
 """
 
 from dataclasses import asdict, is_dataclass
+from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
@@ -44,6 +45,9 @@ def fingerprint(path: str | Path):
 
 
 class AutoSetupService:
+    _locks = {}
+    _locks_guard = threading.Lock()
+
     def __init__(self, base_dir: Path, legacy_config: AppConfig):
         self.base_dir = Path(base_dir).resolve()
         self.legacy = legacy_config
@@ -52,7 +56,11 @@ class AutoSetupService:
         self.journal = InstallationJournal(self.base_dir)
         self.store = SetupStateStore(self.base_dir)
         self._report = None
-        self._lock = threading.RLock()
+        self._automatic_report = None
+        self._automatic_signature = None
+        self._automatic_scope = None
+        with self._locks_guard:
+            self._lock = self._locks.setdefault(str(self.base_dir).casefold(), threading.RLock())
 
     @property
     def first_run_done(self):
@@ -80,6 +88,27 @@ class AutoSetupService:
             raise ValueError("Les préférences Mode Jeu sont illisibles ; réparez-les avant une configuration automatique.")
         return store, values
 
+    def apply_manual_config(self, previous: AppConfig, current: AppConfig):
+        """Apply only explicitly edited legacy paths to the per-game launch choices."""
+        with self._lock:
+            self.store.load()  # Keep corrupt provenance and preferences untouched.
+            store = GameModeConfigStore(self.base_dir, previous)
+            preferences = store.load()
+            if store.warnings:
+                raise ValueError("Les préférences Mode Jeu sont illisibles ; les choix existants sont conservés.")
+            changed = False
+            for game, options in preferences["launch_profiles"].items():
+                if previous.desmume_path != current.desmume_path:
+                    options["emulator_path"] = current.desmume_path
+                    changed = True
+                if previous.rom_paths.get(game, "") != current.rom_paths.get(game, ""):
+                    options["rom_path"] = current.rom_paths.get(game, "")
+                    changed = True
+            if changed:
+                store.save(preferences)
+            self.legacy = current
+            self._automatic_signature = None
+
     @staticmethod
     def _supported(candidate):
         profiles = json.loads((RESOURCE_DIR / "data/memory_profiles.json").read_text(encoding="utf-8"))
@@ -87,7 +116,7 @@ class AutoSetupService:
                    and item["revision"] == candidate["revision"] and item["region"] == candidate["region"]
                    for item in profiles)
 
-    def scan(self, retrobat_path="", emulator_path="", rom_path=""):
+    def scan(self, retrobat_path="", emulator_path="", rom_path="", *, game_id=None):
         from app.services.retrobat_discovery_service import RetroBatDiscoveryService
         from app.services.game_discovery_service import GameDiscoveryService
         from app.services.save_discovery_service import SaveDiscoveryService
@@ -106,6 +135,8 @@ class AutoSetupService:
             for item in options.values():
                 if item["emulator_path"]:
                     hints.append(str(Path(item["emulator_path"]).parent.parent.parent))
+                if item["rom_path"]:
+                    hints.append(item["rom_path"])
             installations = discovery.discover(hints)
             warnings.extend(discovery.warnings)
             if retrobat_path:
@@ -127,7 +158,9 @@ class AutoSetupService:
                         *(item["source_path"] for item in state["games"].values())]
             explicit.extend(item["rom_path"] for item in options.values()
                             if item["rom_path"] and not Path(item["rom_path"]).resolve().is_relative_to(self.cache_root))
-            candidates = games.discover([Path(item.roms_directory) / "nds" for item in installations],
+            directories = [Path(item.roms_directory) / "nds" for item in installations]
+            directories.extend(Path(item).parent for item in explicit if item)
+            candidates = games.discover(list(dict.fromkeys(directories)),
                                          explicit_paths=[item for item in explicit if item])
             warnings.extend(games.warnings)
             game_values = []
@@ -139,10 +172,11 @@ class AutoSetupService:
                 saves = SaveDiscoveryService()
                 found = saves.discover(candidate, retrobat_root=root or None, emulator_path=chosen_exe or None,
                     configured_directories=[self.legacy.save_path] if self.legacy.save_path else (),
-                    configured_save=options[value["game_id"]]["save_path"] or None)
+                    configured_save=options[value["game_id"]]["save_path"] or None) if game_id in (None, candidate.game_id) else ()
                 proposed = saves.proposed(found)
                 value["saves"] = plain(found)
                 value["proposed_save"] = str(proposed.path) if proposed else ""
+                value["save_warnings"] = list(saves.warnings)
                 value["state_slots_directory"] = str(saves.state_slots_directory or "")
                 warnings.extend(getattr(saves, "warnings", []))
                 game_values.append(value)
@@ -160,6 +194,202 @@ class AutoSetupService:
                     self.journal("save_detected", game_id=row["game_id"], **save)
             result["details"] = self.journal.recent()
             self._report = result
+            return result
+
+    def _automatic_fingerprint(self, report, state, preferences):
+        """Stat known files and bounded discovery roots; never hash ROMs in this fast path."""
+        from app.services.retrobat_discovery_service import RetroBatDiscoveryService
+        paths = {self.store.path, self.base_dir / "game-mode.local.json"}
+        roots = [Path(drive) / "RetroBat" for drive in RetroBatDiscoveryService._drives()]
+        roots.extend(Path(item) for item in (state["retrobat_root"], self.legacy.retrobat_path) if item)
+        roots.extend(Path(item["root"]) for item in (report or {}).get("installations", ()))
+        for root in roots:
+            paths.update((root, root / "roms/nds", root / "emulators/desmume", root / "saves/nds",
+                          root / "saves/nds/DeSmuME"))
+        for options in preferences["launch_profiles"].values():
+            for key in ("rom_path", "emulator_path", "ini_path", "save_path"):
+                if options[key]:
+                    path = Path(options[key])
+                    paths.update((path, path.parent))
+        for record in state["games"].values():
+            for key in ("source_path", "prepared_path"):
+                path = Path(record[key])
+                paths.update((path, path.parent, path.parent / "manifest.json"))
+        for emulator in (report or {}).get("emulators", ()):
+            path = Path(emulator["path"])
+            paths.update((path, path.parent, path.parent / "desmume.ini",
+                          path.parent / "lua51.dll", path.parent / "lua5.1.dll"))
+            from app.services.save_discovery_service import SaveDiscoveryService
+            try:
+                battery, _ = SaveDiscoveryService._ini_paths(path)
+                if battery:
+                    paths.add(battery)
+            except (ValueError, OSError):
+                pass  # Its signature/error is checked again by the full health report.
+        for candidate in (report or {}).get("games", ()):
+            path = Path(candidate["source_path"])
+            paths.update((path, path.parent))
+            paths.update(Path(item["path"]) for item in candidate["saves"])
+        if self.legacy.save_path:
+            paths.add(Path(self.legacy.save_path))
+        values = []
+        for path in sorted(paths, key=str):
+            try:
+                signature = file_signature(local_path(path))
+            except (OSError, ValueError):
+                signature = None
+            values.append((str(path), signature))
+        return (self.legacy.retrobat_path, self.legacy.desmume_path,
+                tuple(sorted(self.legacy.rom_paths.items())), self.legacy.save_path, tuple(values))
+
+    @staticmethod
+    def _same_path(first, second):
+        return bool(first and second and Path(first).resolve() == Path(second).resolve())
+
+    def _automatic_candidate(self, game_id, candidates, options, record):
+        """Existing valid choices take precedence over a new unique discovery."""
+        path = options["rom_path"]
+        chosen = [item for item in candidates if self._same_path(path, item["source_path"])]
+        if record and self._same_path(path, record["prepared_path"]):
+            chosen = [item for item in candidates if self._same_path(record["source_path"], item["source_path"])
+                      and item["archive_member"] == record["archive_member"]]
+        if len(chosen) == 1 and (not chosen[0]["requires_choice"] or record
+                                and self._same_path(chosen[0]["source_path"], record["source_path"])
+                                and chosen[0]["archive_member"] == record["archive_member"]):
+            return chosen[0], ""
+        if chosen:
+            return None, "Plusieurs jeux sont présents dans cette archive. Choisissez celui à préparer."
+        # A present manual file with another identity must never be silently replaced.
+        if path and Path(path).is_file() and not (record and self._same_path(path, record["prepared_path"])):
+            return None, "Le jeu choisi manuellement ne correspond pas à cette version. Vérifiez ce choix."
+        if record:
+            previous = next((item for item in candidates if self._same_path(item["source_path"], record["source_path"])
+                             and item["archive_member"] == record["archive_member"]), None)
+            if previous:
+                return previous, ""
+        supported = [item for item in candidates if item["supported"]]
+        if len(supported) != 1 or supported[0]["requires_choice"]:
+            return None, "Plusieurs copies du jeu ont été trouvées. Choisissez celle à utiliser." if supported else ""
+        candidate = supported[0]
+        if record and not Path(record["source_path"]).is_file():
+            previous = record["fingerprints"].get(record["source_path"])
+            if previous and fingerprint(candidate["source_path"])["sha256"] != previous["sha256"]:
+                return None, "Le jeu a été déplacé et la copie trouvée est différente. Confirmez celle à utiliser."
+        return candidate, ""
+
+    def _automatic_saves(self, candidate, emulator, options, root, record=None):
+        from app.services.discovery_models import GameCandidate
+        from app.services.save_discovery_service import SaveDiscoveryService
+        fields = {key: candidate[key] for key in GameCandidate.__dataclass_fields__}
+        fields["source_path"] = Path(fields["source_path"])
+        finder = SaveDiscoveryService()
+        saves = finder.discover(GameCandidate(**fields), retrobat_root=root or None,
+            emulator_path=emulator["path"], configured_directories=[self.legacy.save_path] if self.legacy.save_path else (),
+            configured_save=options["save_path"] or None)
+        proposed = finder.proposed(saves)
+        candidate.update(saves=plain(saves), proposed_save=str(proposed.path) if proposed else "",
+                         state_slots_directory=str(finder.state_slots_directory or ""), save_warnings=list(finder.warnings))
+        # In an existing configuration, the current empty association is a saved
+        # choice (including an explicit clearing of a previously associated save).
+        # Keep offering discovered candidates without silently binding them.
+        if record is not None and not options["save_path"]:
+            return "", ""
+        explicit = next((item for item in saves if self._same_path(item.path, options["save_path"])
+                         and item.compatible), None)
+        if explicit:
+            return str(explicit.path), ""
+        if proposed:
+            return str(proposed.path), ""
+        if saves:
+            return None, "Plusieurs sauvegardes ou une association à confirmer : choisissez la sauvegarde à utiliser."
+        if options["save_path"]:
+            return None, "La sauvegarde associée n'a pas été retrouvée. Choisissez son nouvel emplacement."
+        if finder.warnings:
+            return None, "La recherche de sauvegardes est incomplète. Vérifiez les emplacements dans le diagnostic."
+        return "", ""
+
+    def automatic_setup(self, force=False, game_id=None):
+        """Prepare unique local choices without downloads or external modifications.
+
+        Missing games are independent states, not global installation failures. The
+        cached report is reused only while files, configuration and discovery roots
+        keep their signatures. Explicit rescans and changes run the bounded readers.
+        """
+        if game_id is not None and game_id not in GAME_LABELS:
+            raise ValueError("Jeu de lancement inconnu.")
+        with self._lock:
+            state = self.store.load()  # Refuse corrupt state before any local mutation.
+            _, preferences = self._preferences()
+            if (not force and self._automatic_report is not None and self._automatic_scope in (None, game_id)
+                    and self._automatic_signature == self._automatic_fingerprint(self._automatic_report, state, preferences)):
+                return deepcopy(self._automatic_report) | {"cached": True, "prepared_games": []}
+            result = self.scan(game_id=game_id) if game_id is not None else self.scan()
+            result.update(game_states={}, ready=False, prepared_games=[], cached=False)
+            for current, label in GAME_LABELS.items():
+                entry = {"status": "not_found", "message": f"{label} n'a pas été trouvé. Ajoutez le jeu à votre bibliothèque RetroBat.",
+                         "candidate_id": "", "emulator_path": "", "save_path": ""}
+                result["game_states"][current] = entry
+                candidates = [item for item in result["games"] if item["game_id"] == current]
+                if not candidates:
+                    continue
+                if game_id is not None and current != game_id:
+                    entry.update(status="needs_attention", message="Jeu trouvé. Sa préparation sera vérifiée au lancement.")
+                    continue
+                options = preferences["launch_profiles"][current]
+                record = state["games"].get(current)
+                try:
+                    candidate, issue = self._automatic_candidate(current, candidates, options, record)
+                    if candidate is None:
+                        entry.update(status="needs_choice" if issue else "needs_attention",
+                            message=issue or "Jeu trouvé, mais cette région ou révision n'est pas encore prise en charge.")
+                        continue
+                    entry["candidate_id"] = candidate["id"]
+                    if not candidate["supported"]:
+                        entry.update(status="needs_attention", message="La région ou révision du jeu choisi n'est pas encore prise en charge.")
+                        continue
+                    emulators = [item for item in result["emulators"] if item["architecture"]]
+                    emulator = next((item for item in emulators if self._same_path(item["path"], options["emulator_path"])), None)
+                    if emulator is None and record:
+                        emulator = next((item for item in emulators if self._same_path(item["path"], record["emulator_path"])), None)
+                    if emulator is None and len(emulators) == 1:
+                        emulator = emulators[0]
+                    if emulator is None:
+                        entry.update(status="needs_choice" if emulators else "needs_attention",
+                            message="Plusieurs installations DeSmuME ont été trouvées. Choisissez celle à utiliser." if emulators
+                                    else "DeSmuME n'a pas été trouvé. Ajoutez votre installation ou choisissez-la manuellement.")
+                        continue
+                    entry["emulator_path"] = emulator["path"]
+                    root = next((item["root"] for item in result["installations"]
+                                 if Path(candidate["source_path"]).is_relative_to(Path(item["roms_directory"]))), "")
+                    save, issue = self._automatic_saves(candidate, emulator, options, root, record)
+                    if issue:
+                        entry.update(status="needs_choice", message=issue)
+                        continue
+                    entry["save_path"] = save
+                    before = deepcopy(options)
+                    prepared = self.prepare({"candidate_id": candidate["id"], "emulator_path": emulator["path"],
+                        "retrobat_root": root, "save_path": save}, install_lua=False, preserve_manual_ini=True)
+                    health = prepared["health"]
+                    if before != prepared["profile"] or record is None or record["source_path"] != candidate["source_path"]:
+                        result["prepared_games"].append(current)
+                    entry["health"] = health
+                    entry["profile"] = prepared["profile"]
+                    entry["save_message"] = ("Sauvegarde trouvée." if save else
+                        "Aucune sauvegarde associée. Les sauvegardes trouvées restent disponibles dans le diagnostic." if candidate["saves"] else
+                        "Aucune sauvegarde existante trouvée. Une nouvelle partie reste possible.")
+                    if health["ready"]:
+                        entry.update(status="ready", message="Prêt")
+                    elif health["launch_ready"]:
+                        entry.update(status="lua_required", message="Support Lua requis. Installez-le automatiquement depuis le diagnostic.")
+                    else:
+                        entry.update(status="needs_attention", message=" ".join(health["issues"]))
+                except (ValueError, OSError) as exc:
+                    entry.update(status="needs_attention", message=str(exc))
+            result["ready"] = any(item["status"] == "ready" for item in result["game_states"].values())
+            _, latest_preferences = self._preferences()
+            self._automatic_signature = self._automatic_fingerprint(result, self.store.load(), latest_preferences)
+            self._automatic_scope = game_id
+            self._automatic_report = deepcopy(result)
             return result
 
     def _selection(self, selection):
@@ -186,7 +416,7 @@ class AutoSetupService:
             raise ValueError("Ce format nécessite un import manuel dans DeSmuME ; aucune conversion automatique effectuée.")
         return candidate, emulator, save
 
-    def prepare(self, selection, *, install_lua=False, replace_confirmed=False):
+    def prepare(self, selection, *, install_lua=False, replace_confirmed=False, preserve_manual_ini=False):
         from app.services.rom_preparation_service import RomPreparationService
         from app.services.lua_runtime_installer import LuaRuntimeInstaller
         with self._lock:
@@ -209,8 +439,15 @@ class AutoSetupService:
                 actions.append("Support Lua vérifié sur disque." if not installed.changed else "Support Lua installé et vérifié sur disque.")
             game_id = candidate["game_id"]
             profile = preferences["launch_profiles"][game_id]
+            ini_path = emulator.get("ini_path") or ""
+            if preserve_manual_ini and profile["ini_path"]:
+                from app.services.emulator_settings_service import IniDocument
+                chosen_ini = local_path(profile["ini_path"])
+                if chosen_ini.is_file() and chosen_ini.stat().st_size <= 1024 * 1024:
+                    IniDocument(chosen_ini.read_bytes()).require_windows_profile_encoding()
+                    ini_path = profile["ini_path"]
             profile.update(rom_path=str(prepared.path), emulator_path=emulator["path"],
-                           ini_path=emulator.get("ini_path") or "", save_path=save or "")
+                           ini_path=ini_path, save_path=save or "")
             if candidate.get("state_slots_directory"):
                 profile.update(save_state_directory=candidate["state_slots_directory"], save_state_stem=prepared.path.stem)
             # Existing challenge, settings, backup policies and controls remain intact.

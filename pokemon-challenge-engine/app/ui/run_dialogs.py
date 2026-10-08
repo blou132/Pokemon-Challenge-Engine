@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QTextBrowser, QTextEdit, QVBoxLayout, QWidget,
 )
 
-from app.ui.widgets.common import label
+from app.ui.widgets.common import INSTALLATION_LABELS, label
 from app.ui.widgets.nuzlocke import species_name
 from app.services.save_manager_service import SaveManagerService
 from app.core.challenge_engine import ChallengeEngine
@@ -153,6 +153,7 @@ class NewRunDialog(QDialog):
         self.catalog = catalog
         self.profiles = list(profiles)
         self.launch_profiles = deepcopy(launch_profiles)
+        self.installation_states = {}
         self.custom_challenge = None
         self._loading = False
         self.setWindowTitle("Nouvelle partie")
@@ -235,8 +236,35 @@ class NewRunDialog(QDialog):
         configured = bool(settings.get("rom_path") and settings.get("emulator_path"))
         self.environment_label.setText("Environnement : configuration enregistrée pour ce jeu ; vérification avant lancement."
                                        if configured else "Environnement : à préparer dans Installation & Diagnostic avant le lancement.")
+        self._installation_summary()
         self._loading = False
         self._source_changed()
+
+    def set_detection_state(self, report, *, select_ready=False):
+        self.installation_states = deepcopy(report.get("game_states", {}))
+        for game_id, state in self.installation_states.items():
+            if state.get("profile"):
+                self.launch_profiles[game_id] = deepcopy(state["profile"])
+        if select_ready:
+            ready = next((game_id for game_id, state in self.installation_states.items()
+                          if state.get("status") == "ready"), None)
+            if ready is not None:
+                self.game_combo.setCurrentIndex(self.game_combo.findData(ready))
+        self._installation_summary()
+
+    def _installation_summary(self):
+        state = self.installation_states.get(self.game_combo.currentData())
+        if state is None:
+            return
+        self.environment_label.setText("Installation · " +
+            INSTALLATION_LABELS.get(state.get("status"), "À vérifier") + "\n" + state.get("message", ""))
+        # Only a resolved association is offered by automatic discovery. An
+        # explicit choice made in this dialog is never replaced by a refresh.
+        if not self.save_edit.isModified() and state.get("status") in {"ready", "lua_required"}:
+            self.save_edit.setText(state.get("save_path", ""))
+            self.save_edit.setPlaceholderText(state.get("save_message") or
+                                             "Aucune sauvegarde existante trouvée · nouvelle partie possible")
+            self.configured_save_button.hide()
 
     def _profile_changed(self):
         if self._loading:

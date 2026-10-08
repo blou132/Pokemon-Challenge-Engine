@@ -9,7 +9,7 @@ from app.ui.run_dialogs import (
     RunDetailsDialog, STATUS_LABELS, active_deaths, badges_text, display_date,
     display_duration, rule_names, zone_name,
 )
-from app.ui.widgets.common import card, label, page_layout
+from app.ui.widgets.common import INSTALLATION_LABELS, card, label, page_layout
 
 
 class RunCard(QWidget):
@@ -63,6 +63,8 @@ class RunCard(QWidget):
 class RunsPage(QWidget):
     new_requested = Signal()
     models_requested = Signal()
+    installation_requested = Signal()
+    detection_requested = Signal()
     resume_requested = Signal(str)
     saves_requested = Signal(str)
     action_requested = Signal(str, str, object)
@@ -98,6 +100,25 @@ class RunsPage(QWidget):
         self.creation_feedback = label("", "success")
         self.creation_feedback.hide()
         layout.addWidget(self.creation_feedback)
+        installation, installation_box = card()
+        installation_row = QHBoxLayout()
+        self.installation_label = label("Installation · Recherche automatique au démarrage", "muted")
+        installation_row.addWidget(self.installation_label, 1)
+        self.diagnostic_button = QPushButton("Installation && diagnostic")
+        self.diagnostic_button.clicked.connect(self.installation_requested)
+        installation_row.addWidget(self.diagnostic_button)
+        self.detect_button = QPushButton("Relancer la recherche")
+        self.detect_button.clicked.connect(self.detection_requested)
+        installation_row.addWidget(self.detect_button)
+        installation_box.addLayout(installation_row)
+        self.installation_games = {}
+        games_grid = QGridLayout()
+        for index, game in enumerate(game for game in catalog.games.values() if game.status == "supported"):
+            status = label(f"{game.name} · À vérifier", "muted")
+            self.installation_games[game.id] = status
+            games_grid.addWidget(status, index // 2, index % 2)
+        installation_box.addLayout(games_grid)
+        layout.addWidget(installation)
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("Rechercher une partie par son nom")
         self.search_edit.setClearButtonEnabled(True)
@@ -143,6 +164,21 @@ class RunsPage(QWidget):
         layout.addLayout(self.cards_layout)
         layout.addStretch()
         self.refresh()
+
+    def set_detection_busy(self, busy):
+        self.detect_button.setEnabled(not busy)
+        self.new_button.setEnabled(not busy)
+        if busy:
+            self.installation_label.setText("Recherche automatique de votre installation…")
+
+    def set_detection_state(self, report):
+        self.installation_label.setText("Installation PCE · Prête" if report.get("ready") else
+                                       report.get("error") or "Installation · Consultez l'état de chaque jeu")
+        for game_id, widget in self.installation_games.items():
+            state = report.get("game_states", {}).get(game_id, {})
+            widget.setText(f"{self.catalog.games[game_id].name} · " +
+                           INSTALLATION_LABELS.get(state.get("status"), "À vérifier"))
+            widget.setToolTip(state.get("message", report.get("error", "")))
 
     def set_active_run(self, run_id):
         self.active_run_id = run_id

@@ -1,4 +1,4 @@
-"""Premier démarrage : choix explicites, préparation locale et diagnostic."""
+"""État de l'installation automatique et choix de secours explicites."""
 
 import json
 from pathlib import Path
@@ -11,10 +11,13 @@ from PySide6.QtWidgets import (
 )
 
 from app.ui.setup_tasks import SetupTaskRunner
+from app.ui.widgets.common import INSTALLATION_LABELS
+from app.services.auto_setup_service import GAME_LABELS
 
 
 def _text(value):
     widget = QLabel(value)
+    widget.setTextFormat(Qt.TextFormat.PlainText)
     widget.setWordWrap(True)
     return widget
 
@@ -22,6 +25,7 @@ def _text(value):
 class InstallationDialog(QDialog):
     configuration_ready = Signal(str)
     play_requested = Signal(str)
+    detection_completed = Signal(object)
 
     def __init__(self, service, parent=None, *, first_run=False, active_session=None):
         super().__init__(parent)
@@ -34,6 +38,7 @@ class InstallationDialog(QDialog):
         self._play_after_complete = None
         self._overrides = {"retrobat_path": "", "emulator_path": "", "rom_path": ""}
         self._started = False
+        self._displaying_snapshot = False
         self.setWindowTitle("Installation & diagnostic · Pokemon Challenge Engine")
         self.resize(980, 720)
         self.setMinimumSize(760, 560)
@@ -57,13 +62,13 @@ class InstallationDialog(QDialog):
         title = _text("Bienvenue dans Pokemon Challenge Engine" if first_run else "Installation & diagnostic")
         title.setObjectName("title")
         layout.addWidget(title)
-        layout.addWidget(_text("Retrouvez vos jeux locaux et préparez votre installation. Les originaux restent à leur place."))
+        layout.addWidget(_text("Votre installation et vos jeux locaux sont détectés automatiquement. Les originaux restent à leur place."))
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs, 1)
         self._build_installation()
         self._build_storage()
         self.tabs.currentChanged.connect(self._tab_changed)
-        self.status_label = _text("Lancez la recherche pour vérifier votre installation.")
+        self.status_label = _text("Recherche automatique de votre installation…")
         self.status_label.setObjectName("subtitle")
         layout.addWidget(self.status_label)
         self.progress = QProgressBar()
@@ -79,7 +84,7 @@ class InstallationDialog(QDialog):
         actions.addStretch()
         self.prepare_button = QPushButton("Préparer et enregistrer")
         self.prepare_button.clicked.connect(self.prepare_selected)
-        self.repair_button = QPushButton("Réparer l'installation")
+        self.repair_button = QPushButton("Installer automatiquement le support Lua")
         self.repair_button.clicked.connect(self.repair_selected)
         self.play_button = QPushButton("Jouer")
         self.play_button.setObjectName("primary")
@@ -99,21 +104,32 @@ class InstallationDialog(QDialog):
         content = QVBoxLayout(body)
         content.setContentsMargins(16, 18, 16, 18)
         row = QHBoxLayout()
-        self.scan_button = QPushButton("Rechercher mon installation")
-        self.scan_button.setObjectName("primary")
-        self.scan_button.clicked.connect(self.scan)
+        self.scan_button = QPushButton("Relancer la recherche")
+        self.scan_button.clicked.connect(lambda: self.scan(force=True))
         row.addWidget(self.scan_button)
+        row.addStretch()
+        self.advanced_toggle = QToolButton()
+        self.advanced_toggle.setText("Choix manuels · Avancé")
+        self.advanced_toggle.setCheckable(True)
+        self.advanced_toggle.toggled.connect(self._toggle_advanced)
+        row.addWidget(self.advanced_toggle)
+        content.addLayout(row)
+        self.manual_controls = QWidget()
+        manual_row = QHBoxLayout(self.manual_controls)
+        manual_row.setContentsMargins(0, 0, 0, 0)
         self.folder_button = QPushButton("Autre dossier…")
         self.folder_button.clicked.connect(self._choose_folder)
-        row.addWidget(self.folder_button)
+        manual_row.addWidget(self.folder_button)
         self.emulator_button = QPushButton("Choisir DeSmuME…")
         self.emulator_button.clicked.connect(self._choose_emulator)
-        row.addWidget(self.emulator_button)
+        manual_row.addWidget(self.emulator_button)
         self.rom_button = QPushButton("Ajouter un jeu…")
         self.rom_button.clicked.connect(self._choose_rom)
-        row.addWidget(self.rom_button)
-        content.addLayout(row)
+        manual_row.addWidget(self.rom_button)
+        self.manual_controls.hide()
+        content.addWidget(self.manual_controls)
         form = QFormLayout()
+        self.choice_form = form
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.installation_combo = QComboBox()
         self.emulator_combo = QComboBox()
@@ -132,12 +148,17 @@ class InstallationDialog(QDialog):
         content.addLayout(form)
         self.summary = {}
         summary = QFormLayout()
-        for key, title in (("retrobat", "Bibliothèque"), ("emulator", "DeSmuME"), ("lua", "Support Lua"),
-                           ("game", "Jeu local"), ("save", "Sauvegarde"), ("ini", "Configuration")):
+        for key, title in (("retrobat", "RetroBat"), ("emulator", "DeSmuME"), ("lua", "Support Lua"),
+                           ("game", "Jeu sélectionné"), ("save", "Sauvegarde"), ("ini", "Configuration DeSmuME")):
             widget = _text("Recherche non effectuée")
             self.summary[key] = widget
             summary.addRow(title, widget)
         content.addLayout(summary)
+        self.game_states = {}
+        for game_id, label in GAME_LABELS.items():
+            widget = _text(f"{label} · Recherche en cours…")
+            self.game_states[game_id] = widget
+            content.addWidget(widget)
         self.notice = _text("En cas de plusieurs installations, jeux ou sauvegardes, choisissez celui que vous souhaitez utiliser.")
         self.notice.setObjectName("muted")
         content.addWidget(self.notice)
@@ -184,6 +205,11 @@ class InstallationDialog(QDialog):
             self._started = True
             self.scan()
 
+    def set_detection_state(self, report):
+        """Réutilise le résultat du démarrage sans créer un second worker."""
+        self._started = True
+        self._display_snapshot(report)
+
     def _run(self, operation, action, message):
         if self.is_busy:
             return
@@ -191,10 +217,13 @@ class InstallationDialog(QDialog):
         self.status_label.setText(message)
         self.runner.start(action)
 
-    def scan(self):
+    def scan(self, *, force=False):
         options = dict(self._overrides)
         self._last_ready_game = None
-        self._run("scan", lambda: self.service.scan(**options), "Recherche de votre installation en cours…")
+        if any(options.values()):
+            self._run("manual_scan", lambda: self.service.scan(**options), "Vérification de votre choix local…")
+        else:
+            self._run("scan", lambda: self.service.automatic_setup(force=force), "Recherche de votre installation en cours…")
 
     def _choose_folder(self):
         path = QFileDialog.getExistingDirectory(self, "Choisir le dossier RetroBat")
@@ -225,6 +254,7 @@ class InstallationDialog(QDialog):
             combo.setCurrentIndex(index if index > 0 else 1 if len(values) == 1 else 0)
 
     def _display_snapshot(self, snapshot):
+        self._displaying_snapshot = True
         self.snapshot = snapshot
         def path_choice(items, key, requested):
             # QFileDialog uses forward slashes on Windows; discovery returns
@@ -235,23 +265,47 @@ class InstallationDialog(QDialog):
         emulators = snapshot.get("emulators", [])
         self._fill(self.installation_combo, [(item["root"], item["root"]) for item in snapshot.get("installations", [])],
                    "Choisir une installation…", path_choice(installations, "root", self._overrides["retrobat_path"] or self.installation_combo.currentData()))
+        states = snapshot.get("game_states", {})
+        selected_candidate = self._candidate()
+        selected_game = selected_candidate.get("game_id") if selected_candidate else None
+        state = states.get(selected_game, {})
+        if not state:
+            state = next((item for item in states.values() if item.get("status") == "ready"), {})
         self._fill(self.emulator_combo, [(f"DeSmuME {item.get('version') or ''} · {item.get('architecture') or 'architecture non identifiée'} · {Path(item['path']).parent.name}", item["path"])
                    for item in emulators], "Choisir un émulateur…",
-                   path_choice(emulators, "path", self._overrides["emulator_path"] or self.emulator_combo.currentData()))
+                   path_choice(emulators, "path", self._overrides["emulator_path"] or state.get("emulator_path") or self.emulator_combo.currentData()))
         if self._overrides["emulator_path"] and not path_choice(emulators, "path", self._overrides["emulator_path"]):
             with QSignalBlocker(self.emulator_combo):
                 self.emulator_combo.setCurrentIndex(0)
         games = snapshot.get("games", [])
+        explicit_games = [item for item in games if self._overrides["rom_path"] and
+                          Path(item["source_path"]) == Path(self._overrides["rom_path"])]
+        selected_id = (explicit_games[0]["id"] if len(explicit_games) == 1 and not explicit_games[0].get("requires_choice")
+                       else self.game_combo.currentData() or state.get("candidate_id"))
         self._fill(self.game_combo, [(f"{item['label']} · {'archive locale' if item.get('source_kind') == 'zip' else 'fichier local'}" +
                     (f" · {Path(item.get('archive_member') or item['source_path']).name}" if len(games) > 1 else ""), item["id"])
-                   for item in games], "Choisir un jeu…", self.game_combo.currentData())
-        if len(games) == 1 and games[0].get("requires_choice"):
+                   for item in games], "Choisir un jeu…", selected_id)
+        if len(games) == 1 and games[0].get("requires_choice") and not state.get("candidate_id"):
             with QSignalBlocker(self.game_combo):
                 self.game_combo.setCurrentIndex(0)
         self._game_changed()
+        self._displaying_snapshot = False
         self.details.setPlainText(json.dumps(snapshot, ensure_ascii=False, indent=2, default=str))
-        self.status_label.setText("Recherche terminée. Vérifiez les propositions avant de préparer le jeu.")
-        self.notice.setText("\n".join(snapshot.get("warnings", [])) or "Les propositions ne déplacent aucun fichier original.")
+        ready = any(item.get("status") == "ready" for item in states.values())
+        self.status_label.setText("Installation PCE prête. Choisissez votre partie et jouez." if ready else
+                                 "Recherche terminée. Les éléments à compléter sont indiqués ci-dessus.")
+        self.notice.setText("\n".join(snapshot.get("warnings", [])) or
+                           "L'absence des autres jeux ne bloque pas celui que vous possédez. Aucun fichier original n'est déplacé.")
+        for game_id, widget in self.game_states.items():
+            item = states.get(game_id, {})
+            status = item.get("status")
+            found = any(game.get("game_id") == game_id for game in games)
+            message = item.get("message", "")
+            if status == "not_found" or not status and not found:
+                message = f"Veuillez ajouter {GAME_LABELS[game_id]} à votre bibliothèque RetroBat."
+            widget.setText(f"{GAME_LABELS[game_id]} · {INSTALLATION_LABELS.get(status, 'Trouvé' if found else 'Jeu non trouvé')}" +
+                           (f"\n{message}" if message and status != "ready" else ""))
+        self._refresh_actions()
 
     def _candidate(self):
         return next((item for item in self.snapshot.get("games", []) if item["id"] == self.game_combo.currentData()), None)
@@ -277,6 +331,10 @@ class InstallationDialog(QDialog):
 
     def _game_changed(self):
         candidate = self._candidate()
+        state = self.snapshot.get("game_states", {}).get(candidate.get("game_id"), {}) if candidate else {}
+        if state.get("emulator_path") and not self._overrides["emulator_path"]:
+            with QSignalBlocker(self.emulator_combo):
+                self.emulator_combo.setCurrentIndex(self.emulator_combo.findData(state["emulator_path"]))
         with QSignalBlocker(self.save_combo):
             self.save_combo.clear()
             saves = candidate.get("saves", []) if candidate else []
@@ -285,21 +343,48 @@ class InstallationDialog(QDialog):
             for item in saves:
                 self.save_combo.addItem(f"{Path(item['path']).name} · {item.get('size', 0) // 1024} Ko · {item.get('modified_at', '')}", item["path"])
                 self.save_combo.setItemData(self.save_combo.count() - 1, item["path"], Qt.ItemDataRole.ToolTipRole)
-            proposed = candidate.get("proposed_save") if candidate else None
-            self.save_combo.setCurrentIndex(self.save_combo.findData(proposed) if proposed and len(saves) == 1 else 1 if not saves else 0)
+            if "health" in state:
+                proposed = state.get("save_path")
+            else:
+                proposed = candidate.get("proposed_save") if candidate and len(saves) == 1 else None
+                if not proposed:
+                    proposed = None
+            index = self.save_combo.findData(proposed) if proposed is not None else -1
+            self.save_combo.setCurrentIndex(index if index >= 1 else 1 if not saves else 0)
         self._selection_changed()
 
     def _selection_changed(self):
         self._last_ready_game = None
         emulator, candidate = self._emulator(), self._candidate()
-        self.summary["retrobat"].setText("Détectée" if self.installation_combo.currentData() else "Choix nécessaire" if self.snapshot.get("installations") else "Installation indépendante")
-        self.summary["emulator"].setText("Détecté" if emulator else "À sélectionner")
+        state = self.snapshot.get("game_states", {}).get(candidate.get("game_id"), {}) if candidate else {}
+        selection_matches = bool(candidate and emulator and state.get("candidate_id") == candidate["id"] and
+                                 state.get("emulator_path") == emulator["path"] and
+                                 state.get("save_path", "") == self.save_combo.currentData())
+        if state.get("status") == "ready" and selection_matches:
+            self._last_ready_game = candidate["game_id"]
+        self.summary["retrobat"].setText(str(self.installation_combo.currentData()) if self.installation_combo.currentData() else "Plusieurs installations · Choix nécessaire" if self.snapshot.get("installations") else "Non trouvé · Installation indépendante possible")
+        self.summary["emulator"].setText(f"{emulator.get('version') or 'Détecté'} · {emulator.get('architecture') or 'Architecture à vérifier'}" if emulator else
+                                       "Plusieurs installations · Choix nécessaire" if self.snapshot.get("emulators") else "Non trouvé · Choix manuel disponible dans Avancé")
         lua_status = emulator.get("lua_status") if emulator else None
-        self.summary["lua"].setText("Fichiers vérifiés · test en jeu requis" if lua_status in {"ready", "installed", "verified"} else "Réparation nécessaire" if emulator else "Non testé")
+        self.summary["lua"].setText("Prêt · Fichiers vérifiés ; connexion confirmée au lancement" if lua_status in {"ready", "installed", "verified"} else "Support Lua requis" if emulator else "En attente de DeSmuME")
         self.summary["ini"].setText("Détectée" if emulator and emulator.get("ini_path") else "Non détectée")
-        self.summary["game"].setText("À préparer depuis l'archive" if candidate and candidate.get("source_kind") == "zip" else "Détecté" if candidate else "À sélectionner")
-        self.summary["save"].setText("Proposée" if self.save_combo.currentData() else "Choix nécessaire" if self.save_combo.currentData() is None else "Aucune association")
+        self.summary["game"].setText("Prêt" if self._last_ready_game else state.get("message") or
+                                   (candidate["label"] + " · Trouvé" if candidate else "Choisissez le jeu à utiliser" if self.snapshot.get("games") else "Jeu non trouvé · Ajoutez une copie locale à RetroBat"))
+        self.summary["save"].setText(Path(self.save_combo.currentData()).name if self.save_combo.currentData() else
+                                   "Plusieurs sauvegardes possibles · Choix nécessaire" if self.save_combo.currentData() is None else
+                                   "Aucune sauvegarde associée" if candidate and candidate.get("saves") else "Aucune sauvegarde existante trouvée")
         self._refresh_actions()
+        if not self._displaying_snapshot and not self._last_ready_game and candidate and emulator:
+            self._prepare_if_resolved()
+
+    def _prepare_if_resolved(self):
+        """Un choix explicite résolu suffit ; aucune étape « Préparer » imposée."""
+        try:
+            selection = self.selection()
+        except ValueError:
+            return
+        if not self.is_busy:
+            self._run("prepare", lambda: self.service.prepare(selection), "Préparation du jeu local et vérification…")
 
     def selection(self):
         if not self._candidate() or not self._emulator():
@@ -350,6 +435,21 @@ class InstallationDialog(QDialog):
         self.prepare_button.setEnabled(available)
         self.repair_button.setEnabled(available)
         self.play_button.setEnabled(bool(self._last_ready_game) and not self.is_busy)
+        advanced = self.advanced_toggle.isChecked()
+        self.prepare_button.setVisible(advanced)
+        emulator = self._emulator()
+        needs_lua = emulator and emulator.get("lua_status") not in {"ready", "installed", "verified"}
+        self.repair_button.setVisible(bool(needs_lua) or advanced)
+        for combo, needed in ((self.installation_combo, len(self.snapshot.get("installations", [])) > 1 and not self.installation_combo.currentData()),
+                              (self.emulator_combo, len(self.snapshot.get("emulators", [])) > 1 and not self.emulator_combo.currentData()),
+                              (self.game_combo, len(self.snapshot.get("games", [])) > 1 or
+                               any(item.get("requires_choice") for item in self.snapshot.get("games", []))),
+                              (self.save_combo, self.save_combo.count() > 2 and self.save_combo.currentData() is None)):
+            self.choice_form.setRowVisible(combo, advanced or needed)
+
+    def _toggle_advanced(self, visible):
+        self.manual_controls.setVisible(visible)
+        self._refresh_actions()
 
     def _busy_changed(self, busy):
         self.progress.setVisible(busy)
@@ -361,8 +461,13 @@ class InstallationDialog(QDialog):
         self._refresh_actions()
 
     def _completed(self, result):
-        if self._operation == "scan":
+        if self._operation in {"scan", "manual_scan"}:
+            manual = self._operation == "manual_scan"
             self._display_snapshot(result)
+            if not manual:
+                self.detection_completed.emit(result)
+            else:
+                self._prepare_if_resolved()
         elif self._operation in {"prepare", "repair"}:
             health = result.get("health", {})
             self._last_ready_game = result.get("game_id") if health.get("ready") else None
@@ -379,6 +484,9 @@ class InstallationDialog(QDialog):
             if result.get("game_id"):
                 self.configuration_ready.emit(result["game_id"])
             self._refresh_actions()
+            if health.get("ready"):
+                self._overrides = {"retrobat_path": "", "emulator_path": "", "rom_path": ""}
+                self.scan(force=True)
         elif self._operation == "storage":
             self.storage_label.setText("\n\n".join(f"{item['label']} : {item['bytes'] / (1024 * 1024):.1f} Mo · {item['count']} élément(s)" for item in result.get("items", [])) or "Aucun cache géré.")
             self.status_label.setText("Stockage local mesuré.")

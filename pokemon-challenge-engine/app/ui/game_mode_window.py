@@ -30,6 +30,7 @@ class GameModeWindow(QMainWindow):
     installation_requested = Signal()
     run_action_requested = Signal(str, str, object)
     process_context_changed = Signal(bool, object)
+    installation_changed = Signal()
     run_mismatch = Signal(object)
 
     def __init__(self, catalog: Catalog, base_dir: Path, bridge_controller, profiles: ProfileManager,
@@ -191,17 +192,22 @@ class GameModeWindow(QMainWindow):
             self.page.status_label.setText("Vérification de l'environnement lié à cette partie…")
             self._persistent_notice = ""
             run = deepcopy(self.persistent_run)
-            self.play_runner.start(lambda: RunLaunchService(self.base_dir, self._legacy_config).prepare(run))
+            self.play_runner.start(lambda: RunLaunchService(self.base_dir, self._legacy_config, setup=self._setup_service).prepare(run))
             return
         if self._setup_service is None:
             from app.services.auto_setup_service import AutoSetupService
             self._setup_service = AutoSetupService(self.base_dir, self._legacy_config)
-        if self._setup_service.is_configured(game_id):
-            self._preparing_game = game_id
-            self.page.status_label.setText("Vérification de votre installation avant le lancement…")
-            self.play_runner.start(lambda: self._setup_service.prepare_play(game_id))
-            return
-        self._launch_process(game_id, prepare_lua=True)
+        self._preparing_game = game_id
+        self.page.status_label.setText("Recherche et vérification de ce jeu avant le lancement…")
+        self.play_runner.start(lambda: self._prepare_local_game(game_id))
+
+    def _prepare_local_game(self, game_id):
+        report = self._setup_service.automatic_setup(game_id=game_id)
+        state = report["game_states"][game_id]
+        if state["status"] not in {"ready", "lua_required"}:
+            return {"game_id": game_id, "health": {"ready": False, "launch_ready": False,
+                                                     "issues": [state["message"]]}}
+        return self._setup_service.prepare_play(game_id)
 
     @property
     def launch_busy(self):
@@ -261,8 +267,9 @@ class GameModeWindow(QMainWindow):
             self._run_launch_options = result["profile"]
             self._resolve_lua_choice(self._run_launch_options)
             snapshot = deepcopy(result["profile"])
-            if "_source" in self.persistent_run.launch_profile:
-                snapshot["_source"] = deepcopy(self.persistent_run.launch_profile["_source"])
+            source = result.get("source", self.persistent_run.launch_profile.get("_source"))
+            if source:
+                snapshot["_source"] = deepcopy(source)
             self._pending_run_launch = {"snapshot": snapshot, "result": result}
             self.page.launch_button.setEnabled(False)
             self.run_action_requested.emit(self.persistent_run.run_id, "update_launch_reference",
@@ -767,6 +774,7 @@ class GameModeWindow(QMainWindow):
             self.page.status_label.setText("Préférences de lancement enregistrées.")
             if game_id == self.page.game_combo.currentData():
                 self._game_changed(game_id)
+            self.installation_changed.emit()
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self.settings_dialog, "Réglages non enregistrés", str(exc))
 

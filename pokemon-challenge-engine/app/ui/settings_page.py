@@ -1,4 +1,4 @@
-"""Page de configuration des chemins locaux, sans accès au contenu des jeux."""
+"""État de l'installation locale et réglages manuels de secours."""
 
 from collections.abc import Iterable
 from pathlib import Path
@@ -12,13 +12,15 @@ from PySide6.QtWidgets import (
 from app.models.game import Game
 from app.services.config_service import AppConfig, ConfigService
 from app.services.launcher_service import LauncherService
+from app.ui.widgets.common import INSTALLATION_LABELS
 
 
 class SettingsPage(QWidget):
-    """Saisit et teste les chemins ; le lancement reste une action explicite ailleurs."""
+    """Présente la découverte automatique avant les chemins avancés."""
 
     config_changed = Signal(object)
     installation_requested = Signal()
+    detection_requested = Signal()
 
     def __init__(self, config_service: ConfigService, config: AppConfig, games: Iterable[Game],
                  parent: QWidget | None = None) -> None:
@@ -43,16 +45,35 @@ class SettingsPage(QWidget):
         title = QLabel("Paramètres")
         title.setObjectName("title")
         content.addWidget(title)
-        subtitle = QLabel("Reliez vos jeux et votre émulateur. Tous les chemins sont choisis sur cet ordinateur.")
+        subtitle = QLabel("Votre bibliothèque locale est détectée automatiquement. Les réglages manuels restent disponibles en cas de besoin.")
         subtitle.setWordWrap(True)
         subtitle.setObjectName("subtitle")
         content.addWidget(subtitle)
 
-        self.installation_button = QPushButton("Installation & diagnostic")
+        installation_card, installation_layout = self._card("Installation")
+        content.addWidget(installation_card)
+        self.installation_state = QLabel("Recherche automatique en cours…")
+        self.installation_state.setWordWrap(True)
+        installation_layout.addWidget(self.installation_state)
+        self.installation_summary: dict[str, QLabel] = {}
+        for key, label in (("retrobat", "RetroBat"), ("emulator", "DeSmuME"),
+                           ("lua", "Support Lua"), ("games", "Jeux"), ("saves", "Sauvegardes")):
+            widget = QLabel(f"{label} · Recherche en cours…")
+            widget.setWordWrap(True)
+            self.installation_summary[key] = widget
+            installation_layout.addWidget(widget)
+        self.game_states: dict[str, QLabel] = {}
+        for game in self.games:
+            widget = QLabel(f"{game.name} · Recherche en cours…")
+            widget.setWordWrap(True)
+            self.game_states[game.id] = widget
+            installation_layout.addWidget(widget)
+
+        self.installation_button = QPushButton("Installation && diagnostic")
         self.installation_button.setObjectName("primary")
         self.installation_button.setToolTip("Détecter les jeux locaux, préparer les archives et vérifier le support Lua.")
         self.installation_button.clicked.connect(self.installation_requested)
-        content.addWidget(self.installation_button)
+        installation_layout.addWidget(self.installation_button)
 
         self.warning_label = QLabel("\n".join(config_service.warnings))
         self.warning_label.setWordWrap(True)
@@ -60,8 +81,22 @@ class SettingsPage(QWidget):
         self.warning_label.setVisible(bool(config_service.warnings))
         content.addWidget(self.warning_label)
 
+        self.advanced_toggle = QPushButton("Afficher les chemins manuels · Avancé")
+        self.advanced_toggle.setCheckable(True)
+        content.addWidget(self.advanced_toggle)
+        self.advanced_panel = QWidget()
+        advanced = QVBoxLayout(self.advanced_panel)
+        advanced.setContentsMargins(0, 0, 0, 0)
+        advanced.setSpacing(18)
+        self.advanced_panel.hide()
+        self.advanced_toggle.toggled.connect(self.advanced_panel.setVisible)
+        content.addWidget(self.advanced_panel)
+        self.detection_button = QPushButton("Relancer la détection")
+        self.detection_button.clicked.connect(self.detection_requested)
+        advanced.addWidget(self.detection_button)
+
         emulator_card, emulator_layout = self._card("Émulateur et bibliothèque")
-        content.addWidget(emulator_card)
+        advanced.addWidget(emulator_card)
         description = QLabel("DeSmuME standalone est lancé directement. Le chemin RetroBat est conservé comme repère pour votre installation.")
         description.setWordWrap(True)
         description.setObjectName("muted")
@@ -72,14 +107,14 @@ class SettingsPage(QWidget):
                                           "Choisissez le fichier .exe de DeSmuME standalone, compatible avec votre installation.", "emulator")
 
         games_card, games_layout = self._card("Jeux Nintendo DS")
-        content.addWidget(games_card)
+        advanced.addWidget(games_card)
         self.rom_edits: dict[str, QLineEdit] = {}
         for game in self.games:
             self.rom_edits[game.id] = self._path_row(games_layout, f"{game.name} — ROM .nds", config.rom_paths.get(game.id, ""),
                                                     "Le launcher vérifie l'existence du fichier sans lire ni modifier la ROM.", "rom")
 
         saves_card, saves_layout = self._card("Sauvegardes")
-        content.addWidget(saves_card)
+        advanced.addWidget(saves_card)
         self.save_edit = self._path_row(saves_layout, "Dossier des sauvegardes (facultatif)", config.save_path,
                                        "Dossier utilisé par le diagnostic. Les copies et restaurations passent par le gestionnaire de sauvegardes et ses confirmations.", "directory")
         note = QLabel("Ce dossier est informatif : DeSmuME conserve ses propres réglages de sauvegarde.")
@@ -97,8 +132,41 @@ class SettingsPage(QWidget):
         self.save_button.setObjectName("primary")
         self.save_button.clicked.connect(self._save)
         actions.addWidget(self.save_button)
-        content.addLayout(actions)
+        advanced.addLayout(actions)
         content.addStretch()
+
+    def set_detection_state(self, report: dict) -> None:
+        """Affiche le résultat partagé sans relancer la recherche ni modifier les champs."""
+        states = report.get("game_states", {})
+        ready = any(state.get("status") == "ready" for state in states.values())
+        self.installation_state.setText("Installation PCE · Prête" if ready else
+                                       "Ajoutez un jeu local ou consultez le diagnostic pour terminer l'installation.")
+        installations, emulators = report.get("installations", []), report.get("emulators", [])
+        self.installation_summary["retrobat"].setText("RetroBat · " + (
+            "Détecté automatiquement" if installations else "Non trouvé · Installation indépendante possible"))
+        self.installation_summary["emulator"].setText("DeSmuME · " + (
+            "Détecté automatiquement" if emulators else "Non trouvé · Choix manuel disponible dans le diagnostic"))
+        lua_ready = any(item.get("lua_status") in {"ready", "verified", "installed"} for item in emulators)
+        self.installation_summary["lua"].setText("Support Lua · " + (
+            "Prêt" if lua_ready else "Requis · Installation disponible dans le diagnostic" if emulators else "En attente de DeSmuME"))
+        found = {item.get("game_id") for item in report.get("games", [])}
+        self.installation_summary["games"].setText(f"Jeux · {len(found & set(self.game_states))} / {len(self.games)} trouvés")
+        associated = sum(bool(state.get("save_path")) for state in states.values())
+        saves_found = any(game.get("saves") for game in report.get("games", []))
+        ambiguous = any("sauvegarde" in state.get("message", "").lower() and state.get("status") == "needs_choice"
+                        for state in states.values())
+        self.installation_summary["saves"].setText("Sauvegardes · " + (
+            "Plusieurs candidates · Choix nécessaire dans le diagnostic" if ambiguous else
+            f"{associated} association(s) détectée(s)" if associated else
+            "Fichiers détectés · Aucune sauvegarde associée" if saves_found else "Aucune sauvegarde existante trouvée"))
+        for game in self.games:
+            state = states.get(game.id, {})
+            status = state.get("status", "not_found")
+            message = state.get("message", "")
+            if status == "not_found":
+                message = f"Veuillez ajouter {game.name} à votre bibliothèque RetroBat."
+            self.game_states[game.id].setText(f"{game.name} · {INSTALLATION_LABELS.get(status, 'À vérifier')}" +
+                                             (f"\n{message}" if message and status != "ready" else ""))
 
     @staticmethod
     def _card(title: str) -> tuple[QFrame, QVBoxLayout]:

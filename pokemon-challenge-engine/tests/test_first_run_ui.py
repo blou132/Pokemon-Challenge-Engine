@@ -3,7 +3,7 @@
 from copy import deepcopy
 import os
 from threading import Event
-from time import monotonic
+from time import monotonic, sleep
 from types import SimpleNamespace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -31,6 +31,7 @@ def until(app, predicate, timeout=5):
     while not predicate() and monotonic() < limit:
         app.processEvents()
         QTest.qWait(5)
+        sleep(0.001)
     assert predicate(), "L'opération Qt n'a pas terminé dans le délai attendu."
 
 
@@ -60,6 +61,18 @@ class SyntheticSetup:
         if self.error:
             raise self.error
         return deepcopy(self.report)
+
+    def automatic_setup(self, force=False, game_id=None):
+        report = self.scan()
+        if self.ready:
+            selected = next(call[1] for call in reversed(self.calls) if call[0] == "prepare")
+            candidate = next(item for item in report["games"] if item["id"] == selected["candidate_id"])
+            emulator = next(item for item in report["emulators"] if item["path"] == selected["emulator_path"])
+            emulator["lua_status"] = "verified"
+            report["game_states"] = {candidate["game_id"]: {"status": "ready", "candidate_id": candidate["id"],
+                "emulator_path": emulator["path"], "save_path": selected["save_path"], "health": {"ready": True}}}
+            report["ready"] = True
+        return report
 
     def prepare(self, selection, **kwargs):
         self.calls.append(("prepare", selection, kwargs))
@@ -104,14 +117,14 @@ def test_first_run_detect_prepare_then_play(qt_app, dialog):
     widget, service = scan(dialog, qt_app)
     assert widget.game_combo.currentData() == "white-archive"
     assert widget.save_combo.currentData() == "C:/fixture/Blanc.dsv"
-    assert widget.summary["lua"].text() == "Réparation nécessaire"
-    assert widget.summary["game"].text() == "À préparer depuis l'archive"
+    assert widget.summary["lua"].text() == "Support Lua requis"
+    assert "Trouvé" in widget.summary["game"].text()
     assert widget.details.isHidden()
     assert not widget.play_button.isEnabled()
     widget.prepare_button.click()
     until(qt_app, lambda: not widget.is_busy)
     assert widget.play_button.isEnabled()
-    assert "test en jeu requis" in widget.summary["lua"].text()
+    assert "connexion confirmée au lancement" in widget.summary["lua"].text()
     spy = QSignalSpy(widget.play_requested)
     widget.play_button.click()
     until(qt_app, lambda: spy.count() == 1)
@@ -227,7 +240,7 @@ def test_worker_keeps_event_loop_responsive_and_close_is_deferred(qt_app, dialog
         until(qt_app, lambda: not widget.is_busy)
 
 
-def test_settings_entry_preserves_pages_and_first_run_starts_only_on_request(qt_app, catalog, tmp_path):
+def test_settings_entry_preserves_pages_and_startup_has_no_installation_popup(qt_app, catalog, tmp_path):
     window = MainWindow(catalog, tmp_path)
     service = SyntheticSetup()
     window._setup_service = service
@@ -235,15 +248,18 @@ def test_settings_entry_preserves_pages_and_first_run_starts_only_on_request(qt_
         assert window.installation_dialog is None
         assert window.pages.count() == 7
         window.start_first_run()
-        assert window.installation_dialog.first_run
+        until(qt_app, lambda: not window.discovery_runner.is_busy)
+        assert window.installation_dialog is None
+        window.settings_page.installation_button.click()
+        assert window.installation_dialog.isVisible()
         until(qt_app, lambda: not window.installation_dialog.is_busy)
         window.installation_dialog.continue_button.click()
         until(qt_app, lambda: not window.installation_dialog.is_busy)
-        assert service.first_run_done
         window.settings_page.installation_button.click()
         assert window.installation_dialog.isVisible()
         assert window.pages.count() == 7
     finally:
+        until(qt_app, lambda: not window.discovery_runner.is_busy)
         if window.installation_dialog:
             until(qt_app, lambda: not window.installation_dialog.is_busy)
         window.close()
@@ -260,7 +276,8 @@ def test_prepared_game_health_check_runs_in_worker_before_launch_and_lua(qt_app,
         def prepare_play(game_id):
             calls.append(("health", game_id, QThread.currentThread() is qt_app.thread()))
             return {"game_id": game_id, "health": {"ready": True, "issues": [], "warnings": []}}
-        mode._setup_service = SimpleNamespace(is_configured=lambda game: True, prepare_play=prepare_play)
+        mode._setup_service = SimpleNamespace(is_configured=lambda game: True, prepare_play=prepare_play,
+            automatic_setup=lambda **kwargs: {"game_states": {"white": {"status": "ready"}}})
         monkeypatch.setattr(mode.service, "reload_preferences", lambda: calls.append(("reload",)))
         def launch(game_id, profile_id):
             calls.append(("launch", game_id))
@@ -300,7 +317,9 @@ def test_failed_health_check_never_launches_and_offers_repair(qt_app, catalog, t
         window.open_game_mode()
         mode = window.game_mode_window
         mode._setup_service = SimpleNamespace(is_configured=lambda game: True,
-            prepare_play=lambda game: {"health": {"ready": False, "issues": ["Support Lua à réparer"]}})
+            prepare_play=lambda game: {"health": {"ready": False, "issues": ["Support Lua à réparer"]}},
+            automatic_setup=lambda **kwargs: {"game_states": {"black": {"status": "needs_attention", "message": "Support Lua à réparer"},
+                                                             "white": {"status": "needs_attention", "message": "Support Lua à réparer"}}})
         mode.installation_requested.disconnect()
         requested = QSignalSpy(mode.installation_requested)
         monkeypatch.setattr(mode.service, "launch", lambda *args: pytest.fail("Le diagnostic doit bloquer le lancement."))

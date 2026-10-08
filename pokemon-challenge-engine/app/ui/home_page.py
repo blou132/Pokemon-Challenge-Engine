@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QPushButton, QWidget
 
 from app import __version__
 from app.core.catalog import Catalog
-from app.ui.widgets.common import card, label, page_layout
+from app.ui.widgets.common import INSTALLATION_LABELS, card, label, page_layout
 
 
 class HomePage(QWidget):
@@ -14,6 +14,7 @@ class HomePage(QWidget):
 
     def __init__(self, catalog: Catalog, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.game_states = {}
         layout = page_layout(self, "À vous de jouer", "Un point de départ pour toutes vos prochaines aventures.")
         hero, box = card()
         hero.setObjectName("hero")
@@ -42,6 +43,9 @@ class HomePage(QWidget):
             game_box.addWidget(label(f"0{index + 1}   /   NINTENDO DS", "eyebrow"))
             game_box.addWidget(label(game.name, "sectionTitle"))
             game_box.addWidget(label(f"Génération {game.generation}  ·  {game.type_count} types  ·  Prêt à configurer", "muted"))
+            status = label("Installation · À vérifier", "muted")
+            self.game_states[game.id] = status
+            game_box.addWidget(status)
             button = QPushButton("Préparer une partie  →")
             button.clicked.connect(lambda _checked=False, game_id=game.id: self.create_requested.emit(game_id))
             game_box.addWidget(button)
@@ -59,4 +63,10 @@ class HomePage(QWidget):
         layout.addWidget(self.model_count)
         layout.addWidget(label(f"V{__version__} · Les règles restent à respecter manuellement dans le jeu. La page Connexion DeSmuME affiche les données transmises par Lua.", "badge"))
         layout.addStretch()
+
+    def set_detection_state(self, report):
+        for game_id, widget in self.game_states.items():
+            state = report.get("game_states", {}).get(game_id, {})
+            widget.setText(INSTALLATION_LABELS.get(state.get("status"), "À vérifier"))
+            widget.setToolTip(state.get("message", report.get("error", "")))
 

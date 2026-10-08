@@ -332,8 +332,9 @@ def test_connection_page_scrolls_at_supported_resolutions(connection, size):
         application.setStyleSheet(previous)
 
 
-def test_window_navigation_config_and_close_connect_to_controller(qt_app, catalog, tmp_path):
+def test_window_navigation_config_and_close_connect_to_controller(qt_app, catalog, tmp_path, monkeypatch):
     window = MainWindow(catalog, tmp_path)
+    monkeypatch.setattr(window.setup_service(), "automatic_setup", lambda **kwargs: {"game_states": {}, "ready": False})
     try:
         assert window.pages.count() == 7
         assert window.bridge_controller._thread is None
@@ -342,6 +343,7 @@ def test_window_navigation_config_and_close_connect_to_controller(qt_app, catalo
         new_config = AppConfig(rom_paths={"black": "D:/jeux/noir.nds"})
         window.config_changed(new_config)
         assert window.bridge_page.config is new_config
+        until(qt_app, lambda: not window.discovery_runner.is_busy)
         window.close()
         assert window.bridge_controller._closed
     finally:

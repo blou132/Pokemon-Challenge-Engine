@@ -10,6 +10,9 @@ STATUS_LABELS = {
     "future_strict": "Application stricte prévue",
 }
 MODE_LABELS = {"normal": "Partie normale", "custom": "Challenge personnalisé", "random": "Challenge aléatoire"}
+INSTALLATION_LABELS = {"ready": "Prêt", "not_found": "Jeu non trouvé",
+                       "needs_choice": "Choix nécessaire", "lua_required": "Support Lua requis",
+                       "needs_attention": "À vérifier"}
 
 
 def label(text: str, style: str = "", wrap: bool = True) -> QLabel:

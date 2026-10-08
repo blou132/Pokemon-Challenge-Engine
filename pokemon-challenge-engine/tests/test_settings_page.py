@@ -40,6 +40,7 @@ def test_settings_scrolls_without_horizontal_clipping(settings, size: tuple[int,
     application, page, _ = settings
     page.resize(*size)
     page.show()
+    page.advanced_toggle.click()
     application.processEvents()
     scroll = page.findChild(QScrollArea)
     assert scroll.horizontalScrollBar().maximum() == 0

@@ -352,6 +352,8 @@ def test_hiding_after_launch_keeps_run_timer_and_monitoring(qt_app, catalog, tmp
             mode.service.state = RunState(game_id=game_id, profile_id=profile_id, running=True)
             return object()
         monkeypatch.setattr(mode.service, "launch", synthetic_launch)
+        monkeypatch.setattr(mode, "_prepare_local_game", lambda game: {
+            "game_id": game, "health": {"ready": True, "issues": []}})
         mode.launch_game("white")
         from test_bridge_ui import until
         until(qt_app, lambda: not mode.launch_busy and mode.service.state.running)

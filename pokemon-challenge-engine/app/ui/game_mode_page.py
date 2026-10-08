@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from PySide6.QtCore import QSignalBlocker, Qt, Signal
 from PySide6.QtWidgets import (
-    QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QProgressBar,
+    QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QMenu, QProgressBar,
     QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
 )
 
@@ -156,12 +156,26 @@ class GameModePage(QWidget):
         run_row.setContentsMargins(0, 0, 0, 0)
         self.active_run_label = label("", "sectionTitle")
         run_row.addWidget(self.active_run_label, 1)
-        for text, action in (("+ Capture", "manual_capture"), ("☠ Mort", "manual_death"),
-                             ("+ Badge", "badge_increment"), ("− Badge", "badge_decrement"), ("Note", "add_note")):
-            button = QPushButton(text)
-            button.setToolTip("Saisie manuelle dans la progression PCE")
-            button.clicked.connect(lambda checked=False, value=action: self.run_action_requested.emit(value))
-            run_row.addWidget(button)
+        self.manual_actions_button = QPushButton("Actions manuelles")
+        self.manual_actions_button.setToolTip("Captures, badges et notes ; ajout d'une mort en secours.")
+        self.manual_actions_menu = QMenu(self.manual_actions_button)
+        self.manual_actions_menu.setObjectName("manualActions")
+        self.manual_actions_menu.setToolTipsVisible(True)
+        self.manual_actions = {}
+        for text, action in (("Capture · manuel", "manual_capture"),
+                             ("Ajouter une mort · secours manuel", "manual_death"),
+                             ("Ajouter un badge · manuel", "badge_increment"),
+                             ("Retirer un badge · manuel", "badge_decrement"), ("Ajouter une note", "add_note")):
+            item = self.manual_actions_menu.addAction(text)
+            item.setToolTip("Saisie manuelle dans la progression PCE")
+            item.triggered.connect(lambda checked=False, value=action: self.run_action_requested.emit(value))
+            item.setEnabled(False)
+            self.manual_actions[action] = item
+        self.manual_actions["manual_death"].setToolTip(
+            "Ajout manuel en secours. Pour corriger une mort : Mes parties > Détails > Progression.")
+        self.manual_actions_button.setMenu(self.manual_actions_menu)
+        self.manual_actions_button.setEnabled(False)
+        run_row.addWidget(self.manual_actions_button)
         self.run_bar.hide()
         outer.addWidget(self.run_bar)
         self.recovery_row = QWidget()
@@ -354,6 +368,10 @@ class GameModePage(QWidget):
             value = label(UNAVAILABLE, "sectionTitle")
             box.addWidget(value)
             self.stat_labels[key] = value
+            if key == "deaths":
+                self.death_tracking_label = label("", "muted")
+                self.death_tracking_label.hide()
+                box.addWidget(self.death_tracking_label)
         self.capture_count_label = label("Captures consignées : " + UNAVAILABLE, "muted")
         challenge.addWidget(self.capture_count_label)
         logs = self._block("logs")
@@ -524,6 +542,10 @@ class GameModePage(QWidget):
         self._persistent_run = deepcopy(run)
         self._autosave = deepcopy(autosave or {})
         self.run_bar.setVisible(run is not None)
+        self.manual_actions_button.setEnabled(run is not None)
+        for action in self.manual_actions.values():
+            action.setEnabled(run is not None)
+        self.death_tracking_label.setVisible(run is not None)
         self.autosave_label.setVisible(run is not None)
         if run is not None:
             with QSignalBlocker(self.game_combo):
@@ -561,6 +583,10 @@ class GameModePage(QWidget):
         self.stat_labels["seed"].setText(str(run.seed) if run.seed is not None else "Non renseigné")
         deaths = [death for death in run.deaths or [] if not death.get("corrected", False)]
         self.stat_labels["deaths"].setText(str(len(deaths)) if run.deaths is not None else "Non renseigné")
+        permanent_death = {"nuzlocke", "permanent_death"} <= set(rules)
+        self.death_tracking_label.setText(
+            "Mort automatique : individu fiable et passage de PV > 0 à 0 observé."
+            if permanent_death else "Mort automatique inactive : Nuzlocke et Mort permanente requis.")
         pending = [item for item in run.pending_deaths if not item.get("resolved", False)]
         self.stat_labels["deaths"].setToolTip("")
         if pending:
@@ -649,6 +675,10 @@ class GameModePage(QWidget):
 
 GAME_MODE_STYLE = """
 QWidget#page QPushButton {padding:8px 10px;}
+QMenu#manualActions {background:#171e2d;border:1px solid #38435e;padding:5px;}
+QMenu#manualActions::item {padding:8px 14px;}
+QMenu#manualActions::item:selected {background:#343453;}
+QMenu#manualActions::item:disabled {color:#727f97;}
 QPushButton#speedButton {padding:7px 4px;}
 QPushButton#speedButton:checked {background:#605499;border-color:#a998ed;}
 QLabel#gameTitle {font-size:22px;font-weight:650;color:#f5f4ff;}

@@ -46,6 +46,20 @@ class MainWindow(QMainWindow):
         from app.core.run_manager import RunManager
         from app.services.run_controller import RunController
         from app.ui.setup_tasks import SetupTaskRunner
+        self.discovery_runner = SetupTaskRunner(self)
+        self.discovery_runner.succeeded.connect(lambda report: self._discovery_completed(report, automatic=True))
+        self.discovery_runner.failed.connect(self._discovery_failed)
+        self.discovery_runner.busy_changed.connect(self._discovery_busy)
+        self._discovery_started = False
+        self._discovery_pending = False
+        self._discovery_force = False
+        self._discovery_report = None
+        self._manual_config_changes = []
+        self._discovery_changes = []
+        self._closing = False
+        self._installation_watch = QTimer(self)
+        self._installation_watch.setInterval(30_000)
+        self._installation_watch.timeout.connect(self._watch_installation)
         self.runs = RunManager(base_dir / "runs")
         self.runs_page = None
         self.run_controller = RunController(base_dir / "runs", self)
@@ -117,6 +131,7 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(self.config_service, self.config, catalog.games.values())
         self.bridge_controller = BridgeController(base_dir, self)
         self.bridge_controller.state_changed.connect(self.run_controller.consume)
+        self.bridge_controller.state_changed.connect(lambda _: self._refresh_pending_installation())
         self.bridge_page = BridgePage(catalog, self.bridge_controller, self.config)
         for page in (self.home_page, self.challenge_page, self.rules_page, self.profile_page, self.settings_page, self.bridge_page):
             self.pages.addWidget(page)
@@ -135,6 +150,7 @@ class MainWindow(QMainWindow):
         self.profile_page.create_requested.connect(lambda: self.new_challenge(self.challenge_page.game_combo.currentData()))
         self.settings_page.config_changed.connect(self.config_changed)
         self.settings_page.installation_requested.connect(self.open_installation)
+        self.settings_page.detection_requested.connect(lambda: self.refresh_installation(force=True))
         self.navigate(6)
         self.refresh_home()
         self.statusBar().showMessage(f"Prêt  ·  V{__version__} : préparation et lecture Lua, règles à respecter manuellement")
@@ -158,6 +174,8 @@ class MainWindow(QMainWindow):
                 self.runs_page = RunsPage(self.catalog, self.runs)
                 self.runs_page.new_requested.connect(self.new_run)
                 self.runs_page.models_requested.connect(lambda: self.navigate(3))
+                self.runs_page.installation_requested.connect(self.open_installation)
+                self.runs_page.detection_requested.connect(lambda: self.refresh_installation(force=True))
                 self.runs_page.resume_requested.connect(self.resume_run)
                 self.runs_page.saves_requested.connect(self._run_saves)
                 self.runs_page.action_requested.connect(self._run_action)
@@ -172,6 +190,10 @@ class MainWindow(QMainWindow):
             self.runs_page.set_active_run(active_id)
             self.pages.setCurrentWidget(self.runs_page)
             self.runs_button.setChecked(True)
+            if self._discovery_report is not None:
+                self.runs_page.set_detection_state(self._discovery_report)
+            if self._discovery_started:
+                self.refresh_installation()
             return
         if index == 3:
             self.profile_page.refresh()
@@ -203,9 +225,11 @@ class MainWindow(QMainWindow):
         self.navigate(1)
 
     def config_changed(self, config: AppConfig) -> None:
+        self._manual_config_changes.append((self.config, config))
         self.config = config
         self.bridge_page.set_config(config)
         self.statusBar().showMessage("Paramètres enregistrés", 6000)
+        self.refresh_installation(force=True)
 
     def _ensure_game_mode(self):
         if self.game_mode_window is None:
@@ -218,8 +242,11 @@ class MainWindow(QMainWindow):
             self.game_mode_window.installation_requested.connect(self.open_installation)
             self.game_mode_window.run_action_requested.connect(self._run_action)
             self.game_mode_window.process_context_changed.connect(self.run_controller.process_context)
+            self.game_mode_window.process_context_changed.connect(lambda *_: self._refresh_pending_installation())
+            self.game_mode_window.installation_changed.connect(lambda: self.refresh_installation())
             self.game_mode_window.set_run_guard(self._validate_requested_run)
             self.game_mode_window.run_mismatch.connect(self._show_run_mismatch)
+            self.game_mode_window._setup_service = self.setup_service()
         return self.game_mode_window
 
     def _validate_requested_run(self, requested_run_id):
@@ -285,6 +312,8 @@ class MainWindow(QMainWindow):
         from PySide6.QtWidgets import QDialog
         options = GameModeConfigStore(self.base_dir, self.config).load()["launch_profiles"]
         dialog = NewRunDialog(self.catalog, self.profiles.list_profiles(), options, self, profile=profile)
+        if self._discovery_report is not None:
+            dialog.set_detection_state(self._discovery_report, select_ready=profile is None and game_id is None)
         if game_id is not None:
             dialog.game_combo.setCurrentIndex(dialog.game_combo.findData(game_id))
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -361,7 +390,8 @@ class MainWindow(QMainWindow):
             self._preparing_run_id = run_id
             self._queued_resume_id = None
             self.statusBar().showMessage("Vérification de l'environnement de la partie…")
-            self.run_prepare.start(lambda: RunLaunchService(self.base_dir, self.config).prepare(run))
+            setup = self.setup_service()
+            self.run_prepare.start(lambda: RunLaunchService(self.base_dir, self.config, setup=setup).prepare(run))
         except (OSError, ValueError) as exc:
             self.statusBar().showMessage("Reprise impossible : " + str(exc))
 
@@ -418,8 +448,9 @@ class MainWindow(QMainWindow):
             if result["health"]["ready"]:
                 from copy import deepcopy
                 snapshot = deepcopy(result["profile"])
-                if "_source" in (run.launch_profile or {}):
-                    snapshot["_source"] = deepcopy(run.launch_profile["_source"])
+                source = result.get("source", (run.launch_profile or {}).get("_source"))
+                if source:
+                    snapshot["_source"] = deepcopy(source)
                 self._run_action(run.run_id, "update_launch_reference", {
                     "profile": snapshot, "rom_fingerprint": result["rom_fingerprint"]})
                 message = "Partie prête. Jouer prépare la connexion Lua et lance DeSmuME ; le temps commence avec les messages du jeu."
@@ -481,11 +512,85 @@ class MainWindow(QMainWindow):
         return self._setup_service
 
     def start_first_run(self) -> None:
-        try:
-            if not self.setup_service().first_run_done:
-                self.open_installation(first_run=True)
-        except (OSError, ValueError) as exc:
-            self.statusBar().showMessage("Installation à vérifier : " + str(exc))
+        # Called by app.main after the window appears, on every startup.
+        # Missing games are status information, never a compulsory wizard.
+        self._discovery_started = True
+        self.refresh_installation()
+
+    def refresh_installation(self, *, force=False) -> None:
+        if self._closing:
+            return
+        self._discovery_force |= force
+        if self.discovery_runner.is_busy:
+            self._discovery_pending = True
+            return
+        if self._session_busy() or (self.installation_dialog is not None and self.installation_dialog.is_busy):
+            self._discovery_pending = True
+            return
+        self._discovery_started = True
+        self._discovery_pending = False
+        requested_force, self._discovery_force = self._discovery_force, False
+        changes, self._manual_config_changes = self._manual_config_changes, []
+        self._discovery_changes = changes
+        service = self.setup_service()
+
+        def discover():
+            for previous, current in changes:
+                service.apply_manual_config(previous, current)
+            return service.automatic_setup(force=requested_force)
+
+        self.discovery_runner.start(discover)
+
+    def _refresh_pending_installation(self):
+        if self._discovery_pending and not self.discovery_runner.is_busy and not self._session_busy():
+            self.refresh_installation()
+
+    def _watch_installation(self):
+        # Stat cached discovery roots so a disk/file change is noticed even when
+        # the player stays on the same page. Unchanged files reuse the report.
+        if not self.discovery_runner.is_busy:
+            self.refresh_installation()
+
+    def _discovery_busy(self, busy):
+        if self.runs_page is not None:
+            self.runs_page.set_detection_busy(busy)
+
+    def _discovery_completed(self, report, *, automatic=False):
+        if automatic:
+            self._discovery_changes = []
+            if not self._installation_watch.isActive():
+                self._installation_watch.start()
+        self._discovery_report = report
+        self.settings_page.set_detection_state(report)
+        self.home_page.set_detection_state(report)
+        if self.runs_page is not None:
+            self.runs_page.set_detection_state(report)
+        if self.installation_dialog is not None and not self.installation_dialog.is_busy:
+            self.installation_dialog.set_detection_state(report)
+        mode = self.game_mode_window
+        if mode is not None and not mode.service.state.running and not mode.launch_busy:
+            mode.service.reload_preferences()
+        self.statusBar().showMessage("Installation prête." if report.get("ready") else
+                                     "Recherche terminée. Consultez l'état des jeux dans Mes parties.", 8000)
+        if self._discovery_pending or self._manual_config_changes:
+            QTimer.singleShot(0, lambda: self.refresh_installation())
+
+    def _discovery_failed(self, message):
+        # Reapplying these explicit edits is idempotent. Keep them for a user
+        # retry if persistence or discovery failed; never overwrite their intent.
+        self._manual_config_changes = self._discovery_changes + self._manual_config_changes
+        self._discovery_changes = []
+        self._discovery_pending = False
+        self._installation_watch.stop()  # A failed operation needs a deliberate retry.
+        self.statusBar().showMessage("Recherche à vérifier : " + message)
+        report = {"game_states": {game.id: {"status": "needs_attention", "message": message}
+                                  for game in self.catalog.games.values() if game.status == "supported"},
+                  "ready": False, "warnings": [message], "error": message}
+        self._discovery_report = report
+        self.settings_page.set_detection_state(report)
+        self.home_page.set_detection_state(report)
+        if self.runs_page is not None:
+            self.runs_page.set_detection_state(report)
 
     def open_installation(self, *, first_run=False) -> None:
         from app.ui.setup_dialog import InstallationDialog
@@ -495,10 +600,14 @@ class MainWindow(QMainWindow):
                     "owned-emulator" if self.game_mode_window and self.game_mode_window.service.state.running else ""))
             self.installation_dialog.configuration_ready.connect(self._installation_ready)
             self.installation_dialog.play_requested.connect(self._play_installed_game)
+            self.installation_dialog.detection_completed.connect(self._discovery_completed)
         self.installation_dialog.show()
         self.installation_dialog.raise_()
         self.installation_dialog.activateWindow()
-        self.installation_dialog.start()
+        if self._discovery_report is not None:
+            self.installation_dialog.set_detection_state(self._discovery_report)
+        if not self.discovery_runner.is_busy:
+            self.installation_dialog.start()
 
     def _installation_ready(self, game_id):
         if self.game_mode_window is not None:
@@ -599,18 +708,21 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "DeSmuME s'est arrêté", "L'émulateur s'est arrêté après le lancement. Vérifiez votre installation et la ROM sélectionnée.")
 
     def closeEvent(self, event) -> None:
-        if (self.run_prepare.is_busy or self.run_controller.activation_pending or (self.installation_dialog is not None and self.installation_dialog.is_busy)
+        if (self.discovery_runner.is_busy or self.run_prepare.is_busy or self.run_controller.activation_pending or (self.installation_dialog is not None and self.installation_dialog.is_busy)
                 or (self.game_mode_window is not None and (self.game_mode_window.launch_busy
                     or self.game_mode_window._pending_run_launch is not None or self.game_mode_window._pending_reference_save))):
             self.statusBar().showMessage("Attendez la fin de la préparation avant de fermer PCE.")
             event.ignore()
             return
+        self._closing = True
+        self._installation_watch.stop()
         if self.installation_dialog is not None:
             self.installation_dialog.close()
         if self.game_mode_window is not None:
             self.game_mode_window.close()
             self.game_mode_window.shutdown_tracking()
         if not self.run_controller.shutdown():
+            self._closing = False
             self.statusBar().showMessage("La progression PCE n'a pas pu être enregistrée. Vérifiez l'espace disque et réessayez de fermer.")
             event.ignore()
             return

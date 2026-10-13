@@ -29,6 +29,7 @@ class GameModeWindow(QMainWindow):
     shortcuts_changed = Signal(dict)
     installation_requested = Signal()
     run_action_requested = Signal(str, str, object)
+    run_prepare_requested = Signal(str)
     process_context_changed = Signal(bool, object)
     installation_changed = Signal()
     run_mismatch = Signal(object)
@@ -184,6 +185,9 @@ class GameModeWindow(QMainWindow):
     def launch_game(self, game_id):
         if self.launch_busy or self.service.state.running or not self.validate_requested_run():
             return
+        if self.persistent_run is not None and (self.persistent_run.launch_profile or {}).get("_isolation_pending"):
+            self.run_prepare_requested.emit(self.persistent_run.run_id)
+            return
         self._launch_generation += 1
         self.page.set_session_phase("preparing", "Vérification de l'environnement et du support Lua…", busy=True)
         if self.persistent_run is not None:
@@ -267,7 +271,7 @@ class GameModeWindow(QMainWindow):
             self._run_launch_options = result["profile"]
             self._resolve_lua_choice(self._run_launch_options)
             snapshot = deepcopy(result["profile"])
-            source = result.get("source", self.persistent_run.launch_profile.get("_source"))
+            source = result.get("source", (self.persistent_run.launch_profile or {}).get("_source"))
             if source:
                 snapshot["_source"] = deepcopy(source)
             self._pending_run_launch = {"snapshot": snapshot, "result": result}
@@ -535,8 +539,9 @@ class GameModeWindow(QMainWindow):
 
     def launch_options(self, game_id):
         if self.persistent_run is not None:
-            return self._run_launch_options or {key: value for key, value in self.persistent_run.launch_profile.items()
-                                                if not key.startswith("_")}
+            from app.services.game_mode_config import launch_defaults
+            return self._run_launch_options or (launch_defaults(game_id, self._legacy_config, self.base_dir) |
+                {key: value for key, value in (self.persistent_run.launch_profile or {}).items() if not key.startswith("_")})
         return self.service.config["launch_profiles"][game_id]
 
     def set_run_notice(self, message):
@@ -593,6 +598,23 @@ class GameModeWindow(QMainWindow):
         if changed or environment_changed:
             self._refresh_controls(self.launch_options(run.game_id)["emulator_path"])
         return True
+
+    def clear_persistent_run(self):
+        """Discard stopped view references after the run owner detached safely."""
+        if self.service.state.running or self.launch_busy:
+            raise ValueError("Terminez la session avant de libérer cette partie.")
+        self.hide()
+        if self.settings_dialog:
+            self.settings_dialog.close()
+            self.settings_dialog.deleteLater()
+            self.settings_dialog = None
+        self.persistent_run = None
+        self.requested_run_id = None
+        self._run_launch_options = None
+        self._settings_game = None
+        self.page.set_persistent_run(None)
+        self.page.game_combo.setEnabled(True)
+        self.page.profile_combo.setEnabled(True)
 
     def _record_backup(self, record):
         if self.persistent_run is not None:
@@ -752,8 +774,9 @@ class GameModeWindow(QMainWindow):
                 if self.service.state.running or self.controller.state.status != "stopped":
                     raise ValueError("Fermez DeSmuME et arrêtez Lua avant de modifier l'environnement de cette partie.")
                 from app.services.game_mode_config import validate_config
-                snapshot = deepcopy(self.persistent_run.launch_profile)
+                snapshot = deepcopy(self.persistent_run.launch_profile or {})
                 source = snapshot.pop("_source", None)
+                pending_isolation = snapshot.pop("_isolation_pending", False)
                 old_rom = snapshot.get("rom_path")
                 snapshot.update(values)
                 snapshot["challenge_profile_id"] = None
@@ -761,6 +784,8 @@ class GameModeWindow(QMainWindow):
                                            self.base_dir)["launch_profiles"][game_id]
                 if source and snapshot["rom_path"] == old_rom:
                     snapshot["_source"] = source
+                if pending_isolation:
+                    snapshot["_isolation_pending"] = True
                 self._pending_reference_save = True
                 self.page.launch_button.setEnabled(False)
                 self.run_action_requested.emit(self.persistent_run.run_id, "update_launch_reference", {"profile": snapshot})

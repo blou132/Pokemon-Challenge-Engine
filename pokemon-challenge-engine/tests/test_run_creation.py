@@ -264,11 +264,13 @@ def test_cancel_custom_editor_preserves_previous_configuration(qt_app, catalog, 
     close(dialog, qt_app)
 
 
-def test_save_reference_is_shared_only_after_explicit_choice(qt_app, catalog):
+def test_save_import_source_is_selected_only_after_explicit_choice(qt_app, catalog):
     dialog = NewRunDialog(catalog, [], {"white": {"save_path": "user.dsv", "rom_path": "white.nds"}})
     choose(dialog.game_combo, "white")
     assert dialog.selection()["save_path"] is None
     assert dialog.selection()["launch_profile"]["save_path"] == ""
+    assert dialog.configured_save_button.isHidden()
+    choose(dialog.save_mode_combo, "import")
     assert not dialog.configured_save_button.isHidden()
     dialog.configured_save_button.click()
     assert dialog.selection()["save_path"] == "user.dsv"

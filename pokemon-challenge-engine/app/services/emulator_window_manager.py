@@ -49,6 +49,7 @@ class EmulatorWindowManager:
             "GetWindowRect": ([wintypes.HWND, ctypes.POINTER(wintypes.RECT)], wintypes.BOOL),
             "SetWindowPos": ([wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
                               ctypes.c_int, ctypes.c_int, wintypes.UINT], wintypes.BOOL),
+            "PostMessageW": ([wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM], wintypes.BOOL),
         }
         for name, (arguments, result) in signatures.items():
             function = getattr(self.user, name)
@@ -160,3 +161,15 @@ class EmulatorWindowManager:
         if not self.user.SetWindowPos(window.handle, None, *rect, 0x0004 | 0x0010):
             raise OSError("Windows a refusé le placement de DeSmuME.")
         return self.find(pid, executable) or window
+
+    def request_close(self, pid: int, *, executable: str | Path) -> None:
+        """Ask the verified owned window to close normally; never terminate it.
+
+        WM_CLOSE lets DeSmuME flush saves or show its own confirmation dialog.
+        https://learn.microsoft.com/windows/win32/winmsg/wm-close
+        """
+        window = self.find(pid, executable)
+        if window is None:
+            raise ValueError("Fenêtre DeSmuME absente ou ambiguë. Fermez-la manuellement puis reprenez la partie.")
+        if not self.user.PostMessageW(window.handle, 0x0010, 0, 0):
+            raise OSError("Windows a refusé la demande de fermeture de DeSmuME.")

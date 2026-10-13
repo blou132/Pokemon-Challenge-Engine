@@ -70,6 +70,15 @@ class MainWindow(QMainWindow):
         self.run_prepare = SetupTaskRunner(self)
         self.run_prepare.succeeded.connect(self._run_prepared)
         self.run_prepare.failed.connect(self._run_prepare_failed)
+        self.run_files = SetupTaskRunner(self)
+        self.run_files.succeeded.connect(self._run_files_completed)
+        self.run_files.failed.connect(self._run_files_failed)
+        self._switch_target = None
+        self._switch_dialog = None
+        self._switch_ticks = 0
+        self._switch_timer = QTimer(self)
+        self._switch_timer.setInterval(200)
+        self._switch_timer.timeout.connect(self._continue_switch)
         self._prepared_run = None
         self._requested_run_id = None
         self._preparing_run_id = None
@@ -241,6 +250,7 @@ class MainWindow(QMainWindow):
             self.game_mode_window.shortcuts_changed.connect(self._set_game_mode_shortcut)
             self.game_mode_window.installation_requested.connect(self.open_installation)
             self.game_mode_window.run_action_requested.connect(self._run_action)
+            self.game_mode_window.run_prepare_requested.connect(self.resume_run)
             self.game_mode_window.process_context_changed.connect(self.run_controller.process_context)
             self.game_mode_window.process_context_changed.connect(lambda *_: self._refresh_pending_installation())
             self.game_mode_window.installation_changed.connect(lambda: self.refresh_installation())
@@ -252,7 +262,7 @@ class MainWindow(QMainWindow):
     def _validate_requested_run(self, requested_run_id):
         active = self.run_controller.active_run
         try:
-            return (not self.run_controller.activation_pending
+            return (not self.run_controller.activation_pending and not self.run_files.is_busy
                     and requested_run_id is not None
                     and requested_run_id == self._requested_run_id
                     and active is not None and active.run_id == requested_run_id
@@ -336,6 +346,7 @@ class MainWindow(QMainWindow):
                 if errors:
                     raise ValueError("\n".join(errors))
             snapshot = RunLaunchService(self.base_dir, self.config).snapshot(game.id, values["launch_profile"], values["save_path"])
+            snapshot["_isolation_pending"] = True
             run = self.runs.create(values["name"], game.id, generation=game.generation,
                 challenge=challenge, profile_id=selected.id if selected else None,
                 preset=challenge.settings.get("preset_id") if challenge else "classic",
@@ -353,7 +364,7 @@ class MainWindow(QMainWindow):
     def _session_busy(self):
         mode = self.game_mode_window
         return ((mode is not None and (mode.service.state.running or mode.launch_busy))
-                or self.bridge_controller.state.status != "stopped")
+                or self.bridge_controller.state.status != "stopped" or self._switch_target is not None)
 
     def _request_run(self, run_id):
         self._requested_run_id = run_id
@@ -364,6 +375,9 @@ class MainWindow(QMainWindow):
                 self.game_mode_window.hide()
 
     def resume_run(self, run_id):
+        if self.run_files.is_busy or self._switch_target is not None:
+            self.statusBar().showMessage("Attendez la fin de l'opération sur la partie.")
+            return
         try:
             run = self.runs.load(run_id)
         except (OSError, ValueError) as exc:
@@ -383,9 +397,14 @@ class MainWindow(QMainWindow):
                 self.navigate(6)
                 self.runs_page.highlight_run(run_id)
                 self.statusBar().showMessage("Partie enregistrée. Fermez DeSmuME et arrêtez Lua, puis reprenez la partie demandée.")
+                self._offer_session_switch(run_id)
             return
         try:
             from app.services.run_launch_service import RunLaunchService
+            if (run.launch_profile or {}).get("_isolation_pending") and self.runs.active_id == run_id:
+                self.run_controller.deactivate()
+                run = self.runs.load(run_id)
+                self._request_run(run_id)
             self._prepared_run = run
             self._preparing_run_id = run_id
             self._queued_resume_id = None
@@ -474,15 +493,164 @@ class MainWindow(QMainWindow):
             self.runs_page.refresh_visible()
 
     def _run_action(self, run_id, action, payload):
+        if action in {"delete", "isolate"}:
+            self._manage_run_files(run_id, action)
+            return
         active = self.run_controller.active_run
         if action != "set_status" and (active is None or active.run_id != run_id
-                                      or self._requested_run_id not in (None, run_id)):
+                                      or (action != "record_backup" and self._requested_run_id not in (None, run_id))):
             self.statusBar().showMessage("Reprenez cette partie pour y enregistrer une action.")
             return
         if action == "update_launch_reference" and self.game_mode_window and self.game_mode_window._pending_run_launch is None:
             self.game_mode_window._pending_reference_save = True
             self.game_mode_window.page.launch_button.setEnabled(False)
         self.run_controller.action(run_id, action, payload)
+
+    def _offer_session_switch(self, run_id):
+        if self._switch_dialog is not None:
+            self._switch_dialog.close()
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Changer de partie")
+        dialog.setText("Fermer la session précédente et reprendre la partie demandée ?")
+        dialog.setInformativeText("Enregistrez d'abord dans le jeu. PCE demandera une fermeture normale de DeSmuME, "
+                                  "attendra son arrêt, puis arrêtera Lua. Aucune fermeture forcée ne sera effectuée.")
+        proceed = dialog.addButton("Fermer la session et continuer", QMessageBox.ButtonRole.AcceptRole)
+        dialog.addButton("Annuler", QMessageBox.ButtonRole.RejectRole)
+        dialog.buttonClicked.connect(lambda button: self._begin_switch(run_id) if button is proceed else None)
+        self._switch_dialog = dialog
+        dialog.open()
+
+    def _begin_switch(self, run_id):
+        if self._requested_run_id != run_id:
+            return
+        mode = self.game_mode_window
+        if mode is not None and mode.launch_busy:
+            self.statusBar().showMessage("Attendez la fin du lancement avant de changer de partie.")
+            return
+        try:
+            if mode is not None:
+                mode.service.request_close()
+            self._switch_target = run_id
+            self._switch_ticks = 0
+            self._switch_timer.start()
+        except (OSError, ValueError) as exc:
+            self.statusBar().showMessage(str(exc))
+
+    def _continue_switch(self):
+        if self._switch_target is None:
+            return
+        self._switch_ticks += 1
+        mode = self.game_mode_window
+        try:
+            if mode is not None:
+                mode.refresh_run()
+                if mode.service.state.running:
+                    if self._switch_ticks >= 150:
+                        raise ValueError("DeSmuME attend peut-être une confirmation. Fermez sa fenêtre puis reprenez la partie.")
+                    return
+            if self.bridge_controller.state.status != "stopped":
+                if self._switch_ticks >= 150:
+                    raise ValueError("La session Lua ne s'est pas arrêtée. Arrêtez-la depuis Connexion DeSmuME.")
+                self.bridge_controller.stop()
+                return
+            target = self._switch_target
+            self._switch_timer.stop()
+            self._switch_target = None
+            self.run_controller.process_context(False, None)
+            self.run_controller.deactivate()
+            self.resume_run(target)
+        except (OSError, ValueError) as exc:
+            self._switch_timer.stop()
+            self._switch_target = None
+            self.statusBar().showMessage("Changement de partie interrompu : " + str(exc))
+
+    def _detach_run(self, run_id):
+        active = self.run_controller.active_run
+        if (active is not None and active.run_id == run_id) or self.runs.active_id == run_id:
+            self.run_controller.deactivate()
+        if self._requested_run_id == run_id:
+            self._requested_run_id = None
+            self._queued_resume_id = None
+        mode = self.game_mode_window
+        if mode is not None and mode.persistent_run is not None and mode.persistent_run.run_id == run_id:
+            mode.clear_persistent_run()
+            self.bridge_page.persistent_game = None
+            self.bridge_page.set_config(self.config)
+            self.bridge_page.game_combo.setEnabled(True)
+            self.bridge_page.profile_combo.setEnabled(True)
+        if self.runs_page:
+            self.runs_page.set_active_run(self.runs.active_id)
+
+    def _run_files_failed(self, message):
+        if self.runs_page:
+            self.runs_page.refresh_visible()
+        QMessageBox.warning(self, "Fichiers de la partie", message)
+
+    def _manage_run_files(self, run_id, action):
+        if self._session_busy() or self.run_prepare.is_busy or self.run_files.is_busy or self.run_controller.activation_pending:
+            QMessageBox.warning(self, "Partie occupée", "Fermez DeSmuME et arrêtez Lua, puis attendez la fin de la préparation avant cette action.")
+            return
+        try:
+            from app.services.run_isolation_service import RunIsolationService
+            run = self.runs.load(run_id)
+            if action == "isolate":
+                service = RunIsolationService(self.runs)
+                if service.is_isolated(run):
+                    service.validate(run)
+                    self.statusBar().showMessage("Cette partie dispose déjà de fichiers indépendants.")
+                    return
+                answer = QMessageBox.question(self, "Isoler les fichiers de cette partie ?",
+                    f"Copier la ROM et l'environnement de « {run.name} » dans son dossier PCE ?\n"
+                    f"Sauvegarde à copier : {run.save_path or 'aucune : nouvelle aventure'}\n"
+                    "Les save states portant le nom de cette ROM seront copiés depuis le dossier configuré. "
+                    "Les originaux, l'historique et les règles seront conservés.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+                if answer != QMessageBox.StandardButton.Yes:
+                    return
+                self._detach_run(run_id)
+                run = self.runs.load(run_id)
+                self.run_files.start(lambda: {"action": "isolated", "run": service.isolate(
+                    run, import_save=run.save_path, import_states=True)})
+            else:
+                from app.services.run_deletion_service import RunDeletionService
+                self._detach_run(run_id)
+                self.run_files.start(lambda: {"action": "delete_preview", "plan": RunDeletionService(self.runs).preview(run_id)})
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Fichiers de la partie", str(exc))
+
+    def _run_files_completed(self, result):
+        if result["action"] == "delete_preview":
+            from app.services.run_deletion_service import RunDeletionService
+            plan = result["plan"]
+            dialog = QMessageBox(self)
+            dialog.setWindowTitle("Supprimer cette partie")
+            dialog.setText(f"Supprimer définitivement « {plan.name} » ?")
+            dialog.setInformativeText(f"Dossier : {plan.directory}\n{len(plan.files)} fichiers, {plan.total_bytes:,} octets.\n"
+                "La liste complète figure dans les détails. Les références externes seront conservées. "
+                "Pour conserver tous les fichiers, choisissez plutôt Archiver dans les détails de la partie.")
+            dialog.setDetailedText("Fichiers supprimés :\n" + "\n".join(plan.files) +
+                "\n\nDossiers supprimés :\n" + "\n".join(plan.directories) +
+                "\n\nRéférences externes conservées :\n" + "\n".join(plan.preserved_references))
+            dialog.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
+            dialog.button(QMessageBox.StandardButton.Yes).setText("Supprimer définitivement")
+            dialog.setDefaultButton(QMessageBox.StandardButton.Cancel)
+            if dialog.exec() == QMessageBox.StandardButton.Yes:
+                if self._session_busy() or self.run_prepare.is_busy or self.run_controller.activation_pending:
+                    QMessageBox.warning(self, "Partie occupée", "Une session a commencé ; suppression annulée.")
+                    return
+                self.run_files.start(lambda: {"action": "deleted", "run_id": plan.run_id,
+                                             "result": RunDeletionService(self.runs).delete(plan)})
+            return
+        if result["action"] == "isolated":
+            self.resume_run(result["run"].run_id)
+            self.statusBar().showMessage("Fichiers indépendants copiés et vérifiés. Les originaux sont conservés.")
+        else:
+            if self.runs_page:
+                self.runs_page.notify_deleted(result["run_id"])
+            self.statusBar().showMessage("Partie supprimée. Les fichiers externes ont été conservés.")
+        if self.runs_page:
+            self.runs_page.set_active_run(self.runs.active_id)
+            self.runs_page.refresh_visible()
 
     def _run_failed(self, message):
         self.statusBar().showMessage("Partie : " + message)
@@ -615,6 +783,9 @@ class MainWindow(QMainWindow):
             if not self.game_mode_window.service.state.running:
                 self.game_mode_window._game_changed(self.game_mode_window.page.game_combo.currentData())
             run = self.game_mode_window.persistent_run
+            if run and (self.base_dir / "runs" / run.run_id / "play").exists():
+                self.statusBar().showMessage("Installation détectée. Les fichiers indépendants de cette partie sont conservés.", 8000)
+                return
             if run and run.game_id == game_id and not self.game_mode_window.service.state.running and self.bridge_controller.state.status == "stopped":
                 answer = QMessageBox.question(self, "Associer l'installation à cette partie ?",
                     f"Utiliser la ROM, l'émulateur et la sauvegarde préparés pour « {run.name} » ? "
@@ -708,7 +879,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "DeSmuME s'est arrêté", "L'émulateur s'est arrêté après le lancement. Vérifiez votre installation et la ROM sélectionnée.")
 
     def closeEvent(self, event) -> None:
-        if (self.discovery_runner.is_busy or self.run_prepare.is_busy or self.run_controller.activation_pending or (self.installation_dialog is not None and self.installation_dialog.is_busy)
+        if (self.discovery_runner.is_busy or self.run_prepare.is_busy or self.run_files.is_busy or self._switch_target is not None or self.run_controller.activation_pending or (self.installation_dialog is not None and self.installation_dialog.is_busy)
                 or (self.game_mode_window is not None and (self.game_mode_window.launch_busy
                     or self.game_mode_window._pending_run_launch is not None or self.game_mode_window._pending_reference_save))):
             self.statusBar().showMessage("Attendez la fin de la préparation avant de fermer PCE.")

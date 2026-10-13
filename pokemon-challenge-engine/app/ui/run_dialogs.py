@@ -146,7 +146,7 @@ class RunChallengeDialog(QDialog):
 
 
 class NewRunDialog(QDialog):
-    """Select a source and file references, without creating or altering a save."""
+    """Choose independent adventure files; importing a save requires confirmation."""
 
     def __init__(self, catalog, profiles, launch_profiles, parent=None, *, profile=None):
         super().__init__(parent)
@@ -157,10 +157,10 @@ class NewRunDialog(QDialog):
         self.custom_challenge = None
         self._loading = False
         self.setWindowTitle("Nouvelle partie")
-        self.resize(700, 610)
+        self.resize(700, 690)
         layout = QVBoxLayout(self)
         layout.addWidget(label("Commencer une partie", "title"))
-        layout.addWidget(label("Chaque partie conserve ses propres règles et sa progression PCE. Un modèle de challenge est une configuration réutilisable.", "muted"))
+        layout.addWidget(label("Chaque partie dispose d'une copie indépendante de la ROM, de ses sauvegardes et de sa progression PCE. Un modèle de challenge est une configuration réutilisable.", "muted"))
         form = QFormLayout()
         self.game_combo = QComboBox()
         for game in catalog.games.values():
@@ -175,21 +175,26 @@ class NewRunDialog(QDialog):
         self.configure_button.clicked.connect(self._configure_custom)
         self.name_edit = QLineEdit()
         self.name_edit.setMaxLength(100)
+        self.save_mode_combo = QComboBox()
+        self.save_mode_combo.addItem("Nouvelle aventure — sans ancienne sauvegarde", "new")
+        self.save_mode_combo.addItem("Importer une sauvegarde existante", "import")
         self.save_edit = QLineEdit()
-        self.save_edit.setPlaceholderText("Facultatif : fichier .dsv déjà existant")
+        self.save_edit.setPlaceholderText("Fichier .dsv existant à copier dans cette partie")
         save_row = QHBoxLayout()
+        self.save_row = save_row
         save_row.addWidget(self.save_edit, 1)
         browse = QPushButton("Choisir…")
         browse.clicked.connect(self._browse_save)
         save_row.addWidget(browse)
-        self.configured_save_button = QPushButton("Utiliser la sauvegarde configurée")
+        self.configured_save_button = QPushButton("Choisir la sauvegarde détectée / configurée")
         self.configured_save_button.clicked.connect(self._use_configured_save)
         form.addRow("Jeu", self.game_combo)
         form.addRow("Configuration", self.source_combo)
         form.addRow("Modèle", self.profile_combo)
         form.addRow("", self.configure_button)
         form.addRow("Nom de la partie", self.name_edit)
-        form.addRow("Sauvegarde Pokémon", save_row)
+        form.addRow("Début de l'aventure", self.save_mode_combo)
+        form.addRow("Sauvegarde à importer", save_row)
         form.addRow("", self.configured_save_button)
         self.form = form
         layout.addLayout(form)
@@ -197,7 +202,7 @@ class NewRunDialog(QDialog):
         self.rules_label = label("", "muted")
         layout.addWidget(self.rules_label)
         layout.addWidget(self.environment_label)
-        layout.addWidget(label("L'environnement enregistré sera repris. La sauvegarde Pokémon est seulement liée : PCE n'en crée pas une nouvelle et ne force aucune sauvegarde en jeu.", "muted"))
+        layout.addWidget(label("La ROM d'origine reste intacte. Une nouvelle aventure démarre sans sauvegarde : le jeu créera la sienne. Un import copie uniquement la sauvegarde choisie, après confirmation, sans modifier le fichier d'origine.", "muted"))
         self.error_label = label("", "error")
         self.error_label.hide()
         layout.addWidget(self.error_label)
@@ -211,6 +216,7 @@ class NewRunDialog(QDialog):
         self.game_combo.currentIndexChanged.connect(self._game_changed)
         self.source_combo.currentIndexChanged.connect(self._source_changed)
         self.profile_combo.currentIndexChanged.connect(self._profile_changed)
+        self.save_mode_combo.currentIndexChanged.connect(self._save_mode_changed)
         self._game_changed()
         if profile is not None:
             index = self.game_combo.findData(profile.challenge.game_id)
@@ -231,8 +237,8 @@ class NewRunDialog(QDialog):
                 self.profile_combo.addItem(profile.name, profile.id)
         settings = self.launch_profiles.get(game_id, {})
         self.save_edit.clear()
-        self.configured_save_button.setVisible(bool(settings.get("save_path")))
-        self.configured_save_button.setToolTip(settings.get("save_path", ""))
+        self.save_mode_combo.setCurrentIndex(self.save_mode_combo.findData("new"))
+        self._save_mode_changed()
         configured = bool(settings.get("rom_path") and settings.get("emulator_path"))
         self.environment_label.setText("Environnement : configuration enregistrée pour ce jeu ; vérification avant lancement."
                                        if configured else "Environnement : à préparer dans Installation & Diagnostic avant le lancement.")
@@ -254,17 +260,26 @@ class NewRunDialog(QDialog):
 
     def _installation_summary(self):
         state = self.installation_states.get(self.game_combo.currentData())
-        if state is None:
-            return
-        self.environment_label.setText("Installation · " +
-            INSTALLATION_LABELS.get(state.get("status"), "À vérifier") + "\n" + state.get("message", ""))
-        # Only a resolved association is offered by automatic discovery. An
-        # explicit choice made in this dialog is never replaced by a refresh.
-        if not self.save_edit.isModified() and state.get("status") in {"ready", "lua_required"}:
-            self.save_edit.setText(state.get("save_path", ""))
-            self.save_edit.setPlaceholderText(state.get("save_message") or
-                                             "Aucune sauvegarde existante trouvée · nouvelle partie possible")
-            self.configured_save_button.hide()
+        if state is not None:
+            self.environment_label.setText("Installation · " +
+                INSTALLATION_LABELS.get(state.get("status"), "À vérifier") + "\n" + state.get("message", ""))
+        # Discovery offers a source for an explicit import. It must never turn a
+        # new adventure into a continuation of the user's existing game.
+        self._save_mode_changed()
+
+    def _configured_save(self):
+        game_id = self.game_combo.currentData()
+        return (self.launch_profiles.get(game_id, {}).get("save_path") or
+                self.installation_states.get(game_id, {}).get("save_path") or "")
+
+    def _save_mode_changed(self):
+        importing = self.save_mode_combo.currentData() == "import"
+        if not importing:
+            self.save_edit.clear()
+        self.form.setRowVisible(self.save_row, importing)
+        configured_save = self._configured_save()
+        self.form.setRowVisible(self.configured_save_button, importing and bool(configured_save))
+        self.configured_save_button.setToolTip(configured_save)
 
     def _profile_changed(self):
         if self._loading:
@@ -324,23 +339,26 @@ class NewRunDialog(QDialog):
         self._source_changed()
 
     def _use_configured_save(self):
-        self.save_edit.setText(self.launch_profiles.get(self.game_combo.currentData(), {}).get("save_path", ""))
+        if self.save_mode_combo.currentData() == "import":
+            self.save_edit.setText(self._configured_save())
 
     def _browse_save(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Lier une sauvegarde existante", self.save_edit.text(), "Sauvegardes DeSmuME (*.dsv)")
+        path, _ = QFileDialog.getOpenFileName(self, "Copier une sauvegarde existante dans la nouvelle partie", self.save_edit.text(), "Sauvegardes DeSmuME (*.dsv)")
         if path:
             self.save_edit.setText(path)
 
     def selection(self):
         game_id = self.game_combo.currentData()
         launch = deepcopy(self.launch_profiles.get(game_id))
-        save = self.save_edit.text().strip() or None
+        save_mode = self.save_mode_combo.currentData()
+        save = (self.save_edit.text().strip() or None) if save_mode == "import" else None
         if launch is not None:
             launch["save_path"] = save or ""
         source = self.source_combo.currentData()
         return {"name": self.name_edit.text().strip(), "game_id": game_id,
                 "source": source, "profile_id": self.profile_combo.currentData() if source == "profile" else None,
-                "challenge": deepcopy(self.custom_challenge) if source == "custom" else None, "save_path": save,
+                "challenge": deepcopy(self.custom_challenge) if source == "custom" else None,
+                "save_mode": save_mode, "save_path": save,
                 "launch_profile": launch}
 
     def accept(self):
@@ -361,6 +379,20 @@ class NewRunDialog(QDialog):
             self.error_label.setText("Configurez les règles avant de créer cette partie.")
             self.error_label.show()
             return
+        if values["save_mode"] == "import":
+            path = Path(values["save_path"]) if values["save_path"] else None
+            if path is None or path.suffix.lower() != ".dsv" or not path.is_file():
+                self.error_label.setText("Choisissez un fichier .dsv existant à importer, ou démarrez une nouvelle aventure.")
+                self.error_label.show()
+                return
+            if QMessageBox.question(
+                    self, "Confirmer l'import de sauvegarde",
+                    "Copier cette sauvegarde dans le dossier indépendant de la nouvelle partie ?\n\n"
+                    f"Source : {path.resolve()}\n\n"
+                    "Le fichier d'origine sera conservé. Cette partie utilisera uniquement sa propre copie.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+                return
         super().accept()
 
 
@@ -484,10 +516,14 @@ class RunDetailsDialog(QDialog):
         self.resume_button = QPushButton("Reprendre cette partie")
         self.resume_button.setObjectName("primary")
         self.resume_button.clicked.connect(lambda: self.resume_requested.emit(self.run_id))
+        self.delete_button = QPushButton("Supprimer cette partie…")
+        self.delete_button.setToolTip("Afficher les fichiers concernés et demander confirmation avant toute suppression.")
+        self.delete_button.clicked.connect(lambda: self.action_requested.emit(self.run_id, "delete", {}))
         close = QPushButton("Fermer")
         close.clicked.connect(self.close)
         row.addWidget(self.resume_button)
         row.addStretch()
+        row.addWidget(self.delete_button)
         row.addWidget(close)
         layout.addLayout(row)
         self.refresh()
@@ -517,6 +553,7 @@ class RunDetailsDialog(QDialog):
         status_row.addWidget(change)
         status_row.addStretch()
         box.addLayout(status_row)
+        box.addWidget(label("Le statut « Archivée » conserve la partie et ses fichiers sans les supprimer.", "muted"))
         note = QPushButton("Ajouter une note")
         note.clicked.connect(lambda: self.manual_action("add_note"))
         box.addWidget(note)
@@ -604,6 +641,10 @@ class RunDetailsDialog(QDialog):
         button = QPushButton("Ouvrir le gestionnaire de sauvegardes")
         button.clicked.connect(lambda: self.saves_requested.emit(self.run_id))
         box.addWidget(button)
+        self.isolate_button = QPushButton("Préparer des copies indépendantes…")
+        self.isolate_button.setToolTip("Associer les anciens fichiers à cette partie sans modifier les originaux.")
+        self.isolate_button.clicked.connect(lambda: self.action_requested.emit(self.run_id, "isolate", {}))
+        box.addWidget(self.isolate_button)
         box.addWidget(label("PCE ne déclenche pas de sauvegarde en jeu. Les backups et restaurations utilisent le gestionnaire existant.", "muted"))
         box.addStretch()
 
@@ -614,10 +655,14 @@ class RunDetailsDialog(QDialog):
             self.error_label.setText(str(exc))
             self.error_label.show()
             self.resume_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
+            self.isolate_button.setEnabled(False)
 
     def set_run(self, run):
         self.run = run
         self.error_label.hide()
+        self.delete_button.setEnabled(True)
+        self.isolate_button.setEnabled(True)
         self.title_label.setText(run.name)
         game = self.catalog.games.get(run.game_id)
         rules = rule_names(run, self.catalog)

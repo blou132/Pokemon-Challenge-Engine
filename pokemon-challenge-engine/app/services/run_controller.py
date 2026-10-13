@@ -147,6 +147,19 @@ class _RunWorker(QObject):
         self.guarded(operation)
 
     @Slot()
+    def deactivate(self):
+        def operation():
+            if self.running:
+                raise ValueError("Fermez DeSmuME avant de libérer cette partie.")
+            if self.tracker is not None:
+                self.tracker.deactivate()
+            else:
+                RunManager(self.root).set_active_id(None)
+            self.activation_token = None
+            self.last_sample = None
+        self.guarded(operation)
+
+    @Slot()
     def close(self):
         if self.timer is not None:
             self.timer.stop()
@@ -269,3 +282,19 @@ class RunController(QObject):
             self._thread.deleteLater()
             self._thread = self._worker = None
         return True
+
+    def deactivate(self):
+        """Flush and detach before a destructive or external run operation."""
+        if self.activation_pending:
+            raise ValueError("Attendez la fin de l'activation de la partie.")
+        if self._worker is not None:
+            QMetaObject.invokeMethod(self._worker, "deactivate", Qt.ConnectionType.BlockingQueuedConnection)
+            if self._worker.error:
+                raise ValueError(self._worker.error)
+        else:
+            RunManager(self.root).set_active_id(None)
+        self.active_run = None
+        self.requested_run_id = None
+        self._activation_token = None
+        self.state = {}
+        self.changed.emit(None, {})

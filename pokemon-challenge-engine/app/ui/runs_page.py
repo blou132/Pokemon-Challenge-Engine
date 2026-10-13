@@ -211,6 +211,23 @@ class RunsPage(QWidget):
         self._render()
         self._highlight_scroll.start(0)
 
+    def notify_deleted(self, run_id):
+        """Release details only after the controller has deleted the owned files."""
+        self.refresh()
+        if any(run.run_id == run_id for run in self.runs):
+            return False
+        dialog = self._dialogs.pop(run_id, None)
+        if dialog is not None:
+            dialog.close()
+            dialog.deleteLater()
+        if self.active_run_id == run_id:
+            self.active_run_id = None
+        if self.highlighted_run_id == run_id:
+            self.highlighted_run_id = None
+        self.creation_feedback.setText("Partie supprimée.")
+        self.creation_feedback.show()
+        return True
+
     def _scroll_to_highlight(self):
         widget = next((item for item in self.cards if item.run_id == self.highlighted_run_id), None)
         scroll = self.findChild(QScrollArea)

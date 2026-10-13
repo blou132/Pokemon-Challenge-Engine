@@ -180,6 +180,7 @@ def test_new_from_profile_copies_launch_configuration(qt_app, catalog):
     profile = Profile("source", "Ma configuration", challenge)
     launch = {"white": {"game_id": "white", "rom_path": "game.nds", "emulator_path": "desmume.exe", "save_path": "first.dsv"}}
     dialog = NewRunDialog(catalog, [profile], launch, profile=profile)
+    dialog.save_mode_combo.setCurrentIndex(dialog.save_mode_combo.findData("import"))
     dialog.save_edit.setText("chosen.dsv")
     values = dialog.selection()
     assert values["profile_id"] == "source"

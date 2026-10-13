@@ -141,7 +141,7 @@ def test_return_to_library_rechecks_changed_files_and_updates_selected_game(star
     assert startup.popups == [] and startup.launches == []
 
 
-def test_new_run_uses_detected_white_and_save_with_real_dialog_and_persistence(startup, qt_app, monkeypatch):
+def test_new_run_uses_detected_white_but_starts_without_old_save(startup, qt_app, monkeypatch):
     start(startup, qt_app)
     window, env = startup.window, startup.env
     before = originals(env)
@@ -158,11 +158,13 @@ def test_new_run_uses_detected_white_and_save_with_real_dialog_and_persistence(s
     run = window.new_run()
     until(qt_app, lambda: not window.discovery_runner.is_busy)
 
-    assert observed == {"game_id": "white", "save_path": str(env.save), "source": "classic", "configured_save_hidden": True}
+    assert observed == {"game_id": "white", "save_path": "", "source": "classic", "configured_save_hidden": True}
     assert run is not None and resumed == [run.run_id]
     stored = window.runs.load(run.run_id)
     assert stored.game_id == "white" and stored.game_code == "IRAF"
-    assert stored.save_path == str(env.save)
+    assert stored.save_path is None
+    assert stored.launch_profile["save_path"] == ""
+    assert stored.launch_profile["_isolation_pending"] is True
     assert stored.profile_id is None and stored.active_rules == ()
     assert stored.launch_profile["emulator_path"] == str(env.exe)
     assert stored.launch_profile["_source"]["source_path"] == str(env.source)

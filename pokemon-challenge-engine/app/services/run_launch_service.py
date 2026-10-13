@@ -73,12 +73,19 @@ class RunLaunchService:
     def prepare(self, run):
         snapshot = deepcopy(run.launch_profile or {})
         source = snapshot.pop("_source", None)
+        pending_isolation = snapshot.pop("_isolation_pending", False)
+        # An owned copy must never be rebound to its original ZIP/cache by the
+        # legacy source-recovery path. Missing copies require explicit repair.
+        owned = self.base_dir / "runs" / run.run_id / "play"
+        if owned.exists() or any(value and Path(value).is_relative_to(owned)
+                                 for key, value in snapshot.items() if key in {"rom_path", "emulator_path", "save_path"}):
+            return self._prepare_isolated(run, snapshot, source)
         values = validate_config({"launch_profiles": {run.game_id: snapshot}}, self.config,
                                  self.base_dir)["launch_profiles"][run.game_id]
         values["challenge_profile_id"] = None
         # Run.save_path is the explicit association, never inferred from a profile
         # that could since have been edited for a second run of the same game.
-        values["save_path"] = run.save_path or ""
+        values["save_path"] = "" if pending_isolation else run.save_path or ""
         preparation_error = None
         if source and source.get("source_path"):
             try:
@@ -114,5 +121,44 @@ class RunLaunchService:
                 health["ready"] = False
                 health["launch_ready"] = False
                 health["issues"].append("La ROM a changé depuis la création de cette partie. Vérifiez son association avant de reprendre.")
+        if pending_isolation and (health["ready"] or health.get("launch_ready", False)):
+            from app.core.run_manager import RunManager
+            from app.services.run_isolation_service import RunIsolationService
+            manager = RunManager(self.base_dir / "runs")
+            if manager.active_id == run.run_id:
+                raise ValueError("Reprenez cette partie depuis Mes parties pour préparer ses fichiers indépendants.")
+            def associate(current):
+                if current._storage_revision != run._storage_revision:
+                    raise ValueError("La partie a changé pendant la vérification ; rechargez-la avant de reprendre.")
+                current.launch_profile = deepcopy(values)
+                current.launch_profile["_isolation_pending"] = True
+                if source:
+                    current.launch_profile["_source"] = deepcopy(source)
+            run = manager.update(run.run_id, associate)
+            run = RunIsolationService(manager).isolate(run, import_save=run.save_path)
+            return self.prepare(run)
         return {"game_id": run.game_id, "run_id": run.run_id, "profile": values,
                 "health": health, "rom_fingerprint": fingerprint, "source": source, "actions": []}
+
+    def _prepare_isolated(self, run, snapshot, source):
+        from app.core.run_manager import RunManager
+        from app.services.run_isolation_service import RunIsolationService
+        isolation = RunIsolationService(RunManager(self.base_dir / "runs"))
+        isolation.validate(run)
+        values = validate_config({"launch_profiles": {run.game_id: snapshot}}, self.config,
+                                 self.base_dir)["launch_profiles"][run.game_id]
+        values["challenge_profile_id"] = None
+        values["save_path"] = str(isolation.expected_save_path(run))
+        checking = deepcopy(values)
+        # A new adventure has no DSV yet. Only an ownership-verified planned
+        # target may be absent; external missing saves still fail preflight.
+        if not Path(values["save_path"]).exists():
+            if not isolation.save_may_be_missing(run):
+                raise ValueError("La sauvegarde de cette aventure a disparu. Restaurez sa copie depuis un backup avant de reprendre.")
+            checking["save_path"] = ""
+        else:
+            isolation.mark_save_observed(run)
+        health = self.setup.health_check(run.game_id, options_override=checking)
+        return {"game_id": run.game_id, "run_id": run.run_id, "profile": values,
+                "health": health, "rom_fingerprint": run.rom_fingerprint,
+                "source": source, "actions": []}

@@ -40,6 +40,7 @@ class GameModeService:
         self._started = None
         self._last_periodic = None
         self._run_options = None
+        self._pending_launch_backup = False
         self.backup_observer = None
         self.state = RunState(message="\n".join(self.store.warnings) or RunState().message)
 
@@ -99,6 +100,32 @@ class GameModeService:
         # The settings adapter supplies the verified preset and profile exports.
         service.apply_launch_profile(options, self.base_dir)
 
+    def _owned_save_target(self, options: dict) -> bool:
+        """A missing save is legitimate only for a verified run-owned target."""
+        from app.core.run_manager import RunManager
+        from app.services.discovery_safety import local_path
+        from app.services.run_isolation_service import RunIsolationService
+        if not options["save_path"]:
+            return False
+        path = local_path(options["save_path"])
+        root = local_path(self.base_dir / "runs")
+        if not path.is_relative_to(root) or not path.relative_to(root).parts:
+            return False
+        manager = RunManager(root)
+        run = manager.load(path.relative_to(root).parts[0])
+        service = RunIsolationService(manager)
+        protected = ("rom_path", "emulator_path", "ini_path", "save_path", "save_state_directory",
+                     "save_state_stem", "backup_directory")
+        if (options["game_id"] != run.game_id or path != service.expected_save_path(run)
+                or any(options[key] != (run.launch_profile or {}).get(key) for key in protected)):
+            raise ValueError("Le backup ne correspond pas aux fichiers indépendants de cette partie.")
+        service.validate(run)
+        if path.exists():
+            service.mark_save_observed(run)
+        elif not service.save_may_be_missing(run):
+            raise ValueError("La sauvegarde de cette aventure a disparu ; restaurez-la avant de jouer.")
+        return True
+
     def launch(self, game_id: str, profile_id: str | None = None, *, options_override: dict | None = None):
         if game_id not in GAME_IDS:
             raise ValueError("Jeu de lancement inconnu.")
@@ -130,17 +157,23 @@ class GameModeService:
         errors = launcher.validate(game_id)
         if errors:
             raise ValueError("\n".join(errors))
+        pending_backup = False
         if options["backup_on_launch"]:
-            self._backup(options, "launch")
+            if options["save_path"] and not Path(options["save_path"]).exists() and self._owned_save_target(options):
+                pending_backup = True
+            else:
+                self._backup(options, "launch")
         if options["apply_settings"]:
             self._apply_launch_settings(options)
         process = launcher.launch(game_id)
         self.process = process
         self._started = self._last_periodic = self._clock()
         self._run_options = options
+        self._pending_launch_backup = pending_backup
         self.state = RunState(game_id=game_id, profile_id=profile_id, running=True,
                               requested_speed=options["speed"], pid=process.pid,
-                              message="DeSmuME démarré. Vitesse demandée ; état réel non confirmé.")
+                              message=("DeSmuME démarré. Vitesse demandée ; état réel non confirmé." +
+                                       (" Le premier backup sera créé après la première sauvegarde du jeu." if pending_backup else "")))
         return process
 
     def request_speed(self, value: str) -> RunState:
@@ -158,8 +191,30 @@ class GameModeService:
         options = self._run_options
         code = self.process.poll()
         message = self.state.message
+        first_backup_notice = None
+        if self._pending_launch_backup:
+            try:
+                if Path(options["save_path"]).exists():
+                    self._pending_launch_backup = False
+                    if not self._owned_save_target(options):
+                        raise ValueError("La cible de backup n'appartient plus à cette partie.")
+                    self._backup(options, "launch")
+                    first_backup_notice = "Premier backup créé après la première sauvegarde du jeu."
+            except (OSError, ValueError) as exc:
+                self._pending_launch_backup = False
+                first_backup_notice = "Premier backup non créé : " + str(exc) + ". Réessayez avec Backup manuel."
+            if first_backup_notice:
+                message = first_backup_notice
         if code is not None:
             message = "DeSmuME fermé." if code == 0 else f"DeSmuME arrêté (code {code})."
+            self._pending_launch_backup = False
+            if first_backup_notice:
+                message += " " + first_backup_notice
+            try:
+                if options["save_path"] and Path(options["save_path"]).exists():
+                    self._owned_save_target(options)
+            except (OSError, ValueError) as exc:
+                message += " Sauvegarde de la partie non vérifiée : " + str(exc)
             if options["backup_on_close"]:
                 try:
                     self._backup(options, "close")
@@ -169,7 +224,8 @@ class GameModeService:
             self.state = replace(self.state, running=False, elapsed_seconds=elapsed, window_title=None,
                                  confirmed_speed=None, message=message)
             return self.state
-        if options["backup_periodic"] and now - self._last_periodic >= options["backup_interval_minutes"] * 60:
+        if (options["backup_periodic"] and not self._pending_launch_backup and first_backup_notice is None
+                and now - self._last_periodic >= options["backup_interval_minutes"] * 60):
             self._last_periodic = now
             try:
                 self._backup(options, "periodic")
@@ -196,6 +252,16 @@ class GameModeService:
         # Do not kill the emulator or fabricate a close-backup while it is running.
         self.tick()
         self.process = None
+        self._pending_launch_backup = False
         self.state = replace(self.state, running=False, confirmed_speed=None,
                              message="Suivi arrêté. DeSmuME n'a pas été fermé ; les backups automatiques sont arrêtés.")
         return self.state
+
+    def request_close(self):
+        """Only the process started by this service may receive a close request."""
+        if self.process is None or self.process.poll() is not None:
+            self.tick()
+            return
+        if self._run_options is None or self.state.pid != self.process.pid:
+            raise ValueError("La session DeSmuME ne peut pas être identifiée. Fermez sa fenêtre manuellement.")
+        self.windows.request_close(self.process.pid, executable=self._run_options["emulator_path"])

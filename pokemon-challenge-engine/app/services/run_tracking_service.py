@@ -4,6 +4,7 @@ from collections import Counter
 from copy import deepcopy
 from datetime import datetime
 import math
+from pathlib import Path
 from time import monotonic
 from uuid import uuid4
 
@@ -583,8 +584,19 @@ class RunTrackingService:
         if not isinstance(profile, dict):
             raise ValueError("Référence de lancement invalide.")
         validate_json_data(profile)
+        owned = self.manager.root / run.run_id / "play"
+        if owned.exists() or any(value and Path(value).is_relative_to(owned)
+                                 for key, value in (run.launch_profile or {}).items() if key in {"rom_path", "emulator_path", "save_path"}):
+            protected = ("rom_path", "emulator_path", "ini_path", "save_path", "save_state_directory",
+                         "save_state_stem", "backup_directory")
+            if any(profile.get(key) != run.launch_profile.get(key) for key in protected):
+                raise ValueError("Les chemins de cette aventure sont indépendants et ne peuvent pas être remplacés par des fichiers partagés.")
+            if rom_fingerprint is not None and rom_fingerprint != run.rom_fingerprint:
+                raise ValueError("L'empreinte de la copie ROM ne peut pas être remplacée.")
         candidate = deepcopy(run)
         candidate.launch_profile = deepcopy(profile)
+        if (run.launch_profile or {}).get("_isolation_pending"):
+            candidate.launch_profile["_isolation_pending"] = True
         candidate.save_path = profile.get("save_path") or None
         if rom_fingerprint is not None:
             candidate.rom_fingerprint = rom_fingerprint

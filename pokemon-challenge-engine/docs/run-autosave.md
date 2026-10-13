@@ -39,6 +39,19 @@ le suivi et publie sa progression. Le changement de statut d'une partie inactive
 reste possible depuis sa fiche sans la reprendre ni changer la partie suivie ;
 une ancienne session interrompue est alors fermée à son dernier heartbeat connu.
 
+**Fermer la session et continuer** demande confirmation avant un changement de
+partie. PCE demande une fermeture normale de son processus DeSmuME, attend son
+arrêt, puis arrête Lua et termine le suivi avant de préparer la nouvelle partie.
+Une confirmation dans l'émulateur reste à traiter par l'utilisateur ; un délai
+dépassé ne provoque aucune fermeture forcée. Cette action ne remplace pas la
+sauvegarde dans le menu Pokémon.
+
+Avant l'isolation des anciens fichiers ou la suppression confirmée d'une partie,
+le contrôleur attend la publication des dernières actions puis détache le suivi.
+Le timer d'autosave ne conserve alors plus cette partie en mémoire et ne peut pas
+recréer son dossier après suppression. Un échec de publication bloque l'opération
+sur les fichiers. Une session DeSmuME/Lua encore active la bloque également.
+
 ## Déclencheurs et fréquence
 
 - Début et fin de session, action manuelle, changement de statut, référence de

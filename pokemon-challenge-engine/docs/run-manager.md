@@ -41,14 +41,20 @@ Une configuration directe crée un `rules_snapshot` complet, avec
 `profile_id = null` : aucun profil intermédiaire n'est écrit. La seed et le
 preset d'origine restent conservés dans le snapshot et la partie.
 
-Choisissez ensuite le nom et, facultativement, la sauvegarde Pokémon liée.
+Choisissez ensuite le nom et le début de l'aventure :
+
+- **Nouvelle aventure — sans ancienne sauvegarde**, par défaut : aucune sauvegarde
+  détectée n'est reprise. Le jeu créera normalement son `.dsv` dans le dossier de
+  cette partie ; PCE ne fabrique pas de faux fichier de sauvegarde.
+- **Importer une sauvegarde existante** : choisissez un `.dsv`, ou utilisez le
+  bouton de sauvegarde détectée/configurée. La confirmation indique le fichier
+  source ; il sera copié dans la partie et restera intact à son emplacement d'origine.
+
 Quand la découverte a résolu l'installation, le premier jeu prêt est proposé
-depuis l'entrée générale **Nouvelle partie**, et sa sauvegarde unique à forte
-confiance est préremplie. Un jeu ou modèle explicitement demandé conserve la priorité.
-Une modification manuelle du champ n'est pas remplacée par un rafraîchissement.
-**Choisir** permet de désigner un autre fichier ; sans résultat de découverte,
-**Utiliser la sauvegarde configurée** reste disponible. Aucun fichier n'est copié
-ni créé par cette association.
+depuis l'entrée générale **Nouvelle partie**. Un jeu ou modèle explicitement demandé
+conserve la priorité. La découverte ne remplit jamais le champ de sauvegarde d'une
+nouvelle aventure. Changer de jeu efface l'import sélectionné pour le jeu précédent.
+Un rafraîchissement conserve un fichier explicitement choisi dans le mode import.
 
 L'environnement de lancement détecté pour le jeu est proposé. Sans sauvegarde
 existante, une nouvelle partie reste possible. Sans environnement prêt, la partie
@@ -60,6 +66,11 @@ immédiatement la nouvelle carte, son compteur mis à jour et **Partie créée**
 La carte est mise en évidence. Si les filtres précédents la masquaient, ils
 sont réinitialisés avec une indication ; les filtres compatibles sont gardés.
 Il n'est pas nécessaire de cliquer sur Actualiser.
+
+Cette première confirmation concerne le suivi `run.json`. La préparation de la
+ROM et de l'environnement indépendant s'effectue ensuite hors du thread graphique,
+avant le lancement. Si la copie ou sa validation échoue, la partie reste visible
+et l'erreur bloque le lancement ; **Partie créée** ne prouve pas que le jeu a démarré.
 
 Depuis **Mes parties → Modèles de challenge → Créer une partie**, le modèle
 sélectionné est proposé.
@@ -76,10 +87,11 @@ manuel historique et le lancement direct dans DeSmuME pour les profils existants
 
 Une partie **Classique** possède zéro règle active. Elle conserve néanmoins
 ses sessions, son temps suivi, son équipe observée, sa zone, ses notes et ses
-événements manuels. Créer une partie PCE ne crée pas une nouvelle sauvegarde
-Pokémon et ne redémarre pas le jeu : vérifiez le fichier `.dsv` proposé à la
-création. Deux parties liées au même fichier partagent cette sauvegarde du
-jeu, mais leurs progressions PCE restent distinctes.
+événements manuels. Deux nouvelles parties du même jeu reçoivent des copies ROM
+nommées avec leurs UUID, des environnements DeSmuME et des dossiers de sauvegarde
+distincts. Importer la même source dans deux parties produit deux copies séparées.
+Les anciennes parties peuvent encore partager une référence historique tant que
+leur association indépendante n'a pas été explicitement préparée.
 
 ## Retrouver et reprendre
 
@@ -98,6 +110,8 @@ lancement. Si une ROM ou un exécutable a disparu, une recherche locale bornée
 peut retrouver un candidat unique. Une ROM récupérée doit respecter l'empreinte
 figée de la partie ; une ambiguïté ou une autre copie bloque la reprise avec une
 explication. La sauvegarde déjà liée n'est pas remplacée par une autre détection.
+Une partie déjà isolée est contrôlée dans son propre dossier ; une copie manquante
+ou modifiée bloque la reprise au lieu de réassocier automatiquement l'original partagé.
 
 L'ouverture du Mode Jeu attend la confirmation de l'activation demandée. Le
 UUID demandé, celui du contrôleur et celui de `runs/active.json` doivent
@@ -107,9 +121,12 @@ l'ancienne partie. Nom, temps, équipe, zone, événements et compteurs de la
 nouvelle partie ne sont pas repris de la précédente.
 
 Si l'émulateur ou Lua suit encore une autre partie, la nouvelle partie reste
-enregistrée et visible dans la bibliothèque. Fermez la session précédente puis
-reprenez la nouvelle carte ; l'ancien Mode Jeu ne s'ouvre pas au nom de la
-nouvelle partie. Les réponses asynchrones d'une demande devenue ancienne ne
+enregistrée et visible dans la bibliothèque. **Fermer la session et continuer**
+demande une confirmation et rappelle de sauvegarder dans le jeu. PCE demande une
+fermeture normale du processus qu'il suit, attend son arrêt, puis arrête Lua et
+prépare la partie demandée. Une confirmation attendue dans DeSmuME ou un délai
+dépassé laisse un message explicite ; PCE ne force pas la fermeture. L'ancien Mode
+Jeu ne s'ouvre pas au nom de la nouvelle partie. Les réponses asynchrones d'une demande devenue ancienne ne
 peuvent pas remplacer la sélection demandée. Après fermeture et réouverture
 de PCE, la sélection persistante est retrouvée sans ouvrir automatiquement le
 Mode Jeu ni lancer l'émulateur.
@@ -128,7 +145,7 @@ préparation ou en cours. Aucun statut « partie perdue » n'est déduit.
 | Équipe | Dernière équipe observée, espèce, niveau, PV et statut vivant/mort PCE |
 | Règles | Règles copiées et snapshot exact accessible dans les détails techniques |
 | Historique | Chronologie lisible, avec source automatique, manuelle ou système |
-| Sauvegardes | Fichier Pokémon lié et accès au gestionnaire de sauvegardes existant |
+| Sauvegardes | Fichier Pokémon associé, gestionnaire de sauvegardes et préparation des copies indépendantes |
 
 À l'ouverture de **Sauvegardes**, le dernier backup enregistré est recherché
 dans le manifeste existant, pour le chemin exact du fichier lié. Deux
@@ -166,10 +183,29 @@ correction restent dans l'historique. Un mort confirmé avec identité stable
 reste mort dans PCE après un soin ou son départ de l'équipe. Aucun déplacement
 vers une boîte PC ni aucune écriture dans le jeu n'est effectué.
 
+## Isoler une ancienne partie ou la supprimer
+
+Dans **Détails → Sauvegardes**, **Préparer des copies indépendantes** propose de
+copier la ROM, l'environnement DeSmuME, la sauvegarde associée et les save states
+identifiés par le nom de cette ROM dans les dossiers configurés. Fermez d'abord
+DeSmuME et Lua. Après confirmation, PCE termine et publie son suivi avant les
+copies ; les règles, compteurs et historique restent conservés. Les originaux
+restent en place. Une partie déjà isolée est vérifiée, jamais réimportée par-dessus
+ses sauvegardes. Voir les chemins et limites dans [run-storage.md](run-storage.md).
+
+**Supprimer cette partie** demande d'abord l'arrêt de la session. La confirmation
+présente le dossier, le nombre et la taille des fichiers ; **Afficher les détails**
+donne l'inventaire des fichiers/dossiers supprimés et des références externes
+conservées. L'annulation est le choix par défaut. Une modification des fichiers
+depuis cet aperçu exige une nouvelle vérification. Les chemins partagés avec une
+autre partie, les liens et les parties illisibles bloquent la suppression.
+**Archivée** reste une alternative qui conserve les fichiers et la progression.
+
 ## Sauvegardes distinctes
 
 La progression PCE est sauvegardée automatiquement dans le stockage persistant
-des parties. Le fichier `.dsv` est une référence séparée. Le gestionnaire
+des parties. Le fichier `.dsv` est une donnée séparée, propre à la partie après
+isolation. Ses backups utilisent aussi le dossier de cette aventure. Le gestionnaire
 existant conserve ses confirmations de restauration et ses contrôles de
 fermeture de DeSmuME. PCE ne force aucune sauvegarde en jeu.
 

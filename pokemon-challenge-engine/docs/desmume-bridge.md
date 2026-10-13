@@ -6,6 +6,9 @@ l'autoload officiel du DeSmuME reconnu. Le loader porte le nom réel de la ROM
 préparée et référence le `connect.lua` de cette nouvelle session. L'INI est
 sauvegardé avant modification ; les scripts personnels restent intacts.
 Voir [le mécanisme, les deux clés INI et leur restauration](lua-runtime.md#chargement-automatique-avec-jouer).
+Les nouvelles aventures utilisent un environnement DeSmuME propre et une ROM
+nommée par UUID. Le loader suit ce nom et la session de cette aventure ; voir
+[l'isolation, ses sources et ses contrôles](run-isolation.md).
 **Copier le chemin** et **Ouvrir le dossier** restent disponibles pour le mode manuel.
 
 **Reconnecter** arrête la session précédente puis génère un nouveau script lié
@@ -14,7 +17,9 @@ silencieusement la nouvelle session. Un nouveau loader est préparé sans modifi
 l'INI du processus actif : il faut ouvrir le nouveau `connect.lua` dans la console,
 car l'autoload se déclenche seulement au chargement de ROM. Le verrouillage du jeu explique
 son origine et propose l'arrêt confirmé de Lua ; un DeSmuME encore lancé doit
-être fermé séparément pour changer de jeu.
+être fermé séparément depuis cette page. **Mes parties** propose aussi la fermeture
+normale confirmée du processus suivi, puis l'arrêt de Lua et la reprise de
+l'autre aventure. Un délai dépassé n'entraîne aucune terminaison forcée.
 
 Sur Blanc FR rev0, le test utilisateur confirme équipe, soins et zones hors combat.
 Les valeurs d'équipe sont garanties après synchronisation de la structure principale,

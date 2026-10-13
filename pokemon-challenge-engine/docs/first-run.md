@@ -16,9 +16,12 @@ n'est pas nécessaire pour préparer une installation simple.
    à ajouter une copie locale à la bibliothèque RetroBat.
 3. Dans **Mes parties → Nouvelle partie**, choisissez classique, modèle ou challenge
    personnalisé. Le premier jeu prêt est proposé lorsqu'aucun jeu n'a été demandé.
-   Sa sauvegarde détectée à forte confiance est préremplie ; vous pouvez la changer
-   ou ne lier aucun fichier. La création conserve les données choisies, sans créer
-   de sauvegarde Pokémon ni déplacer l'original.
+   **Nouvelle aventure** reste sélectionné par défaut, sans ancienne sauvegarde.
+   Pour continuer un ancien fichier, choisissez **Importer une sauvegarde existante**
+   et confirmez sa copie. La détection ne choisit pas un import à votre place.
+   La partie apparaît dès la publication de son suivi ; sa préparation copie ensuite
+   la ROM et l'environnement dans un espace indépendant, sans déplacer les originaux.
+   Sans import, le jeu créera lui-même sa sauvegarde normalement.
 4. Si **Support Lua requis** apparaît, ouvrez **Installation & diagnostic →
    Installer automatiquement le support Lua**. Le dialogue demande confirmation
    avant cette installation externe. Une DLL différente demande une seconde
@@ -65,7 +68,12 @@ La connexion n'est confirmée qu'à réception des messages du jeu. Des fichiers
 
 Quand Lua est déconnecté, **Reconnecter** arrête l'ancienne session PCE et prépare un nouveau script. L'ancien dossier reçoit un marqueur d'arrêt ; le chemin du nouveau script remplace l'ancien. Il faut charger ce nouveau script dans DeSmuME, puis cliquer sur **Run**. PCE ne réutilise pas silencieusement une session arrêtée.
 
-Pour changer de jeu, utilisez **Arrêter et changer de jeu**. Une confirmation précède l'arrêt de la session Lua ; le sélecteur redevient disponible après l'arrêt. Si le Mode Jeu suit encore un processus DeSmuME en cours, fermez sa fenêtre avant de lancer un autre jeu. Arrêter Lua ne ferme pas l'émulateur et ne modifie pas la sauvegarde.
+Pour changer de partie depuis **Mes parties**, reprenez la carte souhaitée puis
+confirmez **Fermer la session et continuer**. Enregistrez d'abord dans Pokémon.
+PCE demande une fermeture normale du DeSmuME qu'il suit, attend son arrêt, puis
+arrête Lua avant la reprise. Il ne force jamais la fermeture en cas de délai dépassé.
+Dans la page de connexion, **Arrêter et changer de jeu** conserve son rôle limité
+à Lua : cette action seule ne ferme pas l'émulateur.
 
 ## Stockage et réparations
 
@@ -75,6 +83,10 @@ En cas d'accès refusé, de fichier déplacé ou de configuration modifiée, le 
 
 Les profils de lancement historiques restent utilisables. La découverte reprend
 leurs chemins valides ; les références des parties existantes restent distinctes.
+Pour une ancienne partie, **Détails → Sauvegardes → Préparer des copies indépendantes**
+propose une copie confirmée de ses fichiers, avec conservation de l'historique.
+Les parties nouvelles possèdent leur propre espace après préparation ; les dossiers
+de sauvegardes et backups ne sont pas placés dans le cache nettoyable.
 Une vérification légère réutilise le rapport tant que les fichiers, dossiers et
 préférences connus ne changent pas. Elle est relancée à l'ouverture de **Mes parties**
 et après les modifications de configuration ou l'installation Lua. Il n'y a pas
@@ -87,7 +99,10 @@ de scan récursif permanent du PC.
 | Détection des installations, jeux, INI et sauvegardes | Automatique, dans les emplacements bornés et configurés |
 | Sélection parmi plusieurs candidats | Manuelle et explicite |
 | Préparation d'une archive locale et remplissage du profil | Automatique si les choix sont uniques ; sinon après résolution de l'ambiguïté |
-| Sauvegarde existante | Sélection automatique d'un candidat unique à forte confiance ; choix explicite en cas d'ambiguïté |
+| Sauvegarde existante | Candidat identifié par le diagnostic ; import dans une nouvelle partie uniquement après choix et confirmation |
+| ROM et fichiers de la nouvelle partie | Copies indépendantes vérifiées avant lancement ; aucune sauvegarde vide fabriquée |
+| Ancienne partie | Conservation de ses références ; assistant de copie confirmé dans les détails |
+| Suppression d'une partie | Arrêt du suivi, inventaire exact et confirmation ; originaux externes conservés, archivage disponible |
 | Installation de Lua | Assistée, avec confirmation préalable ; remplacement confirmé séparément |
 | Revérification d'un jeu préparé et création de la session Lua | Automatiques lors de **Jouer** |
 | Chargement Lua avec **Jouer** | Autoload sur le build reconnu après accord mémorisé ; chargement manuel en secours |

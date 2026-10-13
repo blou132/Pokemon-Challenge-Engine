@@ -1,5 +1,112 @@
 # Vérification V0.4.1 et historique V0.4 / V0.3.6 / V0.3.5 / V0.3 / V0.2 / V0.1
 
+## Finalisation des fichiers par aventure — 12 et 13 octobre 2026
+
+Base : `9e4483d55e5d767e1611b1f9e2872ecbe25ff6cc`, branche
+`feat/v0.4.1-run-flow-autolua`. Windows, Python 3.13.7, PySide6 6.11.2,
+pytest 9.1.1. Les versions de l'application, du protocole et du stockage sont
+conservées. Les [sources DeSmuME](run-isolation.md) expliquent les choix de
+chemins ; elles ne constituent pas une validation du jeu.
+
+### Essais réels du 12 octobre
+
+Les services de production PCE ont préparé puis lancé de vraies copies locales
+avec DeSmuME et l'autoload Lua. Un harnais appelle ces services, actionne des
+boutons via Lua et demande un slot au vrai émulateur. Aucune donnée d'équipe
+n'est simulée et aucune écriture RAM n'est introduite. Il ne s'agit pas d'un
+parcours intégral effectué à la souris dans l'interface PCE.
+
+| Essai | Résultat observé |
+| --- | --- |
+| Blanc Classique A et Nuzlocke B, chacun avec import explicite d'une copie du DSV | ROM, exécutable/INI, DSV, slots et backups distincts sous leurs UUID ; empreintes des copies vérifiées |
+| Premier lancement puis reprise de A et B | IRAF / FR / rev0 et `white_fr_rev0` ; équipe de trois lue à chaque session ; deux sessions et environ 18 secondes suivies séparément pour chaque partie |
+| Équipe Blanc réellement reçue | Espèce 511, niveau 20, PV 53/53 ; espèce 535, niveau 16, PV 44/44 ; espèce 499, niveau 23, PV 79/79 |
+| Isolation pendant les sessions | Empreintes, tailles et dates des fichiers des autres parties inchangées ; slots `.ds0` produits par DeSmuME et backups PCE dans les dossiers propres |
+| Suppression de la partie de test A | Inventaire vérifié puis suppression effective ; tous les fichiers vérifiés de B et de Noir 2 conservés identiques |
+| Blanc, nouvelle aventure sans import | DSV absent avant lancement puis créé par DeSmuME, distinct de la sauvegarde importée ; pas de faux DSV fabriqué par PCE |
+| Noir 2 après fermeture de Blanc | IREF / FR / rev0 et `black2_fr_rev0`, autoload et 185 messages réels, slot propre créé ; équipe non lue |
+| Noir 2 neuf, puis essai séparé avec import | Respectivement 164 et 139 messages, environ 70 secondes par essai, slots réels, fermeture normale et arrêt Lua ; aucune équipe initialisée observée |
+| Sources RetroBat | SHA-256, taille et date de modification identiques avant/après pour les deux ROM, les deux DSV, DeSmuME, son INI et les deux DLL Lua |
+
+La capture Noir 2 neuf montre **Nouvelle partie** ; l'essai importé a atteint
+l'introduction avec Keteleeria. Le DSV importé avait été copié à l'identique.
+Cela ne suffit ni à conclure que cette sauvegarde est invalide, ni à valider la
+lecture de l'équipe de Noir 2. Aucun offset n'a été modifié pour contourner cette
+limite. La création d'un DSV prouve une écriture de l'émulateur, pas l'achèvement
+d'une nouvelle aventure ni une sauvegarde manuelle du dresseur.
+
+Le blocage par une ancienne session est reproduit par les tests d'orchestration :
+la reprise était refusée tant que le processus précédent restait actif. Le
+nouveau parcours propose une fermeture normale confirmée, attend sa fin puis
+arrête Lua avant le nouvel UUID. Le lancement réel Blanc → Noir 2 est vérifié
+par les services. La cause exacte de l'incident utilisateur initial, sans sa
+trace, n'est pas certifiée rétrospectivement.
+
+Preuves locales exclues de Git : `runtime/iso12/r2/report.json`,
+`runtime/iso12/r4/report.json`, `runtime/iso12/r5/report.json` à la racine du
+dépôt. Les essais antérieurs r1/r3 sont partiels : un arrêt précoce du harnais
+Lua empêchait la lecture et le slot dans r3. Après correction du harnais de
+boutons/captures, r4/r5 confirment la continuité des heartbeats. Ces échecs ne
+sont pas comptés comme validations d'équipe.
+
+### Tests automatisés et interface
+
+Passe finale sur le code des commits `e56b314` et `c2513ae` : **1 829 tests
+réussis, aucun échec ni ignoré**, 775,03 secondes. Les 1 716 cas historiques
+sont conservés et 113 cas ajoutés dans cinq modules. Commande exécutée :
+
+```powershell
+..\.venv\Scripts\python.exe -m pytest -q --tb=short --durations=10 --junitxml=runtime/run-isolation-review/tests-final-delivery.xml
+```
+
+Les nouveaux cas utilisent des ROM, PE, DLL et sauvegardes synthétiques. Ils
+couvrent les copies et leur empreinte, les imports, la reprise sans sources
+RetroBat disponibles, les mauvaises identités, les liens/jonctions, les conflits
+d'écriture, les suppressions interrompues et les inventaires périmés. Les tests
+Qt couvrent le choix nouvelle aventure/import, la confirmation, le détachement
+de l'autosave, le changement de session et le maintien des anciens profils.
+
+Les premières passes ont révélé un accès à un profil historique `None`, deux
+préconditions absentes dans des tests du changement de session et un délai
+insuffisant du harnais Qt pour deux workers de suppression. L'accès a été
+corrigé, les préconditions reproduisent la sélection réelle et le harnais cède
+le GIL en attendant les opérations, sans retirer les assertions. Une passe
+complète intermédiaire a donné **1 803 réussites et deux échecs**, puis la passe
+suivante **1 824 réussites, aucun échec ni ignoré**. Cette dernière a été
+interrompue longuement par la session de travail ; sa durée n'est pas une mesure
+de performance de l'application.
+
+Les dernières régressions ont été reproduites avant correction : deux DLL
+manquantes acceptées par la préparation, puis présence du premier DSV non
+mémorisée à la fermeture sans backup. Les passes ciblées après correction ont
+donné **63 réussites** (isolation et actions de fichiers) et **46 réussites**
+(premier DSV/backups et service Mode Jeu). Les sources synthétiques restent
+identiques et une reprise refuse la disparition d'une sauvegarde déjà constatée.
+
+`compileall -q app tools` réussit. `tools.verify_ui --entrypoint` a réellement
+affiché puis fermé la fenêtre Windows avec une base isolée, code 0. Le rendu Qt
+de création à 700×700 a été inspecté. L'audit Git après indexation vérifie les
+exclusions et ne détecte aucun fichier interdit ni format de secret usuel ;
+`git diff --check` et les liens documentaires locaux sont valides. Aucun build
+PyInstaller n'a été exécuté pour cette phase Python.
+
+### Limites conservées
+
+- Noir, Noir 2 et Blanc 2 : lecture réelle d'équipe encore ouverte.
+  **En attente de validation sur la machine utilisateur.**
+- K.O. → mort virtuelle PCE → soin, évolutions et captures automatiques : les
+  validations réelles antérieurement ouvertes le restent. Aucun challenge n'est
+  imposé dans Pokémon.
+- Le parcours complet des nouvelles confirmations par clic utilisateur n'est
+  pas validé en jeu ; les widgets et workers sont testés avec données synthétiques.
+- Une fermeture forcée de PCE avant qu'il observe le premier DSV n'offre pas la
+  même détection de disparition qu'une fermeture normalement suivie.
+- Isolation validée sur le build DeSmuME reconnu. Chaque aventure consomme une
+  copie complète de la ROM et de l'émulateur. Les états manuels renommés restent
+  à associer explicitement.
+- Packaging V0.4.2 différé par la nouvelle priorité : aucun exécutable PyInstaller
+  ni ZIP distribué ou validé. Aucune fusion dans `main`.
+
 ## Installation automatique et actions manuelles — 8 octobre 2026
 
 Base : `ef93ce13bbfef5115180e4b86b1487fa5c45c9e0`, branche

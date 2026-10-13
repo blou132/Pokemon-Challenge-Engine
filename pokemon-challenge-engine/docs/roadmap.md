@@ -7,10 +7,10 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 La branche active est `feat/v0.4.1-run-flow-autolua`, issue de
 `feat/v0.4-runs-permadeath` au commit `237614fe4269f1420e46c86c3de26758500b09f9`.
-La V0.4.1 compte **1 716 tests réussis, aucun ignoré**, dont les 1 644 cas
-précédents et 72 nouveaux pour l'installation automatique et les actions
-manuelles. Les résultats du 8 octobre 2026 sont consignés séparément dans
-le rapport de vérification.
+Le contrôle final du 13 octobre 2026 compte **1 829 tests réussis, aucun échec ni
+ignoré**, dont les 1 716 cas précédents et 113 nouveaux pour les fichiers par
+aventure, les suppressions et le changement de session. Les résultats historiques
+restent consignés séparément dans le rapport de vérification.
 Le parcours réel Jouer avec autoload, le passage A/B et la restauration INI ont
 réussi sur copies isolées de Blanc. Les résultats et limites sont détaillés dans
 le [rapport de vérification](verification.md).
@@ -46,6 +46,19 @@ ajout d'une mort en secours. Le moteur existant continue de déduire une mort
 virtuelle d'une transition fiable de PV lorsque les deux règles sont actives.
 Les tests synthétiques de ces parcours ne valident pas les captures réelles,
 les badges ni de nouveaux scénarios réels de mort permanente.
+
+La finalisation V0.4.1 ajoute les copies propres à chaque aventure : ROM avec UUID,
+environnement DeSmuME, sauvegarde, states et nouveaux backups. Une nouvelle aventure
+démarre sans ancienne sauvegarde ; l'import et l'association d'une ancienne partie
+exigent confirmation et conservent les originaux. La suppression inventorie les
+fichiers de la partie et garde les références externes ; l'archivage reste disponible.
+Le passage d'une session à une autre demande une fermeture normale confirmée,
+attend DeSmuME puis Lua et conserve les identités du jeu et de la partie demandée.
+Les essais réels du 12 octobre confirment les fichiers séparés de deux parties
+de Blanc, leur reprise et la suppression de A sans toucher à B. Le lancement de
+Noir 2 après Blanc et son autoload sont vérifiés ; son équipe reste non validée.
+Les sources RetroBat sont identiques avant/après. Consulter les preuves et limites
+du [rapport de vérification](verification.md).
 
 Les captures et badges restent manuels ; aucune règle stricte n'agit dans le jeu.
 Le moteur d'événements, les clauses optionnelles, la persistance et le panneau
@@ -106,20 +119,28 @@ dans `main` n'est effectuée**. `main` conserve la V0.1.
 | V0.3.5 | Mode Jeu, contrôles et graphismes documentés, backups, profils de lancement et panneaux | Non-régression V0.3, UI 1366/1920, lancement et copies isolées réels ; vitesse directe/manettes non disponibles |
 | V0.3.6 | Premier démarrage, installation Lua, ZIP, diagnostic, reconnexion et fiabilité des profils | Tests de régression, interface et essais réels isolés distingués dans le rapport |
 | V0.4 | Parties persistantes, sessions, bibliothèque, identité, familles et mort permanente virtuelle | Tests synthétiques et lectures réelles séparés ; parcours réel K.O./soin et évolution à valider par l'utilisateur |
-| V0.4.1 | Mes parties unifié, création directe, installation locale automatique, états par jeu, manuel avancé, Actions manuelles, Jouer avec autoload Lua | Régressions de création et passage A/B, découverte bornée/cache/ambiguïtés/choix préservés, contrôle ciblé, INI réversible ; preuves réelles distinguées pour chaque parcours observé |
+| V0.4.1 | Mes parties unifié, création directe, installation automatique, autoload Lua, copies par aventure, suppression contrôlée et changement de session | Régressions de création et passage A/B, originaux intacts, sauvegardes/states distincts ; preuves réelles distinguées pour Blanc et Noir 2 |
+| V0.4.2, différée | Distribution Windows portable PyInstaller onedir | Exécutable réellement lancé sous Windows, persistance et import historique, ZIP sans ROM/BIOS/save personnelle |
 | V0.4.x | Suite des corrections issues des essais utilisateur | K.O./soin, évolutions et autres scénarios réels encore ouverts ; reproductions documentées et non-régression |
-| V0.5 | Level Cap | Plafonds par progression, comportement strict testé |
+| V0.5, proposition technique après V0.4.1 | Classique, Nuzlocke, Hardcore, Monotype, combinaisons personnalisées et étude Randomizer | Statuts par règle distinguant configuration, suivi, violation détectable et application stricte possible ; détection et avertissements d'abord |
 | V0.6 | Monotype appliqué | Modes Souple, Strict et Pur validés sur données réelles |
 | V0.7 | Restrictions en combat | Objets et soins détectés puis contraintes effectivement appliquées |
 | V0.8 | Randomizer et règles avancées | Compatibilité, reproductibilité, sauvegardes et distribution documentées |
 
-Autres axes : empaquetage PyInstaller, installation par utilisateur, migration des profils,
+Autres axes : installation par utilisateur, migration des profils,
 clavier et mise à l'échelle élevée, jeux Platine, HeartGold/SoulSilver,
 Émeraude et catalogues de types propres à chaque génération.
 
 Une option visible ou un statut `future_strict` ne constitue jamais une fonctionnalité
 d'application en jeu. L'interface devra continuer à distinguer l'intention, la lecture
 réelle et la contrainte effectivement mise en œuvre.
+
+La préparation V0.5 commence après finalisation de V0.4.1, sur une branche dédiée,
+par une proposition technique avant les changements majeurs. Elle doit partir de
+Blanc FR révision 0 puis traiter chaque autre profil séparément. Aucune écriture
+RAM n'est autorisée par cette préparation. Un Randomizer reste une recherche tant
+qu'une méthode fiable, une copie dérivée séparée et une autorisation explicite ne
+sont pas réunies. Un strict paramétré ne doit pas être affiché comme appliqué.
 
 Le numéro d'application `0.4.1` ne change pas le format du challenge (`0.1.0`).
 Le protocole Lua (`2`), la progression historique (`schema_version: 2`) et les
@@ -160,10 +181,10 @@ conservé dans un volet replié de la gestion des modèles.
 La V0.4.1 permet aussi une configuration directe sans profil intermédiaire.
 La bibliothèque sélectionne la carte créée après sa persistance ; l'ouverture
 du Mode Jeu exige l'accord entre l'identifiant demandé, le contrôleur actif et
-`runs/active.json`. Une session A encore ouverte bloque la reprise de B avec une
-explication. La sauvegarde détectée peut être préremplie à la création ; deux
-parties confirmées avec cette même référence partagent le fichier `.dsv`, mais
-leurs règles, compteurs et historiques PCE restent indépendants.
+`runs/active.json`. Une session A encore ouverte propose une fermeture normale
+confirmée avant la reprise de B. Une nouvelle aventure ne reprend aucune ancienne
+sauvegarde détectée. Les nouvelles parties préparent leurs fichiers indépendants ;
+les anciennes références partagées restent inchangées jusqu'à une copie confirmée.
 
 La V0.4 ne dépend pas de la disponibilité future des lectures de combat V0.3.
 Les familles préparent les clauses futures sans modifier le moteur de captures

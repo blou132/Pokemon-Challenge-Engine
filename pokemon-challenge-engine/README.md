@@ -37,9 +37,11 @@ vérifie son environnement et attend l'activation confirmée avant d'ouvrir le M
 Jeu. Une incohérence entre la partie demandée, le contrôleur et la sélection
 persistée affiche une erreur ; aucun compteur n'est repris de l'ancienne partie.
 **Jouer** lance DeSmuME ; le temps commence uniquement avec les messages
-valides du jeu correspondant et le processus lancé par PCE. Fermez DeSmuME et
-arrêtez Lua avant de changer de partie. Une fenêtre DeSmuME lancée ailleurs n'est
-pas associée automatiquement à ce chronomètre.
+valides du jeu correspondant et le processus lancé par PCE. Si une autre partie
+tourne, **Fermer la session et continuer** demande confirmation, attend la fermeture
+normale de DeSmuME, puis arrête Lua avant la reprise. Enregistrez d'abord dans le
+jeu ; aucune fermeture forcée n'est utilisée. Une fenêtre DeSmuME lancée ailleurs
+n'est pas associée automatiquement à ce chronomètre.
 
 L'équipe et les zones documentées sont enregistrées automatiquement. Avec
 Nuzlocke et Mort permanente actifs, une transition observée **PV > 0 → 0** d'un
@@ -54,8 +56,16 @@ son ajout manuel est un secours, sa correction reste accessible dans les détail
 La progression se trouve dans `runs/<uuid>/run.json`, hors des caches et exclue de
 Git. L'autosave PCE est atomique ; elle ne force aucune sauvegarde Pokémon.
 Les anciens `profiles/*/progress.json` et historiques sont conservés sans migration
-forcée. Deux parties liées au même `.dsv` partagent la sauvegarde Pokémon : créer
-une partie PCE ne crée ni n'importe une nouvelle sauvegarde en jeu.
+forcée. Une nouvelle partie prépare ses propres copies de ROM et de DeSmuME dans
+`runs/<uuid>/play/`, avec des dossiers de sauvegardes, save states et backups séparés.
+La copie de ROM est vérifiée par empreinte ; l'original reste intact.
+**Nouvelle aventure** démarre sans ancien `.dsv` : le jeu créera sa sauvegarde.
+**Importer une sauvegarde existante** copie le fichier choisi après confirmation.
+Les anciennes parties conservent leurs références ; **Détails → Sauvegardes →
+Préparer des copies indépendantes** permet une association confirmée, sans écraser
+leurs fichiers d'origine. **Supprimer cette partie** présente l'inventaire exact
+des fichiers PCE concernés ; les références externes sont conservées.
+Le statut **Archivée** conserve tous les fichiers.
 
 L'identité Gen V utilise PID et identifiant du dresseur d'origine documentés par
 PKHeX. La table sourcée couvre les 649 espèces et leurs familles ; les changements
@@ -63,17 +73,20 @@ de branche, retours en arrière et identifiants dupliqués suspendent l'identifi
 automatique. Le protocole **2** est conservé, avec deux champs facultatifs et des
 scripts Lua **0.4.0** ; les anciens messages restent acceptés.
 
-[Guide des parties](docs/run-manager.md) · [Stockage](docs/run-storage.md) ·
+[Guide des parties](docs/run-manager.md) · [Isolation et import](docs/run-isolation.md) · [Stockage](docs/run-storage.md) ·
 [Mort permanente](docs/permanent-death.md) · [Autosave](docs/run-autosave.md) ·
 [Sources de l'identité et des évolutions](docs/pokemon-identity-sources.md).
 
 Branche : `feat/v0.4.1-run-flow-autolua`, depuis la V0.4
 `237614fe4269f1420e46c86c3de26758500b09f9`, sans fusion dans `main`.
-La V0.4.1 compte **1 716 tests réussis, aucun ignoré**, dont 72 nouveaux cas pour
-la préparation automatique et les actions manuelles. Les résultats sont détaillés
+Le contrôle final du 13 octobre 2026 compte **1 829 tests réussis, aucun échec ni
+ignoré** : les 1 716 cas précédents et 113 nouveaux. Les résultats sont détaillés
 dans le rapport de vérification.
-L'essai réel antérieur sur copies de Blanc confirme Jouer avec autoload,
-le passage A/B, l'autosave et la restauration des réglages Lua.
+Les essais réels du 12 octobre confirment deux parties de Blanc (Classique et
+Nuzlocke), leurs reprises, leurs fichiers indépendants et la suppression de A
+sans toucher à B ni aux sources RetroBat. Une aventure neuve démarre sans DSV
+importé ; DeSmuME crée son propre fichier. Noir 2 lancé après Blanc confirme
+IREF / FR / rev0 et les heartbeats Lua ; son équipe reste non validée.
 Le [rapport de vérification](docs/verification.md) distingue tests synthétiques, rendus Qt
 et lectures réelles sur copie isolée. La séquence réelle K.O. → mort PCE → soin
 et les évolutions restent **En attente de validation sur la machine utilisateur.**
@@ -83,10 +96,11 @@ et les évolutions restent **En attente de validation sur la machine utilisateur
 PCE recherche les installations locales dès le démarrage, en arrière-plan, puis
 affiche l'état des quatre jeux. Une seule installation DeSmuME valide et un jeu
 local compatible suffisent pour une préparation automatique. Un unique candidat
-de sauvegarde à forte confiance est sélectionné ; aucune sauvegarde existante
-n'est requise pour commencer. Plusieurs choix crédibles restent à départager.
-À la création d'une partie, le jeu prêt et sa sauvegarde détectée sont proposés ;
-un choix déjà effectué par l'utilisateur est conservé.
+de sauvegarde à forte confiance est identifié par le diagnostic ; aucune sauvegarde
+existante n'est requise pour commencer. Plusieurs choix crédibles restent à départager.
+À la création, le jeu prêt est proposé et **Nouvelle aventure** reste le choix par
+défaut. La sauvegarde détectée n'est proposée qu'après le choix explicite d'un
+import. Un rafraîchissement ne remplace pas le fichier choisi.
 
 **Paramètres** présente l'installation et les jeux trouvés. **Installation &
 diagnostic** est une vue d'état avec **Jouer** pour le jeu prêt. Les chemins manuels
@@ -267,7 +281,8 @@ pour éviter une console Python supplémentaire :
 2. Choisir **Partie classique**, **Depuis un modèle existant** ou **Challenge personnalisé**.
 3. Pour un challenge personnalisé, ouvrir **Configurer les règles**, choisir un preset
    ou régler les règles, puis valider avec **Utiliser cette configuration**.
-4. Donner un nom à la partie et la créer ; l'environnement détecté est proposé.
+4. Donner un nom et garder **Nouvelle aventure**, ou choisir un import de sauvegarde
+   confirmé ; l'environnement détecté est proposé et les copies sont préparées.
 5. Cliquer **Jouer** lorsque le jeu est prêt. **Installation & diagnostic** indique
    l'action nécessaire si Lua manque ou qu'un choix reste ambigu.
 6. Retrouver la partie dans **Mes parties** pour la reprendre ou consulter ses règles

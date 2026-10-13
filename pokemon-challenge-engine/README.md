@@ -14,6 +14,10 @@ pour les versions suivantes. La règle Randomizer est uniquement prévue et conf
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)
 
+La [proposition V0.5](docs/v0.5-proposal.md) prépare les prochains contrôles de
+challenge. Cette branche documentaire conserve le code V0.4.1 vérifié ; aucune
+nouvelle contrainte ni randomisation de ROM n'y est activée.
+
 ## Mes parties — V0.4.1
 
 L'application s'ouvre sur **Mes parties**, qui rassemble création, reprise,

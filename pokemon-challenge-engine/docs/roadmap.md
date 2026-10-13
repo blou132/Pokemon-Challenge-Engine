@@ -5,8 +5,10 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 ## Situation actuelle
 
-La branche active est `feat/v0.4.1-run-flow-autolua`, issue de
-`feat/v0.4-runs-permadeath` au commit `237614fe4269f1420e46c86c3de26758500b09f9`.
+La V0.4.1 est finalisée sur `feat/v0.4.1-run-flow-autolua` au commit
+`7a823ca58b5898d3231408ebece4deb01a5dbbdd`. La branche
+`feat/v0.5-challenge-observation` prépare maintenant une
+[proposition technique](v0.5-proposal.md), sans nouveau comportement applicatif.
 Le contrôle final du 13 octobre 2026 compte **1 829 tests réussis, aucun échec ni
 ignoré**, dont les 1 716 cas précédents et 113 nouveaux pour les fichiers par
 aventure, les suppressions et le changement de session. Les résultats historiques

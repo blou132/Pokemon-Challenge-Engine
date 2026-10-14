@@ -40,12 +40,16 @@ Le script utilise les API DeSmuME `memory.readbyte` et `emu.frameadvance`.
 Les capacités effectivement reçues sont affichées par l'application ; les
 données indisponibles ne sont pas remplacées par des valeurs fictives.
 
-Les versions sont indépendantes : scripts/application `0.4.0`, protocole JSON
-`2` (Python reçoit aussi Lua 0.3.0/v2 et 0.2.0/v1), challenge conservé `0.1.0`,
+Les versions sont indépendantes : scripts `0.5.0`, protocole JSON
+`2` (Python reçoit aussi Lua 0.4.0/v2, 0.3.0/v2 et 0.2.0/v1), challenge conservé `0.1.0`,
 progression schéma `2`, run schéma `1`. Le lecteur ajoute les champs documentés
 `personality_id` et `original_trainer_id`, avec la capacité `party_identity`.
 Ils restent indépendants de l'espèce, du niveau et de la place dans l'équipe.
 Voir [Identité individuelle et familles](../docs/pokemon-identity-sources.md).
+Le script 0.5.0 ajoute la forme stockée `form` (0 à 31) et la capacité
+`party_form`, sans modifier le protocole v2. Les scripts 0.4.0 conservent la
+lecture d'identité ; leurs messages sans forme restent acceptés. Les sources
+et limites de ce champ figurent dans [la cartographie](../docs/memory-map.md).
 Lua écrit uniquement les fichiers de transport ; le service Python décide du
 suivi du profil actif. Le journal des observations est acquitté après traitement.
 

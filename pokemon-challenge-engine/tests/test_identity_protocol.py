@@ -21,7 +21,7 @@ def decode(data):
     return parse_message(json.dumps(data).encode())
 
 
-@pytest.mark.parametrize("version,script", [(1, "0.2.0"), (2, "0.3.0"), (2, "0.4.0")])
+@pytest.mark.parametrize("version,script", [(1, "0.2.0"), (2, "0.3.0"), (2, "0.4.0"), (2, "0.5.0")])
 def test_legacy_party_fields_are_unchanged(version, script):
     data = party_message(protocol_version=version, script_version=script)
     if version == 2:
@@ -33,7 +33,7 @@ def test_legacy_party_fields_are_unchanged(version, script):
 def test_new_identity_roundtrips_without_a_protocol_bump():
     data = identity_message()
     result = decode(data)
-    assert result.protocol_version == 2 and result.script_version == "0.4.0"
+    assert result.protocol_version == 2 and result.script_version == SCRIPT_VERSION
     assert result.party == data["party"]
     assert pokemon_identity(result.party[0]) == "gen5:ee123456:abcdef00"
 
@@ -42,10 +42,10 @@ def test_current_lua_declares_its_own_version_with_an_older_local_configuration(
     from test_lua_bridge import prepare, run_producer
     bridge, script = prepare(tmp_path)
     config = bridge.session_dir / "config.lua"
-    config.write_text(config.read_text(encoding="utf-8").replace('0.4.0', '0.3.0'), encoding="utf-8")
+    config.write_text(config.read_text(encoding="utf-8").replace(SCRIPT_VERSION, '0.3.0'), encoding="utf-8")
     run_producer(lua51, script, slots=[synthetic_slot(0)])
     state = bridge.poll()
-    assert state.script_version == "0.4.0"
+    assert state.script_version == SCRIPT_VERSION
     assert state.connected and state.party[0]["personality_id"] == 0xA3000555
 
 
@@ -95,7 +95,7 @@ def test_duplicate_individuals_remain_visible_for_run_ambiguity_handling():
     assert pokemon_identity(party[0]) == pokemon_identity(party[1])
 
 
-@pytest.mark.parametrize("script", [[], {}, None, 4, "0.5.0"])
+@pytest.mark.parametrize("script", [[], {}, None, 4, "0.6.0"])
 def test_unknown_or_malformed_script_version_is_protocol_error(script):
     with pytest.raises(ProtocolError):
         decode(identity_message(script_version=script))

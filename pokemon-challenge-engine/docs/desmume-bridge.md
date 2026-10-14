@@ -284,7 +284,7 @@ maintenant la connexion ; une lecture indisponible n'est pas remplacée par zér
 ## Protocole JSON v1
 
 Ce format historique reste accepté pour les scripts `0.2.0`. Les scripts
-livrés `0.4.0` produisent le format v2 décrit après cette section.
+livrés `0.5.0` produisent le format v2 décrit après cette section.
 
 Le validateur de référence est [app/bridge/protocol.py](../app/bridge/protocol.py).
 Un message doit contenir exactement les **16 champs** suivants. L'ordre des
@@ -344,7 +344,7 @@ de refuser l'identifiant ou le code d'un autre jeu.
 ### Extension JSON v2
 
 Le message conserve les 16 champs ci-dessus, avec `protocol_version: 2`,
-`script_version: "0.3.0"` ou `"0.4.0"`, et ajoute exactement un champ `observation`.
+`script_version: "0.3.0"`, `"0.4.0"` ou `"0.5.0"`, et ajoute exactement un champ `observation`.
 Il vaut `null` lorsque le lecteur n'est pas disponible. Sinon la capacité
 `tracking` et l'identité complète sont exigées. Les 20 champs de l'observation
 sont présents et nullables :
@@ -376,10 +376,18 @@ L'espèce, le niveau et le slot ne sont jamais substitués à cette identité.
 La [documentation des sources](pokemon-identity-sources.md) décrit le format,
 les collisions possibles et les tests. Le numéro du protocole reste **2**.
 
+Le script **0.5.0** conserve ces identités et ajoute `form`, champ facultatif
+entier de 0 à 31 ou `null`. Une forme connue exige la capacité `party_form` ;
+ce champ et cette capacité sont réservés au script 0.5.0. La lecture concerne
+la forme stockée dans l'équipe, sans indication du type effectif en combat.
+Les anciens scripts 0.4.0 gardent leurs identités, et tous les anciens messages
+sans forme restent acceptés. Une forme absente reste inconnue.
+Voir [la source et les tests de forme](memory-map.md#forme-gen-v-ajoutée-en-v05).
+
 | Version | Valeur | Rôle |
 | --- | --- | --- |
 | Application | `0.4.1` | Version de Pokemon Challenge Engine. |
-| Script Lua | `0.4.0` | Producteur v2 avec identité ; scripts 0.3.0/v2 et 0.2.0/v1 acceptés. |
+| Script Lua | `0.5.0` | Producteur v2 avec identité et forme ; scripts 0.4.0/v2, 0.3.0/v2 et 0.2.0/v1 acceptés. |
 | Protocole | `2` | Structure et validation des échanges JSON ; réception v1 conservée. |
 | Schéma des profils de challenge | `0.1.0` | Champ `version` des challenges persistés ; les profils V0.1 restent compatibles. |
 | Progression | `2` | Migration additive, état Nuzlocke et déduplication. |

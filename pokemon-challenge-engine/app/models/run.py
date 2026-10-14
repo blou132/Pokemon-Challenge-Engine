@@ -89,6 +89,8 @@ def _pokemon(value: object, *, observed: bool = False, generation: int | None = 
     for key in ("personality_id", "original_trainer_id"):
         if value.get(key) is not None and (type(value[key]) is not int or not 0 <= value[key] <= 0xffffffff):
             raise ValueError("Identifiant technique Pokémon invalide.")
+    if value.get("form") is not None and (type(value["form"]) is not int or not 0 <= value["form"] <= 31):
+        raise ValueError("Forme Pokémon invalide.")
 
 
 def _zone(value: object) -> None:

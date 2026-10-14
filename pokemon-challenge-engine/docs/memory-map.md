@@ -1,4 +1,28 @@
-# Cartographie mémoire — équipe, suivi et identité V0.4
+# Cartographie mémoire — équipe, suivi, identité et forme Gen V
+
+## Forme Gen V ajoutée en V0.5
+
+Le script Lua `0.5.0` publie `form`, entier de 0 à 31, avec la capacité
+`party_form`. La source est [PKHeX, `PK5.Form`, ligne 180](https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/PK5.cs#L180)
+au commit `09e7f18fbb33635e35cf9ffcbfd3322403780f8e` : les cinq bits hauts de
+l'octet canonique `0x40`, soit bloc B + `0x18`. La position physique du bloc B
+provient de la deuxième colonne de [la table `BlockPosition`](https://github.com/kwsch/PKHeX/blob/09e7f18fbb33635e35cf9ffcbfd3322403780f8e/PKHeX.Core/PKM/Util/PokeCrypto.cs#L56-L66).
+Les indices PID 24 à 31 reprennent les huit premières permutations, comme dans
+cette source. Aucun nouvel offset RAM absolu n'est ajouté.
+
+Le lecteur utilise les octets déjà déchiffrés et vérifiés par checksum. Les
+trois bits bas (sexe et rencontre spéciale) ne font pas partie de la forme.
+Cette valeur décrit la **forme stockée dans l'équipe**, pas les changements
+temporaires de forme ou de type pendant un combat. Le protocole vérifie la
+largeur du champ ; la compatibilité espèce/forme relève du catalogue Gen V.
+Un ancien message sans `form`, ou une valeur `null`, signifie forme inconnue,
+jamais forme zéro supposée.
+
+`tests/test_form_protocol.py` exécute Lua 5.1 sur RAM synthétique chiffrée : les
+32 indices de permutation pour les quatre profils, séparation des bits bas,
+transport Lua/Python, bornes et compatibilité des anciens producteurs. Ces
+tests ne valident pas la lecture réelle d'une forme alternative.
+**En attente de validation sur la machine utilisateur.**
 
 ## Identité individuelle ajoutée en V0.4
 

@@ -11,6 +11,12 @@ local GROWTH_POSITIONS = {
     0, 0, 0, 0, 0, 0, 1, 1, 2, 3, 2, 3,
     1, 1, 2, 3, 2, 3, 1, 1, 2, 3, 2, 3,
 }
+-- Bloc B : deuxième colonne de BlockPosition dans PKHeX PokeCrypto.cs.
+-- Source épinglée et offset du champ : docs/memory-map.md, « Forme Gen V ».
+local ATTACKS_POSITIONS = {
+    1, 1, 2, 3, 2, 3, 0, 0, 0, 0, 0, 0,
+    2, 3, 1, 1, 3, 2, 2, 3, 1, 1, 3, 2,
+}
 local REGIONS = {F = "FR", O = "EN", D = "DE", I = "IT", J = "JP", K = "KO", S = "ES"}
 
 local function integer(value, minimum, maximum)
@@ -100,6 +106,10 @@ local function decode_slot(readbyte, address, slot)
     -- PKHeX PK5: PID at 0x00; ID32 at canonical 0x0C (block A + 4).
     -- Both stay independent of species, slot, level and current HP.
     local trainer_id = dword(bytes, growth + 4)
+    -- PK5.Form : cinq bits hauts de 0x40, soit bloc B + 0x18.
+    -- Forme stockée uniquement ; ne décrit pas les transformations de combat.
+    local attacks = 8 + ATTACKS_POSITIONS[permutation] * 32
+    local form = math.floor(bytes[attacks + 0x18] / 8)
     decrypt(bytes, STORED_BYTES, PARTY_BYTES - 2, pid)
     local level, hp, maximum = bytes[0x8C], word(bytes, 0x8E), word(bytes, 0x90)
     if not integer(species, 1, 649) or not integer(level, 1, 100)
@@ -107,7 +117,7 @@ local function decode_slot(readbyte, address, slot)
         return nil, "Valeurs Pokemon incoherentes"
     end
     return {slot = slot, species_id = species, level = level, hp = hp, max_hp = maximum,
-        personality_id = pid, original_trainer_id = trainer_id}
+        personality_id = pid, original_trainer_id = trainer_id, form = form}
 end
 
 function M.read_party(memory, profile)

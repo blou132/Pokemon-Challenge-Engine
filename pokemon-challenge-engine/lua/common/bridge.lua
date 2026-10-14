@@ -1,6 +1,6 @@
 -- Passerelle locale, exclusivement en lecture de la mémoire du jeu.
 -- Les seuls fichiers écrits appartiennent à la session créée par Python.
-local M = {SCRIPT_VERSION = '0.4.0'}
+local M = {SCRIPT_VERSION = '0.5.0'}
 
 local function load_config(path)
     local ok, config = pcall(dofile, path)
@@ -112,7 +112,7 @@ function M.run(config_path)
         local data = reader.read_party(memory, profile)
         if data.status ~= 'ok' then result.error = data.message; return result end
         result.party_size, result.party = data.party_size, json.array(data.party)
-        for _, capability in ipairs({'party_size', 'party_species', 'party_level', 'party_hp', 'party_identity'}) do
+        for _, capability in ipairs({'party_size', 'party_species', 'party_level', 'party_hp', 'party_identity', 'party_form'}) do
             table.insert(result.capabilities, capability)
         end
         return result

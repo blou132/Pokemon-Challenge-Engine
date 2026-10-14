@@ -72,11 +72,12 @@ def crypt(data: bytes, seed: int) -> bytes:
     return bytes(result)
 
 
-def synthetic_slot(permutation: int, *, species=501, level=5, hp=19, max_hp=21) -> bytes:
+def synthetic_slot(permutation: int, *, species=501, level=5, hp=19, max_hp=21, form=0, form_flags=7) -> bytes:
     # Le bit de poids fort vérifie le calcul exact du PID non signé dans Lua 5.1.
     pid = 0xA3000555 | (permutation << 13)
     canonical = bytearray((index * 37 + 13) % 256 for index in range(128))
     struct.pack_into("<H", canonical, 0, species)
+    canonical[0x40 - 8] = (form << 3) | form_flags
     checksum = sum(value for (value,) in struct.iter_unpack("<H", canonical)) & 0xFFFF
     physical = b"".join(canonical[index * 32 : (index + 1) * 32]
                         for index in PERMUTATIONS[permutation % 24])

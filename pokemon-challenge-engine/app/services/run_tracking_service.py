@@ -9,8 +9,10 @@ from time import monotonic
 from uuid import uuid4
 
 from app.core.run_manager import RunManager
+from app.core.rule_observation import RunPokemonData
 from app.models.profile import validate_json_data
 from app.models.run import RUN_STATUSES, Run, history_event, utc_now, validate_timestamp, _pokemon
+from app.services.run_transformation_provider import RunTransformationProvider
 
 
 def set_inactive_run_status(manager: RunManager, run_id: str, status: str) -> Run:
@@ -56,6 +58,8 @@ class RunTrackingService:
             if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
                 raise ValueError("Les délais de suivi doivent être positifs et finis.")
         self.manager, self._clock, self._utc_clock = manager, clock, utc_clock
+        self._transformation_provider = RunTransformationProvider(manager.root)
+        self.transformation_error: str | None = None
         self.debounce_seconds, self.heartbeat_seconds = debounce_seconds, heartbeat_seconds
         self.observation_timeout = observation_timeout
         self._run: Run | None = None
@@ -301,6 +305,8 @@ class RunTrackingService:
             for key in ("personality_id", "original_trainer_id"):
                 if value.get(key) is not None and (type(value[key]) is not int or not 0 <= value[key] <= 0xffffffff):
                     raise ValueError("Identifiant Pokémon invalide.")
+            if value.get("form") is not None and (type(value["form"]) is not int or not 0 <= value["form"] <= 31):
+                raise ValueError("Forme Pokémon invalide.")
             validate_json_data(value)
             result.append(value)
         return sorted(result, key=lambda item: item["slot"])
@@ -355,22 +361,35 @@ class RunTrackingService:
             self._mark()
 
     def _observe_party(self, observed: list[dict]) -> None:
-        from app.core.pokemon_identity import pokemon_identity, documented_evolution
+        from app.core.pokemon_identity import pokemon_identity
         run = self._require()
+        try:
+            transformation = self._transformation_provider.for_run(run)
+            self.transformation_error = None
+        except (OSError, ValueError) as exc:
+            transformation = None
+            self.transformation_error = str(exc)
+        data = RunPokemonData(run, transformation)
         keys = [pokemon_identity(item, run.generation) for item in observed]
         counts = Counter(key for key in keys if key is not None)
         current = {}
-        permanent = {"nuzlocke", "permanent_death"} <= set(run.active_rules)
+        permanent = "permanent_death" in run.active_rules
         for pokemon, key in zip(observed, keys):
             known = run.known_pokemon.get(key) if key else None
             reason = "Identité individuelle insuffisante : confirmation manuelle nécessaire."
             ambiguous = False
+            unproven_evolution = False
             if key is not None and counts[key] > 1:
                 ambiguous = True
                 reason = "Identifiants dupliqués dans l'équipe : confirmation manuelle nécessaire."
-            if key is not None and known and known["species_id"] != pokemon["species_id"] and not documented_evolution(known["species_id"], pokemon["species_id"], run.generation):
-                ambiguous = True
-                reason = "Changement d'espèce hors évolution individuelle documentée : identité à vérifier manuellement."
+            if key is not None and known and known["species_id"] != pokemon["species_id"]:
+                evolution = data.evolution(known["species_id"], pokemon["species_id"], known.get("form"), pokemon.get("form"))
+                if evolution is None:
+                    unproven_evolution = True
+                    reason = "Changement d'espèce non vérifiable : données d'évolution de la ROM indisponibles."
+                elif not evolution:
+                    ambiguous = True
+                    reason = "Changement d'espèce hors évolution individuelle documentée : identité à vérifier manuellement."
             if key is not None and known and known.get("identity_ambiguous", False):
                 ambiguous = True
                 reason = known.get("identity_ambiguity_reason", "Identité déjà signalée ambiguë dans cette partie.")
@@ -378,12 +397,16 @@ class RunTrackingService:
                 changed = known is None or not known.get("identity_ambiguous", False) or known.get("identity_ambiguity_reason") != reason
                 if known is None:
                     known = deepcopy(pokemon) | {"first_seen_at": self._now(), "last_seen_at": self._now(),
-                             "species_history": [{"species_id": pokemon["species_id"], "timestamp": self._now()}],
+                             "species_history": [{"species_id": pokemon["species_id"], "form": pokemon.get("form"), "timestamp": self._now()}],
                              "pokemon_key": key, "identity_confidence": "weak", "life_status": "unknown"}
                 known.update(identity_ambiguous=True, identity_ambiguity_reason=reason, identity_confidence="weak")
                 run.known_pokemon[key] = known
                 if changed:
                     self._mark()
+                key = None
+            elif unproven_evolution:
+                # Missing evidence is recoverable; do not permanently mark a
+                # known individual ambiguous just because its ROM data is absent.
                 key = None
             pokemon["pokemon_key"] = key
             pokemon["identity_confidence"] = "strong" if key else "weak"
@@ -403,7 +426,7 @@ class RunTrackingService:
                     known = {"first_seen_at": self._now(), "species_history": []}
                 history = known["species_history"]
                 if not history or history[-1]["species_id"] != pokemon["species_id"]:
-                    history.append({"species_id": pokemon["species_id"], "timestamp": self._now()})
+                    history.append({"species_id": pokemon["species_id"], "form": pokemon.get("form"), "timestamp": self._now()})
                 known.update(deepcopy(pokemon), last_seen_at=self._now())
                 run.known_pokemon[key] = known
         if observed != run.current_party:

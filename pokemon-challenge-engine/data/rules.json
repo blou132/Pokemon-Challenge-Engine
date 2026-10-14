@@ -19,13 +19,13 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
     "id": "permanent_death",
     "name": "Mort permanente",
-    "description": "Tout Pokémon K.O. doit être retiré de l'équipe et ne plus être utilisé. Suivi manuel ; aucune exclusion imposée directement dans le jeu.",
+    "description": "Tout Pokémon K.O. doit être retiré de l'équipe et ne plus être utilisé. Transition fiable suivie dans PCE, confirmation manuelle si nécessaire ; aucune exclusion imposée dans le jeu.",
     "difficulty": 4,
     "category": "Équipe",
     "requires": [],
@@ -38,7 +38,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "future_strict",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
@@ -59,13 +59,13 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
     "id": "level_cap",
     "name": "Level Cap",
-    "description": "Fixez manuellement le niveau maximum autorisé. Le plafond peut évoluer dans le suivi du profil.",
+    "description": "Fixez le niveau maximum autorisé. Les niveaux observés sont comparés au plafond figé de la partie ; aucun blocage dans le jeu.",
     "difficulty": 3,
     "category": "Progression",
     "requires": [],
@@ -78,7 +78,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "future_strict",
+    "implementation_status": "partial",
     "parameters": {
       "max_level": {
         "type": "integer",
@@ -105,7 +105,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "future_strict",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
@@ -181,7 +181,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
@@ -203,7 +203,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
@@ -225,7 +225,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
@@ -244,7 +244,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "planned",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
@@ -267,7 +267,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {
       "per_zone": {
         "type": "integer",
@@ -320,7 +320,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   }
 ]

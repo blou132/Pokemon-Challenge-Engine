@@ -131,5 +131,12 @@ class ChallengeEngine:
         for rule_id in active & self.catalog.rules.keys():
             if challenge.settings["enforcement"] == "soft" and not self.catalog.rules[rule_id].supports_soft_mode:
                 errors.append(f"{self.catalog.rules[rule_id].name} n'est pas disponible en mode souple.")
+        if "rom_transformation" in challenge.settings:
+            from app.services.rom_transformation_service import transformation_options
+            try:
+                if transformation_options(challenge.to_dict()) is None:
+                    errors.append("La configuration de transformation ROM ne peut pas être vide.")
+            except ValueError as exc:
+                errors.append(str(exc))
         # Le mode strict reste une intention enregistrée, sans promettre son application.
         return errors

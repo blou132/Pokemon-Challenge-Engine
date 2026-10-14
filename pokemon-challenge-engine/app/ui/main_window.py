@@ -316,16 +316,19 @@ class MainWindow(QMainWindow):
         if self._requested_run_id == run_id and self.run_controller.requested_run_id is None:
             self.run_controller.activate(run_id)
 
-    def new_run(self, profile=None, *, game_id=None):
+    def new_run(self, profile=None, *, game_id=None, challenge=None):
         from app.ui.run_dialogs import NewRunDialog
         from app.services.run_launch_service import RunLaunchService
         from PySide6.QtWidgets import QDialog
         options = GameModeConfigStore(self.base_dir, self.config).load()["launch_profiles"]
-        dialog = NewRunDialog(self.catalog, self.profiles.list_profiles(), options, self, profile=profile)
+        dialog = NewRunDialog(self.catalog, self.profiles.list_profiles(), options, self, profile=profile, base_dir=self.base_dir)
         if self._discovery_report is not None:
             dialog.set_detection_state(self._discovery_report, select_ready=profile is None and game_id is None)
         if game_id is not None:
             dialog.game_combo.setCurrentIndex(dialog.game_combo.findData(game_id))
+        if challenge is not None:
+            dialog.game_combo.setCurrentIndex(dialog.game_combo.findData(challenge.game_id))
+            dialog.set_custom_challenge(challenge.to_dict())
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         try:
@@ -857,6 +860,11 @@ class MainWindow(QMainWindow):
             self.open_game_mode()
             return
         errors = ChallengeEngine(self.catalog).validate(challenge)
+        if not errors and "randomizer" in challenge.active_rules:
+            # The legacy direct launcher must never silently launch a stock ROM
+            # when this challenge requests a derived, isolated adventure.
+            self.new_run(challenge=challenge)
+            return
         launcher = LauncherService(self.config)
         errors.extend(launcher.validate(challenge.game_id))
         if errors:

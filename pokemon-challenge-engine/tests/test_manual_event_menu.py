@@ -90,7 +90,7 @@ def test_death_tracking_notice_matches_actual_rules_without_manual_capture_or_ba
     try:
         page.set_persistent_run(observe(tracker, 30))
         page.set_persistent_run(observe(tracker, 0))
-        automatic = len(rules) == 2
+        automatic = "permanent_death" in rules
         deaths = tracker.active_run.deaths or []
         assert len(deaths) == (1 if automatic else 0)
         assert not page.death_tracking_label.isHidden()

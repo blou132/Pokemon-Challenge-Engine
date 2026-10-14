@@ -11,11 +11,13 @@ from PySide6.QtWidgets import (
 
 from app.bridge.state import BridgeState
 from app.core.catalog import Catalog
+from app.core.rule_observation import level_cap
 from app.models.profile import Profile
 from app.services.game_mode_service import RunState
 from app.services.tracking_service import TrackingState
 from app.ui.widgets.common import MODE_LABELS, label
 from app.ui.widgets.nuzlocke import NuzlockeWidget, UNAVAILABLE, species_name
+from app.ui.widgets.rule_observation import rule_observation_text, shiny_label
 
 
 BLOCK_LABELS = {
@@ -57,19 +59,22 @@ class TeamSlot(QFrame):
         self.hp_bar.setRange(0, 100)
         self.hp_bar.setValue(0)
         self.status_label = label("Statut : " + UNAVAILABLE, "teamStatus")
+        self.shiny_label = label("Shiny : inconnu", "muted")
         layout.addWidget(self.name_label)
         layout.addWidget(self.hp_label)
         layout.addWidget(self.hp_bar)
         layout.addWidget(self.status_label)
+        layout.addWidget(self.shiny_label)
         self.number = number
 
-    def set_pokemon(self, pokemon: dict | None, *, known_empty=False):
+    def set_pokemon(self, pokemon: dict | None, *, known_empty=False, generation=5):
         if pokemon is None:
             self.name_label.setText(f"{self.number:02} · " + ("Emplacement vide" if known_empty else UNAVAILABLE))
             self.hp_label.setText("—" if known_empty else UNAVAILABLE)
             self.status_label.setText("—" if known_empty else "Statut : " + UNAVAILABLE)
             self.hp_bar.setValue(0)
             self.hp_bar.setVisible(False)
+            self.shiny_label.setText("—" if known_empty else "Shiny : inconnu")
             return
         level = pokemon.get("level")
         name = species_name(pokemon.get("species_id"))
@@ -81,6 +86,7 @@ class TeamSlot(QFrame):
             self.hp_bar.setValue(round(100 * hp / maximum))
         self.status_label.setText("☠ Mort dans cette partie" if pokemon.get("life_status") == "dead" else
                                  "K.O." if hp == 0 else "Statut : " + UNAVAILABLE)
+        self.shiny_label.setText(shiny_label(pokemon, generation))
 
 
 class GameModePage(QWidget):
@@ -105,6 +111,8 @@ class GameModePage(QWidget):
         self._run = RunState()
         self._interface = None
         self._persistent_run = None
+        self._transformation = None
+        self._transformation_error = ""
         self._autosave = {}
         self._panels_visible = True
         self._session_phase = None
@@ -338,9 +346,13 @@ class GameModePage(QWidget):
         self.rules_label = label("Aucune règle sélectionnée", "muted")
         self.monotype_label = label("")
         self.randomizer_label = label("")
+        self.rule_observation_label = label("", "muted")
+        self.rule_observation_label.setTextFormat(Qt.TextFormat.PlainText)
+        self.rule_observation_label.hide()
         for widget in (self.profile_label, self.game_label, self.mode_label, self.time_label,
                        self.rules_label, self.monotype_label, self.randomizer_label):
             challenge.addWidget(widget)
+        challenge.addWidget(self.rule_observation_label)
 
         team = self._block("team")
         self.team_note = label("Équipe : " + UNAVAILABLE, "muted")
@@ -408,6 +420,7 @@ class GameModePage(QWidget):
             self._render_persistent()
             return
         self._profile = profile
+        self.rule_observation_label.hide()
         self.profile_label.setText(profile.name if profile else "Sans profil")
         challenge = profile.challenge if profile else None
         game = self.catalog.games.get(challenge.game_id) if challenge else None
@@ -538,7 +551,14 @@ class GameModePage(QWidget):
         self._render_persistent()
         self._render_session()
 
-    def set_persistent_run(self, run, autosave=None):
+    def set_persistent_run(self, run, autosave=None, *, transformation=_KEEP_SELECTION, transformation_error=_KEEP_SELECTION):
+        if run is None or self._persistent_run is None or self._persistent_run.run_id != run.run_id:
+            self._transformation = None
+            self._transformation_error = ""
+        if transformation is not _KEEP_SELECTION:
+            self._transformation = deepcopy(transformation)
+        if transformation_error is not _KEEP_SELECTION:
+            self._transformation_error = transformation_error
         self._persistent_run = deepcopy(run)
         self._autosave = deepcopy(autosave or {})
         self.run_bar.setVisible(run is not None)
@@ -551,6 +571,13 @@ class GameModePage(QWidget):
             with QSignalBlocker(self.game_combo):
                 self.game_combo.setCurrentIndex(self.game_combo.findData(run.game_id))
             self._render_persistent()
+        else:
+            self.rule_observation_label.clear()
+            self.rule_observation_label.hide()
+            self.game_combo.setEnabled(True)
+            self.profile_combo.setEnabled(True)
+            self.profile_combo.setToolTip("")
+            self.set_profiles(list(self._profiles.values()), selected_id=None)
 
     def _render_persistent(self):
         run = self._persistent_run
@@ -583,10 +610,10 @@ class GameModePage(QWidget):
         self.stat_labels["seed"].setText(str(run.seed) if run.seed is not None else "Non renseigné")
         deaths = [death for death in run.deaths or [] if not death.get("corrected", False)]
         self.stat_labels["deaths"].setText(str(len(deaths)) if run.deaths is not None else "Non renseigné")
-        permanent_death = {"nuzlocke", "permanent_death"} <= set(rules)
+        permanent_death = "permanent_death" in rules
         self.death_tracking_label.setText(
             "Mort automatique : individu fiable et passage de PV > 0 à 0 observé."
-            if permanent_death else "Mort automatique inactive : Nuzlocke et Mort permanente requis.")
+            if permanent_death else "Mort automatique inactive : Mort permanente requise.")
         pending = [item for item in run.pending_deaths if not item.get("resolved", False)]
         self.stat_labels["deaths"].setToolTip("")
         if pending:
@@ -595,7 +622,13 @@ class GameModePage(QWidget):
         self.capture_count_label.setText("Captures · Manuel : " + (str(len(run.captures)) if run.captures is not None else "Non renseigné"))
         self.monotype_label.hide()
         self.randomizer_label.hide()
-        self.stat_labels["level_cap"].setText("Non renseigné")
+        cap = level_cap(run)
+        self.stat_labels["level_cap"].setText(str(cap) if cap is not None else "Non renseigné")
+        observations = rule_observation_text(run, self.catalog, transformation=self._transformation)
+        if self._transformation_error:
+            observations = "ROM dérivée non vérifiée : " + self._transformation_error + "\n\n" + observations
+        self.rule_observation_label.setText(observations)
+        self.rule_observation_label.setVisible(bool(rules))
         zone = run.current_zone
         self.zone_label.setText((zone.get("name") or zone.get("id") or "Non renseigné") if isinstance(zone, dict)
                                 else zone or "Non renseigné")
@@ -605,7 +638,7 @@ class GameModePage(QWidget):
         self.team_note.show()
         self.team_note.setText("Dernière équipe observée · " + ("Lua connecté" if matching else "hors ligne"))
         for index, slot in enumerate(self.team_slots):
-            slot.set_pokemon(party[index] if index < len(party) else None, known_empty=bool(party))
+            slot.set_pokemon(party[index] if index < len(party) else None, known_empty=bool(party), generation=run.generation)
         self.nuzlocke_widget.hide()
         self.history_label.setText("\n".join(event["type"].replace("_", " ") for event in run.history[-5:]) or "Aucun événement")
         saved = self._autosave.get("last_saved_at")

@@ -1,6 +1,7 @@
 """Préparation d'un challenge ; les validations restent dans le moteur."""
 
 import logging
+from pathlib import Path
 import secrets
 
 from PySide6.QtCore import Signal, QSignalBlocker
@@ -17,7 +18,13 @@ from app.core.profile_manager import ProfileManager
 from app.core.random_selector import RandomSelector
 from app.core.rule_engine import RuleEngine
 from app.models.challenge import Challenge
+from app.services.rom_transformation_service import (
+    RandomizerOptions, RandomizerToolStore, RomTransformationService, transformation_options,
+)
 from app.ui.monotype_wheel import MonotypeDialog
+from app.ui.widgets.randomizer_configuration import (
+    CATEGORY_LABELS, RandomizerConfiguration, RandomizerToolVerificationDialog,
+)
 from app.ui.widgets.common import MODE_LABELS, STATUS_LABELS, card, label, page_layout
 
 LOGGER = logging.getLogger(__name__)
@@ -32,11 +39,23 @@ def challenge_summary(challenge: Challenge, catalog: Catalog) -> str:
     for rule_id in challenge.active_rules:
         rule = catalog.rules.get(rule_id)
         lines.append("• " + (rule.name if rule else rule_id))
+    if "shiny_only" in challenge.active_rules:
+        lines.extend(["", "Shiny Only : contrôle de présence, sans modification des apparitions.",
+                      "Taux original conservé · aucun patch appliqué (base Gen V : 1/8192, hors bonus et rencontres spéciales)."])
     if challenge.monotype and "monotype" in challenge.active_rules:
         config = challenge.monotype
         type_name = next((t["name"] for t in catalog.types if t["id"] == config["type_id"]), config["type_id"])
         mode = {"soft": "Souple", "strict": "Strict", "pure": "Pur"}[config["mode"]]
         lines.extend(["", f"Monotype : {type_name} · {mode}", f"Tirage n° {config['roll_index'] + 1}"])
+    if "randomizer" in challenge.active_rules:
+        options = transformation_options(challenge.to_dict())
+        if options is None:
+            lines.extend(["", "Randomizer déclaré uniquement · aucune transformation demandée dans ce modèle historique."])
+        else:
+            lines.extend(["", "ROM randomisée dédiée à créer après confirmation · aucune transformation encore appliquée.",
+                          "Catégories : " + ", ".join(CATEGORY_LABELS[key] for key in options.categories),
+                          "Puissance similaire : " + ("oui" if options.balanced else "non"),
+                          f"Seed de la ROM : {challenge.seed} · nouvelle aventure sans import de sauvegarde."])
     parameters = challenge.settings.get("rule_parameters", {})
     for rule_id, values in parameters.items():
         if rule_id in challenge.active_rules and values:
@@ -59,7 +78,7 @@ class ChallengePage(QWidget):
     launch_requested = Signal(object)
 
     def __init__(self, catalog: Catalog, profiles: ProfileManager | None, parent: QWidget | None = None,
-                 *, configuration_only: bool = False) -> None:
+                 *, configuration_only: bool = False, base_dir: Path | None = None) -> None:
         super().__init__(parent)
         self.catalog = catalog
         self.profiles = profiles
@@ -73,6 +92,7 @@ class ChallengePage(QWidget):
         self.parameter_controls: dict[str, dict[str, QSpinBox]] = {}
         self._generated_parameter_rules = set()
         self._generated_parameter_signature = None
+        self._randomizer_base_dir = None
         layout = page_layout(self, "Configurer le challenge" if configuration_only else "Configurer un modèle",
                              "Ces règles seront copiées directement dans votre partie." if configuration_only else
                              "Composez des règles réutilisables. Chaque sauvegarde crée un nouveau modèle pour vos aventures dans Mes parties.")
@@ -83,6 +103,7 @@ class ChallengePage(QWidget):
         layout.addWidget(self._build_options())
         layout.addWidget(self._build_rules())
         layout.addWidget(self._build_extras())
+        self.set_randomizer_base_dir(base_dir if base_dir is not None else profiles.root.parent if profiles is not None else None)
         layout.addWidget(self._build_result())
         layout.addStretch()
         self.mode_combo.currentIndexChanged.connect(self._constraints_changed)
@@ -197,6 +218,23 @@ class ChallengePage(QWidget):
         extras_box.addWidget(self.monotype_row)
         self.monotype_note = label("La roue configure le type de la règle Monotype active. Sans tirage manuel, le type est déterminé par la seed.", "muted")
         extras_box.addWidget(self.monotype_note)
+        self.shiny_rate_group = QWidget()
+        shiny_form = QFormLayout(self.shiny_rate_group)
+        shiny_form.setContentsMargins(0, 0, 0, 0)
+        shiny_form.addRow(label("Shiny Only contrôle les Pokémon présents ; ne modifie pas les apparitions.", "muted"))
+        self.shiny_rate_combo = QComboBox()
+        self.shiny_rate_combo.addItem("Original · aucun patch (base 1/8192)", "original")
+        for denominator in (4096, 1024, 512, 128, 1):
+            self.shiny_rate_combo.addItem(f"1/{denominator} · non disponible", denominator)
+        self.shiny_rate_combo.currentIndexChanged.connect(self._restore_original_shiny_rate)
+        shiny_form.addRow("Taux d'apparition shiny", self.shiny_rate_combo)
+        self.shiny_rate_note = label("", "muted")
+        shiny_form.addRow(self.shiny_rate_note)
+        extras_box.addWidget(self.shiny_rate_group)
+        self.randomizer_widget = RandomizerConfiguration()
+        self.randomizer_widget.changed.connect(self.invalidate)
+        self.randomizer_widget.verify_tool_requested.connect(self._verify_randomizer_tools)
+        extras_box.addWidget(self.randomizer_widget)
         form = self.parameter_form = QFormLayout()
         for rule in self.catalog.rules.values():
             if not rule.parameters:
@@ -213,6 +251,50 @@ class ChallengePage(QWidget):
                 self.parameter_controls[rule.id][key] = spin
         extras_box.addLayout(form)
         return extras
+
+    def set_randomizer_base_dir(self, base_dir: Path | None):
+        """Attach explicit persistent storage; local tool paths never enter a model."""
+        self._randomizer_base_dir = Path(base_dir) if base_dir is not None else None
+        if self._randomizer_base_dir is None:
+            self.randomizer_widget.set_tool_status("unverified", "Le stockage local des outils n'est pas associé à cet éditeur.")
+            return
+        try:
+            paths = RandomizerToolStore(self._randomizer_base_dir).load()
+        except (ValueError, OSError) as exc:
+            self.randomizer_widget.set_tool_status("unverified", str(exc))
+        else:
+            self.randomizer_widget.set_tool_paths(paths["java_path"], paths["jar_path"])
+            self.randomizer_widget.set_tool_status("unverified", "Chemins locaux chargés. Les outils seront revérifiés avant chaque transformation.")
+
+    def _verify_randomizer_tools(self, java_path, jar_path):
+        if self._randomizer_base_dir is None:
+            self.randomizer_widget.set_tool_status("error", "Le stockage local des outils n'est pas associé à cet éditeur.")
+            return
+        store = RandomizerToolStore(self._randomizer_base_dir)
+        self.randomizer_widget.set_tool_status("checking", "Vérification des outils en cours…")
+        dialog = RandomizerToolVerificationDialog(lambda: store.save(java_path, jar_path), self)
+        dialog.begin()
+        accepted = dialog.exec() == dialog.DialogCode.Accepted
+        self.randomizer_widget.set_tool_status("verified" if accepted else "error",
+            "Outils vérifiés et enregistrés localement. Compatibilité de la ROM encore à vérifier."
+            if accepted else dialog.error or "Vérification des outils non terminée.")
+        dialog.deleteLater()
+
+    def _restore_original_shiny_rate(self, *_args):
+        # Disabled entries must not become effective settings through restored UI state.
+        with QSignalBlocker(self.shiny_rate_combo):
+            self.shiny_rate_combo.setCurrentIndex(0)
+
+    def _update_shiny_rate_support(self):
+        support = RomTransformationService.shiny_rate_support(self.game_combo.currentData())
+        self._restore_original_shiny_rate()
+        for index in range(self.shiny_rate_combo.count()):
+            item = self.shiny_rate_combo.model().item(index)
+            item.setEnabled(index == 0 and support["original"])
+            item.setToolTip(support["reason"])
+        self.shiny_rate_note.setText(
+            support["reason"] + "\n1/8192 est le taux de base Gen V, hors bonus et rencontres à shiny imposé ou interdit. "
+            "Ces autres taux restent désactivés tant qu'un patch documenté et testé pour le jeu et sa révision n'est pas disponible.")
 
     def _build_result(self) -> QWidget:
         """Construire l'aperçu du challenge et ses actions de sauvegarde/lancement."""
@@ -399,14 +481,22 @@ class ChallengePage(QWidget):
             self._generated_parameter_rules = active
             self._generated_parameter_signature = self._parameter_signature()
         monotype_active = "monotype" in active
+        shiny_active = "shiny_only" in active
+        randomizer_active = "randomizer" in active
         self.monotype_row.setVisible(monotype_active)
         self.monotype_note.setVisible(monotype_active)
         self.wheel_button.setEnabled(monotype_active)
+        self.shiny_rate_group.setVisible(shiny_active)
+        self._update_shiny_rate_support()
+        self.randomizer_widget.setVisible(randomizer_active)
+        seed_text = self.seed_edit.text().strip()
+        seed = int(seed_text) if seed_text.isascii() and seed_text.isdecimal() else None
+        self.randomizer_widget.set_context(self.game_combo.currentData(), seed)
         for rule_id, controls in self.parameter_controls.items():
             for control in controls.values():
                 self.parameter_form.setRowVisible(control, rule_id in active)
                 control.setEnabled(rule_id in active)
-        self.extras_card.setVisible(monotype_active or bool(active & self.parameter_controls.keys()))
+        self.extras_card.setVisible(monotype_active or shiny_active or randomizer_active or bool(active & self.parameter_controls.keys()))
         self.update_monotype_label()
 
     def generate(self) -> None:
@@ -423,6 +513,13 @@ class ChallengePage(QWidget):
                           "preset_id": self._current_preset_id()},
                 monotype=monotype,
             )
+            if "randomizer" in self.challenge.active_rules:
+                configuration = self.randomizer_widget.configuration()
+                if configuration is not None:
+                    self.challenge.settings["rom_transformation"] = configuration
+                    errors = self.engine.validate(self.challenge)
+                    if errors:
+                        raise ValueError(" ".join(errors))
         except ValueError as exc:
             self.invalidate()
             self.show_feedback(str(exc))
@@ -510,6 +607,9 @@ class ChallengePage(QWidget):
             for key, control in values.items():
                 control.setValue(challenge.settings.get("rule_parameters", {}).get(rule_id, {}).get(key, self.catalog.rules[rule_id].parameters[key]["default"]))
         self.monotype_config = dict(challenge.monotype) if challenge.monotype else None
+        options = transformation_options(challenge.to_dict())
+        self.randomizer_widget.set_options(options or RandomizerOptions(),
+            enabled=options is not None or "randomizer" not in challenge.active_rules)
         self.name_edit.setText(name + " · copie" if name else "")
         self._building = False
         self._constraints_changed()

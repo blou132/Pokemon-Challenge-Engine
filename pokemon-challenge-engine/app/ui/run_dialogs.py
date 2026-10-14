@@ -15,7 +15,10 @@ from PySide6.QtWidgets import (
 
 from app.ui.widgets.common import INSTALLATION_LABELS, label
 from app.ui.widgets.nuzlocke import species_name
+from app.ui.widgets.rule_observation import rule_observation_text, shiny_label
 from app.services.save_manager_service import SaveManagerService
+from app.services.rom_transformation_service import transformation_options
+from app.services.run_transformation_provider import RunTransformationProvider
 from app.core.challenge_engine import ChallengeEngine
 from app.models.challenge import Challenge
 from app.ui.challenge_page import ChallengePage, challenge_summary
@@ -102,13 +105,15 @@ def prompt_run_action(parent, catalog, run, action):
 class RunChallengeDialog(QDialog):
     """Embed the existing editor and engine; no profile or game files are written."""
 
-    def __init__(self, catalog, game_id, parent=None, *, challenge=None):
+    def __init__(self, catalog, game_id, parent=None, *, challenge=None, base_dir=None):
         super().__init__(parent)
         self.game_id = game_id
         self.setWindowTitle("Configurer les règles de la partie")
         self.resize(1000, 700)
         layout = QVBoxLayout(self)
         self.editor = ChallengePage(catalog, None, self, configuration_only=True)
+        if base_dir is not None:
+            self.editor.set_randomizer_base_dir(base_dir)
         self.editor.game_combo.setCurrentIndex(self.editor.game_combo.findData(game_id))
         self.editor.game_combo.setEnabled(False)
         if challenge is not None:
@@ -148,9 +153,10 @@ class RunChallengeDialog(QDialog):
 class NewRunDialog(QDialog):
     """Choose independent adventure files; importing a save requires confirmation."""
 
-    def __init__(self, catalog, profiles, launch_profiles, parent=None, *, profile=None):
+    def __init__(self, catalog, profiles, launch_profiles, parent=None, *, profile=None, base_dir=None):
         super().__init__(parent)
         self.catalog = catalog
+        self.base_dir = base_dir
         self.profiles = list(profiles)
         self.launch_profiles = deepcopy(launch_profiles)
         self.installation_states = {}
@@ -323,7 +329,7 @@ class NewRunDialog(QDialog):
             self.name_edit.setText(selected.name if selected else self.game_combo.currentText() + " — " + suffix)
 
     def _configure_custom(self):
-        dialog = RunChallengeDialog(self.catalog, self.game_combo.currentData(), self, challenge=self.custom_challenge)
+        dialog = RunChallengeDialog(self.catalog, self.game_combo.currentData(), self, challenge=self.custom_challenge, base_dir=self.base_dir)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.set_custom_challenge(dialog.configuration())
 
@@ -379,6 +385,28 @@ class NewRunDialog(QDialog):
             self.error_label.setText("Configurez les règles avant de créer cette partie.")
             self.error_label.show()
             return
+        selected_profile = next((item for item in self.profiles if item.id == values["profile_id"]), None)
+        configuration = (selected_profile.challenge.to_dict() if selected_profile is not None else
+                         values["challenge"] if values["source"] == "custom" else None)
+        if configuration is not None and "randomizer" in configuration["active_rules"]:
+            try:
+                randomizer = transformation_options(configuration)
+                if randomizer is None:
+                    raise ValueError("Configurez les catégories Randomizer dans le challenge avant de créer cette partie.")
+                if values["save_mode"] != "new":
+                    raise ValueError("Le Randomizer nécessite une nouvelle aventure sans ancienne sauvegarde.")
+            except ValueError as exc:
+                self.error_label.setText(str(exc))
+                self.error_label.show()
+                return
+            if QMessageBox.question(self, "Créer une ROM dédiée",
+                    "Créer une ROM randomisée pour cette nouvelle aventure lors de sa préparation ?\n\n"
+                    f"Seed : {configuration['seed']}\nCatégories : {len(randomizer.categories)}\n\n"
+                    "La ROM source restera intacte. Cette aventure utilisera sa propre ROM et ses propres sauvegardes. "
+                    "La validation complète en jeu reste nécessaire.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+                return
         if values["save_mode"] == "import":
             path = Path(values["save_path"]) if values["save_path"] else None
             if path is None or path.suffix.lower() != ".dsv" or not path.is_file():
@@ -660,6 +688,14 @@ class RunDetailsDialog(QDialog):
 
     def set_run(self, run):
         self.run = run
+        if not hasattr(self, "_transformation_provider"):
+            self._transformation_provider = RunTransformationProvider(self.manager.root)
+        try:
+            transformation = self._transformation_provider.for_run(run)
+            transformation_notice = ""
+        except (OSError, ValueError) as exc:
+            transformation = None
+            transformation_notice = "\n\nROM dérivée non vérifiée : " + str(exc)
         self.error_label.hide()
         self.delete_button.setEnabled(True)
         self.isolate_button.setEnabled(True)
@@ -715,7 +751,7 @@ class RunDetailsDialog(QDialog):
             key = pokemon.get("pokemon_key")
             if key and run.known_pokemon.get(key, {}).get("life_status") == "dead":
                 status = "☠ Mort"
-            values = (pokemon_name(pokemon), str(pokemon.get("level") or "?"),
+            values = (pokemon_name(pokemon) + " · " + shiny_label(pokemon, run.generation), str(pokemon.get("level") or "?"),
                       f"{hp} / {maximum}" if hp is not None and maximum is not None else "Non renseigné", status)
             for col, value in enumerate(values):
                 self.team_table.setItem(row, col, QTableWidgetItem(value))
@@ -723,7 +759,9 @@ class RunDetailsDialog(QDialog):
                                if run.known_pokemon else "Équipe et identités : en attente d'observation du jeu.")
         self.rules_view.setPlainText("Règles figées à la création de cette partie\n\n" + ("\n".join("• " + text for text in rules) or "Classique · 0 règle active")
                                     + f"\n\nModèle source : {run.profile_id or 'Aucun'}\nPreset d'origine : {run.preset or 'Non renseigné'}\nSeed : {run.seed}"
-                                    + "\n\nModifier le modèle source ne modifie pas ces règles. Aucune règle ne modifie la RAM ou la sauvegarde Pokémon.")
+                                    + "\n\nModifier le modèle source ne modifie pas ces règles. Aucune règle ne modifie la RAM ou la sauvegarde Pokémon."
+                                    + transformation_notice
+                                    + "\n\n" + rule_observation_text(run, self.catalog, detailed=True, transformation=transformation))
         self.technical_view.setPlainText(json.dumps(run.rules_snapshot, ensure_ascii=False, indent=2))
         events = list(run.history)  # The store preserves a validated chronological sequence.
         self.history_table.setRowCount(len(events))

@@ -14,6 +14,7 @@ from app.services.config_service import AppConfig
 from app.services.emulator_settings_service import EmulatorSettingsService, key_label
 from app.services.game_mode_service import GameModeService
 from app.services.save_manager_service import SaveManagerService
+from app.services.run_transformation_provider import RunTransformationProvider
 from app.ui.controls_page import ControlsPage
 from app.ui.game_mode_page import GAME_MODE_STYLE, GameModePage
 from app.ui.game_mode_settings import InterfaceInGamePage, LaunchProfilePage
@@ -47,6 +48,7 @@ class GameModeWindow(QMainWindow):
         self._setup_service = None
         self._preparing_game = None
         self.persistent_run = None
+        self._transformation_provider = RunTransformationProvider(self.base_dir / "runs")
         self._run_launch_options = None
         self._persistent_notice = ""
         self._pending_run_launch = None
@@ -594,7 +596,14 @@ class GameModeWindow(QMainWindow):
             self._run_launch_options = None
             self._settings_game = None
             self._set_settings_game(run.game_id)
-        self.page.set_persistent_run(run, autosave)
+        try:
+            transformation = self._transformation_provider.for_run(run)
+            transformation_error = ""
+        except (OSError, ValueError) as exc:
+            transformation = None
+            transformation_error = str(exc)
+        self.page.set_persistent_run(run, autosave, transformation=transformation,
+                                     transformation_error=transformation_error)
         if changed or environment_changed:
             self._refresh_controls(self.launch_options(run.game_id)["emulator_path"])
         return True

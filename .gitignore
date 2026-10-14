@@ -58,6 +58,9 @@ savestates/
 # Binaires d'émulateur et bibliothèques Lua fournis par l'installation locale.
 *.exe
 *.dll
+# Outils Randomizer externes et compilation Java locale.
+*.jar
+*.class
 
 # Secrets : ne jamais utiliser git add -f pour contourner ces exclusions.
 .env

@@ -21,6 +21,8 @@ from app.services.emulator_settings_service import IniDocument
 from app.services.emulator_window_manager import EmulatorWindowManager
 from app.services.lua_runtime_installer import LuaRuntimeInstaller
 from app.services.rom_preparation_service import identity
+from app.services.rom_transformation_service import (RomTransformationService, transformation_options,
+                                                       verified_transformation_report)
 
 
 OWNER = "pokemon-challenge-engine-run"
@@ -157,6 +159,12 @@ class RunIsolationService:
         current = self.manager.load(run.run_id)
         if current._storage_revision != run._storage_revision:
             raise ValueError("La partie a changé ; rechargez-la avant la préparation.")
+        randomizer = transformation_options(run.rules_snapshot)
+        if randomizer is not None and (run.status != "preparing" or run.started_at is not None or
+                run.last_played_at is not None or run.sessions or run.current_party or run.known_pokemon or
+                run.captures or run.deaths or run.total_play_seconds or run.current_zone is not None or
+                run.badges is not None or import_save is not None or import_states or run.save_path):
+            raise ValueError("Une ROM Randomizer exige une nouvelle aventure sans sauvegarde ni progression importée.")
         options = deepcopy(run.launch_profile or {})
         source_rom = _regular(local_path(options.get("rom_path", "")))
         source_exe = _regular(local_path(options.get("emulator_path", "")))
@@ -184,9 +192,25 @@ class RunIsolationService:
         try:
             for folder in {*PATHS.values(), "emulator", "backups"}:
                 (staging / folder).mkdir()
-            rom_hash = _copy(source_rom, staging / expected["rom_path"].relative_to(root))
-            if run.rom_fingerprint and rom_hash != run.rom_fingerprint:
-                raise ValueError("L'empreinte ROM a changé ; la partie existante est conservée.")
+            transformation = None
+            if randomizer is None:
+                rom_hash = _copy(source_rom, staging / expected["rom_path"].relative_to(root))
+                if run.rom_fingerprint and rom_hash != run.rom_fingerprint:
+                    raise ValueError("L'empreinte ROM a changé ; la partie existante est conservée.")
+            else:
+                if run.rom_fingerprint and file_hash(source_rom) != run.rom_fingerprint:
+                    raise ValueError("L'empreinte ROM source a changé ; transformation refusée.")
+                result = RomTransformationService.from_local_config(self.manager.root.parent).transform(
+                    source_rom, staging / "transformation", game_id=run.game_id, seed=run.seed, options=randomizer)
+                rom_hash = _copy(result.rom_path, staging / expected["rom_path"].relative_to(root))
+                if rom_hash != result.manifest["output_sha256"]:
+                    raise ValueError("La ROM dérivée a changé avant son association à cette partie.")
+                transformation = {"manifest_sha256": file_hash(result.manifest_path),
+                                  "report_sha256": file_hash(result.report_path),
+                                  "source_sha256": result.manifest["source_sha256"]}
+                # The only playable ROM lives in game/, with this adventure's
+                # UUID. Preserve the small manifest/report/adapter provenance.
+                _regular(result.rom_path).unlink()
             exe_hash = _copy(source_exe, staging / "emulator/DeSmuME.exe")
             dlls = {}
             for item in diagnostic.dlls:
@@ -215,6 +239,8 @@ class RunIsolationService:
                         "identity": list(found), "rom_sha256": rom_hash, "emulator_sha256": exe_hash,
                         "dlls": dlls, "created_at": utc_now(), "source_rom": str(source_rom),
                         "source_emulator": str(source_exe), "source_ini": str(source_ini), "imports": imported}
+            if transformation is not None:
+                manifest["transformation"] = transformation
             (staging / "isolation.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
             # Keep promotion, metadata publication and any rollback under the
@@ -307,6 +333,18 @@ class RunIsolationService:
         found = self._identity(expected["rom_path"], run)
         if data.get("identity") != list(found) or file_hash(expected["rom_path"]) != run.rom_fingerprint or data.get("rom_sha256") != run.rom_fingerprint:
             raise ValueError("L'empreinte de la copie ROM ne correspond plus à cette partie.")
+        configured = transformation_options(run.rules_snapshot)
+        transformation = data.get("transformation")
+        if configured is not None or transformation is not None:
+            if configured is None or not isinstance(transformation, dict) or \
+                    set(transformation) != {"manifest_sha256", "report_sha256", "source_sha256"}:
+                raise ValueError("L'association Randomizer de cette partie est incomplète.")
+            derived = root / "transformation"
+            if file_hash(_regular(derived / "manifest.json")) != transformation["manifest_sha256"] or \
+                    file_hash(_regular(derived / "report.json")) != transformation["report_sha256"]:
+                raise ValueError("La provenance Randomizer de cette partie a changé.")
+            verified_transformation_report(derived, expected["rom_path"], game_id=run.game_id,
+                                           rom_sha256=run.rom_fingerprint, configuration=run.rules_snapshot)
         if file_hash(_regular(expected["emulator_path"])) != data.get("emulator_sha256") or not detect_capabilities(expected["emulator_path"]).known_build:
             raise ValueError("La copie DeSmuME a changé ; lancement refusé.")
         dlls = data.get("dlls")

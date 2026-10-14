@@ -25,6 +25,8 @@ PROBES = (
     "custom/.pce_ini_example", "custom/.pce-restore_example.tmp", "custom/.backup_example.tmp",
     "custom/.manifest_example.tmp", "custom/.pce-backup.lock", "custom/pce-backups.json",
     "custom/.controls.local.example.tmp",
+    "randomizer.local.json", "nested/.randomizer-config-example.local.json",
+    "PokeRandoZX.jar", "nested/PceRandomizer.class",
 )
 SECRET_PATTERNS = (
     re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),

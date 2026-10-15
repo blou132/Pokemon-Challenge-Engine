@@ -1,4 +1,4 @@
-# Pokemon Challenge Engine — V0.4.1
+# Pokemon Challenge Engine — V0.5 en développement
 
 Application Windows en français pour préparer des challenges **Pokémon Noir**,
 **Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, gérer ses parties et
@@ -6,17 +6,36 @@ enregistrer des modèles de challenge réutilisables,
 lancer DeSmuME standalone et consulter
 les données transmises par une passerelle Lua locale en lecture seule.
 
-**L'application ne modifie pas la ROM, n'écrit pas dans la mémoire du jeu et n'impose
-aucune règle dans Pokémon.** Le suivi manuel est conservé. Le mode STRICT est une intention enregistrée
-pour les versions suivantes. La règle Randomizer est uniquement prévue et configurable.
+**Les ROM et sauvegardes sources restent intactes.** La passerelle n'écrit pas
+dans la mémoire du jeu. Les contrôles d'équipe signalent les écarts dans PCE ;
+le suivi manuel est conservé et aucun blocage en combat n'est annoncé.
 
 ![Accueil de l'application — capture V0.1](docs/screenshots/accueil-1920.png)
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)
 
-La [proposition V0.5](docs/v0.5-proposal.md) prépare les prochains contrôles de
-challenge. Cette branche documentaire conserve le code V0.4.1 vérifié ; aucune
-nouvelle contrainte ni randomisation de ROM n'y est activée.
+La branche V0.5 ajoute les [contrôles de règles](docs/gen5-rule-observation.md) :
+Shiny Only, Monotype, Level Cap, stades évolutifs, historique et capacités
+explicites pour les quinze règles. **Détails → Règles** et le **Mode Jeu** affichent
+les résultats des observations enregistrées, sans confondre présence et utilisation
+en combat. Le taux shiny personnalisé reste désactivé faute de patch ROM validé.
+Le [Randomizer sur copies](docs/rom-transformations.md) utilise ZX 4.6.1 :
+catégories choisies, seed reproductible et provenance conservée dans la partie.
+La [proposition initiale](docs/v0.5-proposal.md) conserve le contexte de départ.
+
+Pour une partie Randomizer, ouvrir **Nouvelle partie → Challenge personnalisé**,
+activer Randomizer, choisir ses catégories et la seed, puis vérifier les outils
+locaux dans ce même éditeur. Il faut un **JDK 11+** et le `PokeRandoZX.jar` de la
+[release officielle ZX 4.6.1](https://github.com/Ajarmar/universal-pokemon-randomizer-zx/releases/tag/v4.6.1).
+Les outils ne sont pas téléchargés automatiquement. La création demande
+confirmation ; la préparation produit ensuite une ROM dédiée. L'import d'une
+ancienne sauvegarde est refusé pour cette nouvelle ROM. Un ancien modèle
+Randomizer sans paramètres explicites ne déclenche aucune transformation.
+
+Blanc FR rev0 : copie dérivée créée, ouverte puis rouverte dans DeSmuME, identité
+et heartbeat Lua vérifiés. **Starter, rencontre, combat et sauvegarde de progression
+de cette ROM dérivée restent à valider.** Le [rapport](docs/verification.md)
+distingue cet essai des contrôles d'équipe vérifiés sur Blanc non randomisé.
 
 ## Mes parties — V0.4.1
 
@@ -48,7 +67,7 @@ jeu ; aucune fermeture forcée n'est utilisée. Une fenêtre DeSmuME lancée ail
 n'est pas associée automatiquement à ce chronomètre.
 
 L'équipe et les zones documentées sont enregistrées automatiquement. Avec
-Nuzlocke et Mort permanente actifs, une transition observée **PV > 0 → 0** d'un
+Mort permanente active, une transition observée **PV > 0 → 0** d'un
 individu identifié crée une mort dans le **cimetière virtuel PCE**. Un soin dans
 Pokémon ne l'annule pas. Une identité ambiguë ou une première observation à zéro
 demande confirmation. Les captures et badges sont **manuels** ; notes, morts
@@ -74,8 +93,8 @@ Le statut **Archivée** conserve tous les fichiers.
 L'identité Gen V utilise PID et identifiant du dresseur d'origine documentés par
 PKHeX. La table sourcée couvre les 649 espèces et leurs familles ; les changements
 de branche, retours en arrière et identifiants dupliqués suspendent l'identification
-automatique. Le protocole **2** est conservé, avec deux champs facultatifs et des
-scripts Lua **0.4.0** ; les anciens messages restent acceptés.
+automatique. Le protocole **2** est conservé, avec PID, ID du dresseur d'origine
+et forme facultatifs dans les scripts Lua **0.5.0** ; les anciens messages restent acceptés.
 
 [Guide des parties](docs/run-manager.md) · [Isolation et import](docs/run-isolation.md) · [Stockage](docs/run-storage.md) ·
 [Mort permanente](docs/permanent-death.md) · [Autosave](docs/run-autosave.md) ·
@@ -176,7 +195,8 @@ le dossier des backups restent exclus de Git. Les chemins RetroBat existants
 sont conservés. Les boutons x1/x2/x4/MAX affichent un **état demandé**, sans
 pilotage direct ni mesure de vitesse réelle. L'export vérifié de x1/MAX prépare
 le prochain lancement ; x2/x4 se règlent dans DeSmuME. Les manettes, shaders,
-contraintes sur les save states et randomisation réelle ne sont pas implémentés.
+contraintes sur les save states ne sont pas implémentés. La randomisation passe
+par la création d'une aventure dédiée décrite plus haut.
 
 Branche historique V0.3.6 : `feat/v0.3.6-auto-setup`, issue de
 `ce8d888629f613b84d3bac3a9831b27cfbea1845` après les **960 tests de référence
@@ -234,9 +254,9 @@ machine utilisateur.** Noir 2 ne disposait pas d'une équipe chargée lors de so
 essai de transport. Noir et Blanc 2 n'ont pas été validés en émulateur.
 Voir le [rapport de vérification](docs/verification.md) pour les preuves et les limites exactes.
 
-Les versions sont distinctes : application **`0.4.1`**, scripts Lua **`0.4.0`**, challenge
+Les versions sont distinctes : application **`0.4.1`**, scripts Lua **`0.5.0`**, challenge
 **`0.1.0`** conservé, progression historique **schéma `2`**, partie **schéma `1`**,
-protocole **`2`**. Python accepte les anciens scripts `0.3.0/v2` et
+protocole **`2`**. Python accepte les anciens scripts `0.4.0/v2`, `0.3.0/v2` et
 aussi les messages v1 des scripts `0.2.0`, sans observations Nuzlocke.
 Les anciens suivis sont migrés en mémoire à la lecture, puis persistés seulement
 lors d'une sauvegarde ou d'un événement applicable au profil actif.

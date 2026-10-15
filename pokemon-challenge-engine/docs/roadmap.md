@@ -7,16 +7,23 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 La V0.4.1 est finalisée sur `feat/v0.4.1-run-flow-autolua` au commit
 `7a823ca58b5898d3231408ebece4deb01a5dbbdd`. La branche
-`feat/v0.5-challenge-observation` prépare maintenant une
-[proposition technique](v0.5-proposal.md), sans nouveau comportement applicatif.
-Le contrôle final du 13 octobre 2026 compte **1 829 tests réussis, aucun échec ni
+`feat/v0.5-challenge-observation` implémente maintenant les
+[contrôles de règles](gen5-rule-observation.md), après la
+[proposition technique initiale](v0.5-proposal.md). Shiny Only, Monotype, Level Cap,
+stades et historique ont un moteur et une interface ; les lectures de combat et
+captures restent partielles ou indisponibles. Le Randomizer sur copies constitue
+un lot distinct, maintenant raccordé à la création et à l'isolation des nouvelles
+parties. Une ROM Blanc dérivée a démarré puis été rouverte avec heartbeat Lua ;
+son équipe et sa progression ne sont pas encore validées. Aucun taux shiny
+personnalisé n'est activé sans patch validé.
+Le contrôle final V0.4.1 du 13 octobre 2026 compte **1 829 tests réussis, aucun échec ni
 ignoré**, dont les 1 716 cas précédents et 113 nouveaux pour les fichiers par
 aventure, les suppressions et le changement de session. Les résultats historiques
 restent consignés séparément dans le rapport de vérification.
 Le parcours réel Jouer avec autoload, le passage A/B et la restauration INI ont
 réussi sur copies isolées de Blanc. Les résultats et limites sont détaillés dans
 le [rapport de vérification](verification.md).
-Application `0.4.1`, scripts Lua `0.4.0`, protocole `2` avec compatibilité des anciens
+Application de base `0.4.1`, scripts Lua `0.5.0`, protocole `2` avec compatibilité des anciens
 messages v1/v2, progression historique schéma `2` et nouveau Run schéma `1`.
 La V0.4 ajoute les parties indépendantes, leur bibliothèque, les sessions durables,
 l'autosave, l'identité PID/OT, les familles et la mort permanente virtuelle.
@@ -45,7 +52,7 @@ avancés. Les ambiguïtés restent explicites, l'installation Lua externe reste
 confirmée et aucun téléchargement de ROM, jeu, BIOS ou sauvegarde n'est proposé.
 Le menu secondaire **Actions manuelles** regroupe captures, badges, notes et
 ajout d'une mort en secours. Le moteur existant continue de déduire une mort
-virtuelle d'une transition fiable de PV lorsque les deux règles sont actives.
+virtuelle d'une transition fiable de PV lorsque Mort permanente est active.
 Les tests synthétiques de ces parcours ne valident pas les captures réelles,
 les badges ni de nouveaux scénarios réels de mort permanente.
 
@@ -124,10 +131,8 @@ dans `main` n'est effectuée**. `main` conserve la V0.1.
 | V0.4.1 | Mes parties unifié, création directe, installation automatique, autoload Lua, copies par aventure, suppression contrôlée et changement de session | Régressions de création et passage A/B, originaux intacts, sauvegardes/states distincts ; preuves réelles distinguées pour Blanc et Noir 2 |
 | V0.4.2, différée | Distribution Windows portable PyInstaller onedir | Exécutable réellement lancé sous Windows, persistance et import historique, ZIP sans ROM/BIOS/save personnelle |
 | V0.4.x | Suite des corrections issues des essais utilisateur | K.O./soin, évolutions et autres scénarios réels encore ouverts ; reproductions documentées et non-régression |
-| V0.5, proposition technique après V0.4.1 | Classique, Nuzlocke, Hardcore, Monotype, combinaisons personnalisées et étude Randomizer | Statuts par règle distinguant configuration, suivi, violation détectable et application stricte possible ; détection et avertissements d'abord |
-| V0.6 | Monotype appliqué | Modes Souple, Strict et Pur validés sur données réelles |
-| V0.7 | Restrictions en combat | Objets et soins détectés puis contraintes effectivement appliquées |
-| V0.8 | Randomizer et règles avancées | Compatibilité, reproductibilité, sauvegardes et distribution documentées |
+| V0.5, en développement | Quinze règles, Monotype, Shiny Only, Nuzlocke/Hardcore, ROM Randomizer et combinaisons | Contrôles fiables et ROM dédiées reproductibles ; essais réels par jeu séparés des tests synthétiques ; actions non observables et taux shiny non validés explicitement indisponibles |
+| Étapes ultérieures, numérotation à réexaminer après V0.5 | Extension des contrôles de combat, validations complémentaires et distribution | Les anciens objectifs Monotype et Randomizer V0.6–V0.8 sont désormais inclus dans V0.5 ; aucune validation réelle n'est présumée |
 
 Autres axes : installation par utilisateur, migration des profils,
 clavier et mise à l'échelle élevée, jeux Platine, HeartGold/SoulSilver,

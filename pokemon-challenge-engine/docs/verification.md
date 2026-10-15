@@ -1,4 +1,110 @@
-# Vérification V0.4.1 et historique V0.4 / V0.3.6 / V0.3.5 / V0.3 / V0.2 / V0.1
+# Vérification V0.5 en développement et historique
+
+## Premiers lots V0.5 — essais des 13 et 14 octobre, finalisation le 15 octobre 2026
+
+Branche `feat/v0.5-challenge-observation`, base `40dc841`, sans fusion dans `main`.
+Windows, Python 3.13.7, PySide6 6.11.2, pytest 9.1.1. Le moteur commun couvre
+explicitement les quinze règles ; leur niveau effectif est décrit dans
+[gen5-rule-observation.md](gen5-rule-observation.md). Cela ne signifie pas que les
+quinze modes sont intégralement observables ou imposés dans le jeu.
+
+### Bilan des tests exécutés
+
+La collecte compte **2 376 tests**, contre 1 829 dans la base V0.4.1. Les 69
+fichiers de tests historiques sont conservés ; douze fichiers ont été ajoutés.
+
+| Commande depuis le dossier de l'application | Résultat |
+| --- | --- |
+| `python -m pytest -q --tb=short --durations=10 --junitxml=runtime/v05-validation/tests-final.xml` | Suite complète : **2 375 réussis, 1 échec, aucun ignoré**, en 983,62 secondes |
+| Cas paramétré `test_death_tracking_notice_matches_actual_rules_without_manual_capture_or_badges`, avant correction de son attente | Reproduction ciblée : 3 réussis, 1 échec sur Mort permanente seule |
+| `python -m pytest -q tests/test_manual_event_menu.py tests/test_rule_observation.py tests/test_rule_observation_ui.py --tb=short` | Après correction de l'attente : **101 réussis, aucun échec ni ignoré**, en 15,73 secondes |
+| `python -m tools.audit_repository` | Exclusions vérifiées, aucun fichier local interdit ni format de secret usuel détecté |
+| `git diff --check` et contrôle des liens locaux des sept documents concernés | Réussis |
+
+L'unique échec complet venait d'une attente historique exigeant encore Nuzlocke
+pour activer Mort permanente. La règle fonctionne désormais seule : le test
+conserve ses quatre combinaisons et vérifie la présence de `permanent_death`,
+au lieu du nombre de règles. Aucun comportement produit n'a été changé pour
+masquer cet échec. Le passage ciblé couvre aussi les observations insuffisantes,
+les confirmations manuelles et l'affichage. La suite complète n'a pas été relancée
+après cette seule correction de test ; son résultat initial reste consigné tel quel.
+Les autres tests ciblés des lots et les essais réels ci-dessous sont distincts.
+
+### Sources et tests synthétiques
+
+- Tables BW/B2W2 séparées, 649 espèces, 727/733 formes documentées, ressources
+  PKHeX épinglées et régénération exacte après contrôle SHA-256.
+- Lua 0.5.0 : lecture facultative de la forme, protocole v2 compatible avec les
+  anciens scripts ; tests des permutations, états inconnus et mauvais profils.
+- Shiny PID/OT, Monotype, plafond de niveau, stades, évolutions, historique,
+  rechargement, déclarations manuelles et absence de fausses déductions de capture
+  ou de soin. Mort permanente utilisable seule, avec les garde-fous d'identité.
+- Randomizer : API Java à seed explicite, vérification des catégories relues,
+  outils épinglés, publications exclusives, sources inchangées, refus des imports,
+  provenance altérée et association au mauvais jeu/UUID ; provider des données
+  effectives et refus d'utiliser aveuglément les types d'origine.
+- UI : paramètres et outils regroupés dans le challenge, confirmation de ROM
+  dédiée, sauvegarde importée refusée, anciens modèles conservés sans patch
+  implicite, lancement direct historique redirigé vers une partie indépendante.
+
+Ces tests emploient aussi des observations et outils synthétiques. Leurs résultats
+ne prouvent ni rencontre shiny, ni combat, ni capture réelle.
+
+### Compilation et interface Windows
+
+- `python -m compileall -q app tools` : compilation Python réussie.
+- Adaptateur Java compilé, puis réellement exécuté sur les copies Blanc décrites
+  ci-dessous ; aucune installation système ajoutée.
+- `python -m tools.verify_ui --entrypoint` : fenêtre Windows réelle affichée,
+  boucle Qt exécutée puis fermeture normale, avec données de test isolées.
+- Éditeur Randomizer à 1000 × 700 et fiche des règles rendus par Qt et relus
+  visuellement : pas de défilement horizontal dans l'éditeur. Captures locales
+  `pokemon-challenge-engine/runtime/v05-validation/randomizer-editor.png` et
+  `observed-rules.png`, exclues de Git.
+- Aucun exécutable PyInstaller ni ZIP portable construit pour ces lots.
+
+### Essais réels distincts
+
+| Essai | Résultat et portée |
+| --- | --- |
+| Blanc FR rev0 original, copie de ROM et import explicite d'un DSV | Deux lancements avec autoload Lua, formes 0 lues, trois individus classés normaux ; types et niveaux comparés aux règles ; relecture des résultats après fermeture |
+| Équipe réellement lue | 511 N20 PV53/53, 535 N16 PV44/44, 499 N23 PV79/79 ; Monotype Feu souple : deux écarts ; plafond20 : dépassement du N23 ; Unevolved : 499 non conforme |
+| ZX sur Blanc FR rev0, huit catégories, seed5122026 | Deux transformations indépendantes identiques bit à bit ; troisième transformation via isolation PCE donnant la même empreinte de ROM |
+| ZX sauvages uniquement | Seule cette catégorie change parmi les huit structures comparées |
+| ROM Randomizer isolée, nouvelle aventure sans import | ROM liée au nouvel UUID, provenance relue, 667 couples espèce/forme extraits ; lancement et réouverture DeSmuME avec IRAF/FR/rev0 et heartbeat Lua, fermetures normales |
+| Écriture émulateur dans cette copie Randomizer | DSV de 524410 octets créé par DeSmuME ; slot réel et backup dans le dossier propre. Aucun dresseur sauvegardé ni progression reprise démontrés |
+| Sources RetroBat avant/après les essais émulateur | Huit fichiers surveillés : SHA-256, tailles et dates inchangés ; aucune écriture RAM |
+
+ROM Randomizer produite : 201424956 octets, SHA-256
+`e2327f0c154919b0aee1c7467684e9fa551730afe30809a0af18043a2e7317a0`.
+L'adaptateur final enrichit le rapport d'`identity_evolutions` sans changer cette
+ROM. Les manifestes de transformation conservent leur état de validation initial
+`emulator: not_tested` : les essais postérieurs sont consignés ici séparément,
+sans réécrire leur provenance immuable.
+
+Preuves locales exclues de Git : `runtime/iso12/v05a1/report.json`,
+`runtime/iso12/v05b2/report.json`, `runtime/v05-randomizer-real/verification.json`
+à la racine du dépôt. Le premier essai de harnais `v05b1` a échoué avant toute
+transformation parce que son dossier de configuration n'existait pas ; il n'est
+pas compté comme validation. Les essais réussis utilisent les services PCE et
+un harnais Lua de boutons/slot, pas un parcours souris intégral de l'interface.
+
+### Non validé et lots suivants
+
+- ROM dérivée : sélection effective du starter, rencontre sauvage, combat,
+  première sauvegarde du dresseur, reprise de cette progression et équipe Lua.
+  Le heartbeat ne valide pas l'équipe ; aucune session de jeu suivie n'a été
+  enregistrée pendant ces écrans de démarrage sans équipe.
+- Shiny réel, formes alternatives, K.O./soin, évolution réelle et captures vers
+  le PC : non validés par ces essais. Capture automatique, objets et causes de
+  soin restent sans lecteur FR fiable ; aucune violation n'est inventée.
+- Noir 2 : équipe toujours non validée réellement. Noir et Blanc 2 : aucun nouvel
+  essai réel. **En attente de validation sur la machine utilisateur.**
+- Taux shiny personnalisé : indisponible, aucun patch ROM FR compatible validé.
+  Combinaisons nécessitant ces taux refusées ; conventions Nuzlocke + Shiny Only
+  et Starter Only restent à définir avant de modifier les conflits du catalogue.
+- Aucun build Windows portable ni ZIP produit dans ces lots V0.5 ; la distribution
+  portable reste un chantier distinct. Aucun tag de release créé.
 
 ## Finalisation des fichiers par aventure — 12 et 13 octobre 2026
 

@@ -67,9 +67,14 @@ les dossiers réels `roms` et `emulators` : le nom « RetroBat » ne suffit pas.
 Les installations multiples restent des candidats distincts. Aucun disque n'est
 parcouru récursivement. Les liens symboliques et jonctions sont refusés.
 
-`GameDiscoveryService` examine les enfants directs des dossiers configurés,
-notamment `RetroBat/roms/nds`, ainsi que les fichiers explicitement choisis.
-Limites : 32 dossiers, 128 fichiers explicites et 2 048 entrées par dossier.
+`GameDiscoveryService` examine les enfants directs des dossiers configurés
+ainsi que les fichiers explicitement choisis. La configuration automatique
+active aussi un niveau de sous-dossiers : les ROM rangées dans
+`RetroBat/roms/nds/<jeu>/<jeu>.nds` sont ainsi détectées sans déplacer les sources.
+L'API reste non récursive par défaut. Limites : 32 racines, 128 fichiers
+explicites, 2 048 entrées et 128 dossiers au total par recherche.
+Les dossiers visités, même vides, participent à l'empreinte du cache : l'ajout
+d'une ROM dans un sous-dossier existant déclenche une nouvelle recherche.
 Une limite ou un accès refusé produit un avertissement. Les en-têtes `.nds` et
 des membres `.nds` de ZIP identifient séparément jeu, code, région et révision.
 Le nom du fichier ne sert pas à identifier le jeu. Une région inconnue reste

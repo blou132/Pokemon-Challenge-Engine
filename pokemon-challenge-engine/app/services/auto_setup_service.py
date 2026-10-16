@@ -161,7 +161,8 @@ class AutoSetupService:
             directories = [Path(item.roms_directory) / "nds" for item in installations]
             directories.extend(Path(item).parent for item in explicit if item)
             candidates = games.discover(list(dict.fromkeys(directories)),
-                                         explicit_paths=[item for item in explicit if item])
+                                         explicit_paths=[item for item in explicit if item],
+                                         include_subdirectories=True)
             warnings.extend(games.warnings)
             game_values = []
             for candidate in candidates:
@@ -182,6 +183,7 @@ class AutoSetupService:
                 game_values.append(value)
             result = {"installations": plain(installations), "emulators": emulator_values,
                       "games": game_values, "warnings": list(dict.fromkeys(warnings)),
+                      "searched_directories": plain(games.searched_directories),
                       "details": [], "setup_complete": state["first_run_done"]}
             # Local trace only. Scans never modify RetroBat, its INI, ROMs or saves.
             for event, rows in (("retrobat_detected", result["installations"]), ("emulator_detected", emulator_values)):
@@ -203,6 +205,7 @@ class AutoSetupService:
         roots = [Path(drive) / "RetroBat" for drive in RetroBatDiscoveryService._drives()]
         roots.extend(Path(item) for item in (state["retrobat_root"], self.legacy.retrobat_path) if item)
         roots.extend(Path(item["root"]) for item in (report or {}).get("installations", ()))
+        paths.update(Path(item) for item in (report or {}).get("searched_directories", ()))
         for root in roots:
             paths.update((root, root / "roms/nds", root / "emulators/desmume", root / "saves/nds",
                           root / "saves/nds/DeSmuME"))

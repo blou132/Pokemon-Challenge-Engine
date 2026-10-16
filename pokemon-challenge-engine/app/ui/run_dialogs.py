@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
 from app.ui.widgets.common import INSTALLATION_LABELS, label
 from app.ui.widgets.nuzlocke import species_name
 from app.ui.widgets.rule_observation import rule_observation_text, shiny_label
+from app.ui.widgets.allowed_pokemon import AllowedPokemonDialog
+from app.core.allowed_pokemon import designation_purpose
 from app.services.save_manager_service import SaveManagerService
 from app.services.rom_transformation_service import transformation_options
 from app.services.run_transformation_provider import RunTransformationProvider
@@ -37,6 +39,7 @@ EVENT_LABELS = {
     "note_added": "Note ajoutée", "status_changed": "Statut modifié",
     "backup_created": "Backup créé", "death_corrected": "Mort corrigée",
     "pokemon_evolved": "Évolution observée", "death_confirmation_required": "Mort à confirmer",
+    "allowed_pokemon_changed": "Désignation individuelle modifiée",
 }
 
 
@@ -93,6 +96,9 @@ def badges_text(run):
 
 def prompt_run_action(parent, catalog, run, action):
     """Reusable explicit input for library details and Mode Jeu quick actions."""
+    if action == "designate_allowed_pokemon":
+        dialog = AllowedPokemonDialog(run, parent)
+        return dialog.payload() if dialog.exec() == QDialog.DialogCode.Accepted else None
     if action in ("manual_capture", "manual_death", "add_note"):
         dialog = ManualRunEventDialog(action, run, parent)
         return dialog.payload() if dialog.exec() == QDialog.DialogCode.Accepted else None
@@ -639,6 +645,9 @@ class RunDetailsDialog(QDialog):
 
     def _build_rules(self):
         box = self._tab_layouts["Règles"]
+        self.designation_button = QPushButton("Désigner / corriger l'individu autorisé…")
+        self.designation_button.clicked.connect(lambda: self.manual_action("designate_allowed_pokemon"))
+        box.addWidget(self.designation_button)
         self.rules_view = QTextBrowser()
         box.addWidget(self.rules_view, 1)
         self.technical_button = QPushButton("Détails techniques du snapshot")
@@ -685,9 +694,12 @@ class RunDetailsDialog(QDialog):
             self.resume_button.setEnabled(False)
             self.delete_button.setEnabled(False)
             self.isolate_button.setEnabled(False)
+            self.designation_button.setEnabled(False)
 
     def set_run(self, run):
         self.run = run
+        self.designation_button.setVisible(designation_purpose(run.active_rules) is not None)
+        self.designation_button.setEnabled(True)
         if not hasattr(self, "_transformation_provider"):
             self._transformation_provider = RunTransformationProvider(self.manager.root)
         try:
@@ -804,6 +816,9 @@ class RunDetailsDialog(QDialog):
     def _event_details(payload):
         """Human summary intentionally excludes raw PID and trainer identifiers."""
         parts = []
+        if payload.get("purpose") in ("starter", "solo") and "previous_event_id" in payload:
+            parts.append("Retrait manuel de la désignation" if payload.get("pokemon_key") is None else
+                         "Starter déclaré manuellement" if payload["purpose"] == "starter" else "Individu Solo déclaré manuellement")
         for key in ("text", "note", "name", "reason", "status", "to", "count", "badges", "duration"):
             value = payload.get(key)
             if isinstance(value, (str, int, float)):

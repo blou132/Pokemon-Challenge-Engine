@@ -299,7 +299,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {

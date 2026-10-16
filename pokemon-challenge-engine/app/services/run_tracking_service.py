@@ -9,6 +9,7 @@ from time import monotonic
 from uuid import uuid4
 
 from app.core.run_manager import RunManager
+from app.core.allowed_pokemon import DESIGNATION_EVENT, designation_purpose, eligible_individuals, latest_designation
 from app.core.rule_observation import RunPokemonData
 from app.models.profile import validate_json_data
 from app.models.run import RUN_STATUSES, Run, history_event, utc_now, validate_timestamp, _pokemon
@@ -500,6 +501,36 @@ class RunTrackingService:
         entry = {"note_id": str(uuid4()), "text": self._text(text, empty=False), "timestamp": self._now()}
         self._require().notes.append(entry)
         self._event("note_added", "manual", entry)
+        self.flush(force=True)
+        return self.active_run
+
+    def designate_allowed_pokemon(self, pokemon_key: str | None, note: str = "", *,
+                                  previous_event_id: str | None = None, confirmed: bool = False) -> Run:
+        """Append a manual selection/correction without changing the challenge."""
+        if confirmed is not True:
+            raise ValueError("Confirmez explicitement cette désignation manuelle.")
+        run = self._require()
+        purpose = designation_purpose(run.active_rules)
+        if purpose is None:
+            raise ValueError("Cette partie ne demande pas de désignation Starter Only ou Solo Run.")
+        previous = latest_designation(run)
+        if previous_event_id != (previous["event_id"] if previous else None):
+            raise ValueError("La désignation a changé ; rouvrez ce formulaire avant de la corriger.")
+        if pokemon_key is None:
+            if previous is None or previous["payload"]["pokemon_key"] is None:
+                raise ValueError("Aucune désignation active à retirer.")
+            pokemon = None
+        else:
+            if not isinstance(pokemon_key, str):
+                raise ValueError("Identifiant individuel invalide.")
+            pokemon = eligible_individuals(run).get(pokemon_key)
+            if pokemon is None:
+                raise ValueError("Choisissez un individu de la dernière équipe avec une identité fiable et non ambiguë.")
+        note = self._text(note)
+        self._event(DESIGNATION_EVENT, "manual", {
+            "purpose": purpose, "pokemon_key": pokemon_key, "pokemon": deepcopy(pokemon),
+            "previous_event_id": previous_event_id, "note": note,
+        })
         self.flush(force=True)
         return self.active_run
 

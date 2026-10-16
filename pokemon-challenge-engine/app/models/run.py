@@ -17,7 +17,7 @@ EVENT_TYPES = frozenset({
     "run_created", "run_started", "run_resumed", "session_started", "session_ended",
     "zone_changed", "party_changed", "pokemon_fainted", "pokemon_marked_dead",
     "manual_capture", "manual_badge", "manual_death", "note_added", "status_changed",
-    "backup_created", "death_corrected",
+    "backup_created", "death_corrected", "allowed_pokemon_changed",
 })
 
 
@@ -211,6 +211,8 @@ class Run:
             if "identity_ambiguity_reason" in pokemon:
                 _text(pokemon["identity_ambiguity_reason"])
         event_ids, previous = set(), None
+        designation_id = None
+        designation_key = None
         for event in data["history"]:
             if set(event) != {"event_id", "timestamp", "type", "source", "payload"}:
                 raise ValueError("Événement de partie incomplet.")
@@ -225,6 +227,29 @@ class Run:
                 raise ValueError("L'historique de partie doit rester chronologique.")
             previous = current
             event_ids.add(event["event_id"])
+            if event["type"] == "allowed_pokemon_changed":
+                from app.core.allowed_pokemon import designation_purpose
+                payload = event["payload"]
+                expected = {"purpose", "pokemon_key", "pokemon", "previous_event_id", "note"}
+                if (set(payload) != expected or event["source"] != "manual"
+                        or payload["purpose"] is None
+                        or payload["purpose"] != designation_purpose(snapshot["active_rules"])
+                        or payload["previous_event_id"] != designation_id):
+                    raise ValueError("Historique de désignation individuelle incohérent.")
+                _text(payload["note"], empty=True)
+                if len(payload["note"]) > 10000:
+                    raise ValueError("Note de désignation trop longue.")
+                if payload["pokemon_key"] is None:
+                    if payload["pokemon"] is not None or designation_key is None:
+                        raise ValueError("Retrait de désignation invalide.")
+                else:
+                    _pokemon(payload["pokemon"], observed=True, generation=data["generation"])
+                    if (payload["pokemon"].get("identity_confidence") != "strong"
+                            or payload["pokemon"].get("identity_ambiguous")
+                            or payload["pokemon"].get("pokemon_key") != payload["pokemon_key"]):
+                        raise ValueError("La désignation exige une observation individuelle fiable.")
+                designation_id = event["event_id"]
+                designation_key = payload["pokemon_key"]
         session_ids, active_count, total = set(), 0, 0.0
         for session in data["sessions"]:
             if set(session) != {"session_id", "started_at", "last_heartbeat", "ended_at", "duration"}:

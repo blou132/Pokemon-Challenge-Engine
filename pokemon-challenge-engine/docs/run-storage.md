@@ -40,6 +40,22 @@ dans deux états distincts. `active.json` ne contient que `schema_version: 1` et
 | Progression | `badges`, `captures`, `deaths`, `pending_deaths`, `notes` |
 | Temps et audit | `total_play_seconds`, `sessions`, `history` |
 
+La désignation Starter Only/Solo Run utilise seulement un événement supplémentaire
+`allowed_pokemon_changed`, de source `manual`, dans `history`. Aucun champ Run ni
+snapshot de challenge n'est ajouté ou modifié. Son payload conserve `purpose`
+(`starter` ou `solo`), `pokemon_key`, une copie de l'observation forte `pokemon`,
+`previous_event_id` et une note. Un retrait conserve la chaîne avec `pokemon_key`
+et `pokemon` à `null`. La validation exige que chaque correction référence la
+désignation précédente de cette même partie. La dernière entrée détermine le
+choix courant ; les précédentes restent intactes.
+
+Les anciennes parties sans cet événement restent lisibles sans migration. Une
+ancienne version de PCE qui ne connaît pas le nouvel événement le refusera :
+elle ne doit pas réécrire ces données. L'historique des parties n'est jamais
+tronqué automatiquement. Si `run.json` dépasse la limite de 32 Mio, l'écriture
+échoue explicitement et le fichier précédent est conservé ; la désignation
+active n'est pas purgée pour faire de la place.
+
 Les statuts autorisés sont `preparing`, `active`, `finished`, `abandoned` et
 `archived`. Aucun statut de défaite n'est calculé. Les valeurs inconnues restent
 `null` : par exemple badges, captures et morts d'une nouvelle partie. Une liste

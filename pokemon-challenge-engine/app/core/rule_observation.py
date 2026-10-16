@@ -5,6 +5,7 @@ No second writer or hidden mutation of the immutable challenge is needed.
 """
 from dataclasses import dataclass
 
+from app.core.allowed_pokemon import designation_purpose, eligible_individuals, latest_designation
 from app.core.gen5_species import is_unevolved, species_types
 from app.core.monotype import GEN5_TYPE_IDS, matches_type
 from app.core.pokemon_identity import documented_evolution, pokemon_identity
@@ -28,11 +29,11 @@ CAPABILITIES = {
     "no_healing": RuleCapability("unavailable", "Une hausse de PV ne prouve pas la cause du soin. Aucune violation automatique."),
     "no_pokemon_center": RuleCapability("unavailable", "La présence dans un Centre Pokémon ne prouve pas l'utilisation de son service de soin."),
     "no_evolution": RuleCapability("partial", "Changement d'espèce compatible avec une évolution documentée pour un individu identifié. Aucun blocage des évolutions dans le jeu."),
-    "solo_run": RuleCapability("partial", "Taille de l'équipe observée. L'individu autorisé et son utilisation en combat restent à confirmer."),
+    "solo_run": RuleCapability("partial", "Individu autorisé désigné manuellement dans les règles de la partie ; présence observée, utilisation en combat inconnue. La taille de l'équipe ne prouve pas son usage."),
     "shiny_only": RuleCapability("partial", "Statut shiny calculé avec PID et identifiants du dresseur d'origine. Présence dans l'équipe vérifiée ; utilisation en combat non observée. Taux d'apparition inchangé."),
     "randomizer": RuleCapability("configured", "La sélection de cette règle ne prouve pas qu'une transformation a été appliquée à la ROM."),
     "catch_limit": RuleCapability("partial", "Limite comparée aux captures déclarées par zone identifiée. Captures non déclarées et envois au PC non observés."),
-    "starter_only": RuleCapability("unavailable", "L'espèce et la place dans l'équipe ne prouvent pas qu'un individu est le starter reçu. Identité et utilisation à confirmer."),
+    "starter_only": RuleCapability("partial", "Starter désigné manuellement dans les règles de la partie. Son origine reste déclarative, jamais déduite de l'espèce ou du slot. Présence observée ; utilisation en combat inconnue."),
     "unevolved": RuleCapability("automatic", "Convention : espèce sans stade évolutif antérieur, y compris celles qui n'évoluent jamais. Pas de déduction sur l'histoire de cet individu."),
 }
 
@@ -227,6 +228,63 @@ def _pokemon_checks(run, pokemon, scope, data, *, timestamp=None):
                          "Individu déclaré mort dans PCE, encore présent dans cette observation. Utilisation en combat inconnue.", pokemon, timestamp)
 
 
+def _designation_checks(run, data):
+    rules = [rule for rule in run.active_rules if rule in {"solo_run", "starter_only"}]
+    event = latest_designation(run)
+    if not rules or event is None:
+        return
+
+    def checks(state, message, pokemon=None, scope="party"):
+        for rule in rules:
+            yield _check(rule, state, scope, message, pokemon, event.get("timestamp") if scope == "manual" else None)
+
+    payload = event.get("payload")
+    if not isinstance(payload, dict) or event.get("source") != "manual" or \
+            payload.get("purpose") != designation_purpose(run.active_rules):
+        yield from checks("unknown", "Désignation manuelle inexploitable. Aucune conclusion sur l'individu autorisé.")
+        return
+    selected = payload.get("pokemon")
+    key = payload.get("pokemon_key")
+    if key is None and selected is None:
+        yield from checks("unknown", "Désignation retirée manuellement. Choisissez un individu avant de comparer sa présence.", scope="manual")
+        return
+    try:
+        _pokemon(selected, observed=True, generation=run.generation)
+        if (selected.get("identity_confidence") != "strong" or selected.get("pokemon_key") != key
+                or selected.get("identity_ambiguous")):
+            raise ValueError("Désignation sans identité fiable.")
+    except ValueError:
+        yield from checks("unknown", "Désignation manuelle inexploitable. Aucune conclusion sur l'individu autorisé.")
+        return
+    known = run.known_pokemon.get(key)
+    if not known or known.get("identity_ambiguous") or known.get("identity_confidence") != "strong":
+        yield from checks("unknown", "L'identité de l'individu désigné est inconnue ou ambiguë. Comparaison de présence suspendue.")
+        return
+    matching = [pokemon for pokemon in run.current_party if pokemon_identity(pokemon, run.generation) == key]
+    eligible = eligible_individuals(run)
+    if len(matching) > 1 or matching and key not in eligible:
+        yield from checks("unknown", "Identité actuelle faible ou identifiants dupliqués. Comparaison avec la désignation suspendue.")
+        return
+    if not matching:
+        yield from checks("unknown", "L'individu désigné n'est pas identifié dans la dernière équipe. Présence ailleurs et utilisation en combat inconnues.")
+    else:
+        pokemon = matching[0]
+        changed = selected["species_id"] != pokemon["species_id"]
+        relation = data.evolution(selected["species_id"], pokemon["species_id"],
+                                  selected.get("form"), pokemon.get("form")) if changed else True
+        if relation is not True:
+            yield from checks("unknown", "Continuité depuis la désignation non vérifiable : changement d'espèce ou graphe individuel inconnu.", pokemon)
+            return
+        origin = " Origine starter déclarée, non prouvée." if payload["purpose"] == "starter" else ""
+        yield from checks("review", "Individu désigné manuellement présent dans la dernière équipe."
+                          + origin + " Utilisation en combat inconnue.", pokemon)
+    for other in run.current_party:
+        if other.get("pokemon_key") in eligible and other["pokemon_key"] != key:
+            yield from checks("review", "Autre individu présent dans la dernière équipe. Cela ne prouve pas son utilisation en combat.", other)
+        elif pokemon_identity(other, run.generation) != key and other.get("pokemon_key") not in eligible:
+            yield from checks("unknown", "Présence d'un Pokémon à identité faible : comparaison avec la désignation impossible.", other)
+
+
 def evaluate_rules(run, *, include_history=False, transformation=None) -> tuple[RuleEvaluation, ...]:
     """Evaluate saved evidence; an absent check never means global compliance.
 
@@ -272,6 +330,8 @@ Neither a team addition nor a disappearance is interpreted as a capture.
     if "solo_run" in checks and run.current_party:
         checks["solo_run"].append(_check("solo_run", "review" if len(run.current_party) > 1 else "unknown", "party",
             f"{len(run.current_party)} Pokémon présent(s). Cela ne prouve pas lesquels sont utilisés en combat."))
+    for check in _designation_checks(run, data):
+        checks[check.rule_id].append(check)
     counts, species_seen = {}, set()
     for entry in run.captures or []:
         pokemon = entry.get("pokemon", {})

@@ -38,16 +38,45 @@ pas encore d'acquittement séparé des alertes ni de journal automatique des cap
 | No Healing | Capacité explicitement indisponible | Une hausse de PV ne suffit pas à identifier un soin interdit |
 | No Pokémon Center | Capacité explicitement indisponible | Une carte de Centre Pokémon ne prouve pas l'utilisation du service |
 | No Evolution | Historique d'espèce d'un individu fiable, chemin évolutif documenté | Clones/identités ambiguës exclus ; pas de blocage ROM ; évolutions modifiées sans données vérifiées inconnues |
-| Solo Run | Plusieurs membres présents : avertissement à vérifier | Identité autorisée et utilisation en combat non établies |
+| Solo Run | Désignation manuelle d'un individu fiable ; comparaison de présence ; plusieurs membres signalés | Usage en combat inconnu, aucune violation déduite de la taille de l'équipe |
 | Shiny Only | Critère Gen V PID/OT, présence normale signalée, état inconnu possible | Utilisation en combat inconnue ; taux personnalisé désactivé sans patch validé |
 | Randomizer | Transformation externe sur copie, selon le lot dédié | Une règle sélectionnée seule ne prouve aucune modification ; validation émulateur distincte |
 | Catch Limit | Comptage des captures déclarées par zone et seuil configuré | Zones inconnues jamais fusionnées ; aucune capture déduite d'un ajout dans l'équipe |
-| Starter Only | Capacité explicitement indisponible | Espèce et place dans l'équipe insuffisantes pour identifier le starter reçu ; individu autorisé et utilisation en combat à confirmer |
+| Starter Only | Starter déclaré manuellement, puis comparaison de présence avec son identité fiable | Origine starter déclarative, jamais prouvée par l'espèce ou la place ; usage en combat inconnu |
 | Unevolved | Espèce au stade initial selon graphe sourcé, y compris espèces sans évolution | Ne prouve pas l'histoire du Pokémon ; graphe modifié non supposé identique |
 
 La Mort permanente fonctionne désormais également seule. Cela applique la règle
 déjà choisie dans la partie sans lui ajouter Nuzlocke. Aucun K.O. antérieur n'est
 converti rétroactivement en mort : la transition doit être observée pendant le suivi.
+
+### Désignation Starter Only / Solo Run
+
+Dans **Mes parties → fiche de la partie → Règles**, le bouton **Désigner / corriger
+l'individu autorisé** permet de choisir un individu de la dernière équipe
+enregistrée. Le formulaire exige une confirmation explicite. Il ne sélectionne
+jamais automatiquement le premier emplacement ni une espèce de starter. Si
+Starter Only est actif, cette déclaration est également utilisée pour Solo Run,
+dont il dépend. Une partie classique n'affiche pas cette action.
+
+Seules les identités fortes, enregistrées et non ambiguës sont proposées.
+La présence et une évolution documentée peuvent être comparées à la déclaration,
+mais l'origine starter et l'utilisation en combat ne sont pas prouvées. Les
+résultats restent **À vérifier** ou **Non vérifiable**, sans conformité globale
+ni violation de combat. Un autre individu de la même espèce ne remplace pas le
+choix. Un clone détecté, une identité faible ou un changement d'espèce sans graphe
+individuel vérifié suspend la comparaison. Le départ de l'équipe ne prouve ni la
+perte du Pokémon ni son utilisation ailleurs.
+
+Correction et retrait ajoutent chacun un événement manuel dans l'historique.
+Ils ne modifient pas le snapshot des règles et ne s'appliquent pas rétroactivement
+aux anciennes observations. La désignation est propre à la partie ; l'action
+nécessite de l'avoir reprise dans PCE. Elle peut être préparée hors ligne à partir
+de la dernière équipe enregistrée et elle est revérifiée au moment de l'action.
+Voir le [format de stockage](run-storage.md) pour la chaîne de correction.
+
+Les tests de cette désignation utilisent des observations synthétiques et une
+interface Qt hors écran. **En attente de validation sur la machine utilisateur**
+avec un starter réel, son évolution et une reprise réelle.
 
 ## Sources et limites
 

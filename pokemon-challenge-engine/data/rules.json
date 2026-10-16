@@ -231,7 +231,7 @@
   {
     "id": "randomizer",
     "name": "Randomizer",
-    "description": "Enregistrez l'intention d'utiliser une ROM randomisée séparément. Cette application ne randomise et ne modifie aucune ROM.",
+    "description": "Créez une copie randomisée indépendante avec Universal Pokémon Randomizer ZX vérifié, ou utilisez une ROM déjà randomisée. Les transformations et leur seed sont conservées avec la partie ; la ROM source reste intacte.",
     "difficulty": 3,
     "category": "Variation",
     "requires": [],

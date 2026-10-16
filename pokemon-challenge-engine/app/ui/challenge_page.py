@@ -21,6 +21,7 @@ from app.models.challenge import Challenge
 from app.services.rom_transformation_service import (
     RandomizerOptions, RandomizerToolStore, RomTransformationService, transformation_options,
 )
+from app.services.randomizer_tool_discovery_service import RandomizerToolDiscoveryService
 from app.ui.monotype_wheel import MonotypeDialog
 from app.ui.widgets.randomizer_configuration import (
     CATEGORY_LABELS, RandomizerConfiguration, RandomizerToolVerificationDialog,
@@ -234,6 +235,7 @@ class ChallengePage(QWidget):
         self.randomizer_widget = RandomizerConfiguration()
         self.randomizer_widget.changed.connect(self.invalidate)
         self.randomizer_widget.verify_tool_requested.connect(self._verify_randomizer_tools)
+        self.randomizer_widget.discover_tools_requested.connect(self._discover_randomizer_tools)
         extras_box.addWidget(self.randomizer_widget)
         form = self.parameter_form = QFormLayout()
         for rule in self.catalog.rules.values():
@@ -255,6 +257,7 @@ class ChallengePage(QWidget):
     def set_randomizer_base_dir(self, base_dir: Path | None):
         """Attach explicit persistent storage; local tool paths never enter a model."""
         self._randomizer_base_dir = Path(base_dir) if base_dir is not None else None
+        self.randomizer_widget.set_auto_discovery_enabled(base_dir is not None)
         if self._randomizer_base_dir is None:
             self.randomizer_widget.set_tool_status("unverified", "Le stockage local des outils n'est pas associé à cet éditeur.")
             return
@@ -265,6 +268,23 @@ class ChallengePage(QWidget):
         else:
             self.randomizer_widget.set_tool_paths(paths["java_path"], paths["jar_path"])
             self.randomizer_widget.set_tool_status("unverified", "Chemins locaux chargés. Les outils seront revérifiés avant chaque transformation.")
+
+    def _discover_randomizer_tools(self, java_path, jar_path):
+        if self._randomizer_base_dir is None:
+            self.randomizer_widget.set_tool_status("error", "Le stockage local des outils n'est pas associé à cet éditeur.")
+            return
+        service = RandomizerToolDiscoveryService(self._randomizer_base_dir)
+        self.randomizer_widget.set_tool_status("checking", "Recherche locale et vérification des outils en cours…")
+        dialog = RandomizerToolVerificationDialog(lambda: service.discover(java_path, jar_path), self)
+        dialog.begin()
+        accepted = dialog.exec() == dialog.DialogCode.Accepted
+        found = dialog.result_data
+        if accepted and found is not None:
+            self.randomizer_widget.set_tool_paths(found.java_path, found.jar_path)
+            self.randomizer_widget.set_tool_status("verified" if found.verified else "unverified", found.message)
+        else:
+            self.randomizer_widget.set_tool_status("error", dialog.error or "Recherche des outils non terminée.")
+        dialog.deleteLater()
 
     def _verify_randomizer_tools(self, java_path, jar_path):
         if self._randomizer_base_dir is None:

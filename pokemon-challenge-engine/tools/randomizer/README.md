@@ -19,6 +19,29 @@ Un **JDK 11 ou supérieur** local est nécessaire au lancement du fichier source
 Java. L'essai Windows a utilisé Java 25.0.4.1 déjà installé. Aucun changement de
 PATH ou installation globale n'est effectué.
 
+Au premier affichage des options Randomizer d'une nouvelle aventure, si un
+chemin manque, PCE recherche les outils présents hors du thread de l'interface.
+Le bouton **Détecter les outils présents** permet de relancer cette recherche.
+Les chemins déjà saisis ou chargés sont conservés, même s'ils sont invalides ;
+aucun autre outil n'est substitué silencieusement à un choix explicite.
+
+Le JAR est recherché uniquement sous le stockage persistant de PCE :
+`PokeRandoZX.jar` ou `tools/randomizer/PokeRandoZX.jar`, ou au chemin choisi.
+Son empreinte officielle est vérifiée ; les liens sont refusés et sa taille
+est limitée à 64 Mio pour cette recherche. Une fois ce JAR reconnu, Java est
+recherché dans `JAVA_HOME/bin`, puis dans les 32 premières entrées absolues et
+locales du PATH. Aucun dossier courant, réseau ou arbre de fichiers personnel
+n'est exploré. Au plus trois candidats Java distincts sont vérifiés avec
+`-version` puis `--describe-module jdk.compiler`, dans un budget partagé de vingt
+secondes. Un runtime sans compilateur ne suffit pas pour l'adaptateur source ; les
+opérations de fichiers locales restent soumises aux délais du système.
+
+La détection ne télécharge rien et n'enregistre aucune configuration. Cliquez
+sur **Vérifier et enregistrer les outils locaux** pour conserver les chemins
+trouvés dans `randomizer.local.json`. Un JAR trouvé seul ou un Java non vérifié
+ne sont jamais annoncés comme une paire compatible. La vérification des outils
+ne prouve ni la compatibilité d'une ROM ni son fonctionnement dans DeSmuME.
+
 La CLI originale de ZX ne propose pas d'argument de seed. L'adaptateur appelle
 la surcharge vérifiée `Randomizer.randomize(filename, log, long seed)` ; le
 paramètre `--seed` ci-dessous appartient seulement à **l'outil Python PCE**.

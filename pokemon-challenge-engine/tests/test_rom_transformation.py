@@ -38,6 +38,8 @@ def transformation(tmp_path, monkeypatch):
         calls.append(command)
         if command[-1] == "-version":
             return SimpleNamespace(stderr='openjdk version "17.0.1"', stdout="", returncode=0)
+        if command[1:] == ["--describe-module", "jdk.compiler"]:
+            return SimpleNamespace(stderr="", stdout="jdk.compiler@17.0.1\nrequires java.compiler transitive", returncode=0)
         working, output, result = map(Path, command[6:9])
         contents = bytearray(working.read_bytes())
         contents[-1] = 42
@@ -137,6 +139,27 @@ def test_old_java_fails_before_copy(transformation, monkeypatch):
                         SimpleNamespace(stderr='java version "1.8.0_999"', stdout=""))
     with pytest.raises(ValueError, match="JDK 11"):
         transform(transformation)
+    assert not list(transformation.destination.parent.glob(".pce-transform-*"))
+
+
+@pytest.mark.parametrize("compiler_response", [None, "", "java.compiler@17.0.1\nexports javax.tools"])
+def test_runtime_without_compiler_fails_before_copy(transformation, monkeypatch, compiler_response):
+    calls = []
+
+    def execute(command, **kwargs):
+        calls.append(command)
+        if command[1:] == ["-version"]:
+            return SimpleNamespace(stderr='openjdk version "17.0.1"', stdout="", returncode=0)
+        assert command[1:] == ["--describe-module", "jdk.compiler"]
+        if compiler_response is None:
+            raise ValueError("module not found")
+        return SimpleNamespace(stderr="", stdout=compiler_response, returncode=0)
+
+    monkeypatch.setattr(transformation.service, "_execute", execute)
+    with pytest.raises(ValueError, match="compilateur Java"):
+        transform(transformation)
+    assert [command[1:] for command in calls] == [["-version"], ["--describe-module", "jdk.compiler"]]
+    assert not transformation.destination.exists()
     assert not list(transformation.destination.parent.glob(".pce-transform-*"))
 
 

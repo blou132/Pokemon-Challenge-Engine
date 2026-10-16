@@ -12,6 +12,7 @@ import re
 import shutil
 import stat
 import subprocess
+import time
 from uuid import uuid4
 
 from app.models.run import utc_now
@@ -97,19 +98,35 @@ class RomTransformationService:
         return {"original": game_id in SUPPORTED_CODES, "custom_denominators": [],
                 "reason": "Aucun patch ROM du taux shiny n'est validé pour ce jeu. Taux original conservé ; aucune écriture RAM."}
 
-    def validate_tool(self) -> str:
+    def validate_tool(self, *, timeout: float = 20) -> str:
+        deadline = time.monotonic() + timeout
         if file_hash(_regular(self.jar_path)) != ZX_JAR_SHA256:
             raise ValueError("JAR non reconnu. Sélectionnez PokeRandoZX.jar de la release officielle ZX 4.6.1.")
-        completed = self._execute([str(self.java_path), "-version"], cwd=self.jar_path.parent, timeout=20)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ValueError("Le délai de vérification des outils est écoulé. Réessayez ou sélectionnez Java directement.")
+        completed = self._execute([str(self.java_path), "-version"], cwd=self.jar_path.parent, timeout=remaining)
         version = (completed.stderr or completed.stdout).strip()
         match = re.search(r'version "(\d+)(?:\.(\d+))?', version)
         major = int(match.group(2) or 0) if match and match.group(1) == "1" else int(match.group(1)) if match else 0
         if not version or len(version) > 4096 or major < 11:
             raise ValueError("Impossible de vérifier Java. Un JDK 11 ou supérieur est nécessaire.")
+        # Source-file launch needs the compiler implementation, not just a Java runtime.
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ValueError("Le délai de vérification des outils est écoulé. Réessayez ou sélectionnez Java directement.")
+        compiler_error = "Impossible de vérifier le compilateur Java (jdk.compiler). Sélectionnez un JDK 11 ou supérieur complet."
+        try:
+            compiler = self._execute([str(self.java_path), "--describe-module", "jdk.compiler"],
+                                     cwd=self.jar_path.parent, timeout=remaining)
+        except ValueError as exc:
+            raise ValueError(compiler_error) from exc
+        if not re.match(r"jdk\.compiler(?:@[^\s]+)?(?:\s|$)", (compiler.stdout or "").strip()):
+            raise ValueError(compiler_error)
         return version
 
     @staticmethod
-    def _execute(command: list[str], *, cwd: Path, timeout: int):
+    def _execute(command: list[str], *, cwd: Path, timeout: float):
         try:
             result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
                                     errors="replace", timeout=timeout, check=False,

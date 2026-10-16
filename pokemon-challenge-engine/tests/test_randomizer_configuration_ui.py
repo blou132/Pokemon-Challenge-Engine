@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QApplication, QFileDialog
 from app.core.challenge_engine import ChallengeEngine
 from app.core.profile_manager import ProfileManager
 from app.services.rom_transformation_service import CATEGORIES, RandomizerOptions, RandomizerToolStore
+from app.services.randomizer_tool_discovery_service import RandomizerToolDiscovery, RandomizerToolDiscoveryService
 from app.ui.challenge_page import ChallengePage
 from app.ui.widgets.randomizer_configuration import RandomizerConfiguration, RandomizerToolVerificationDialog
 
@@ -138,9 +139,89 @@ def test_checking_prevents_tool_path_changes_and_duplicate_verification(widget):
     assert not widget.java_edit.isEnabled()
     assert not widget.jar_edit.isEnabled()
     assert not widget.verify_button.isEnabled()
+    assert not widget.discover_button.isEnabled()
     assert widget.tool_status_label.textFormat() == Qt.TextFormat.PlainText
     widget.set_tool_status("error", "JAR incompatible")
     assert widget.verify_button.isEnabled()
+    assert widget.discover_button.isEnabled()
+
+
+def test_discovery_is_deferred_until_first_visible_randomizer_panel(widget, qt_app):
+    spy = QSignalSpy(widget.discover_tools_requested)
+    widget.set_auto_discovery_enabled(True)
+    widget.set_tool_paths("chosen-java.exe", "")
+    qt_app.processEvents()
+    assert spy.count() == 0
+    widget.show()
+    qt_app.processEvents()
+    assert spy.count() == 1
+    assert spy.at(0) == ["chosen-java.exe", ""]
+    widget.hide()
+    widget.show()
+    qt_app.processEvents()
+    assert spy.count() == 1
+    widget.discover_button.click()
+    assert spy.count() == 2
+
+
+def test_complete_saved_choices_are_not_automatically_probed(widget, qt_app):
+    spy = QSignalSpy(widget.discover_tools_requested)
+    widget.set_tool_paths("invalid-but-saved-java", "invalid-but-saved-jar")
+    widget.set_auto_discovery_enabled(True)
+    widget.show()
+    qt_app.processEvents()
+    assert spy.count() == 0
+    assert widget.tool_paths() == {"java_path": "invalid-but-saved-java", "jar_path": "invalid-but-saved-jar"}
+
+
+def test_historical_configured_only_randomizer_does_not_launch_discovery(widget, qt_app):
+    spy = QSignalSpy(widget.discover_tools_requested)
+    widget.set_options(RandomizerOptions(), enabled=False)
+    widget.set_auto_discovery_enabled(True)
+    widget.show()
+    qt_app.processEvents()
+    assert spy.count() == 0
+    widget.enabled_check.setChecked(True)
+    qt_app.processEvents()
+    assert spy.count() == 1
+
+
+def test_pending_auto_discovery_does_not_run_after_panel_is_hidden(widget, qt_app):
+    spy = QSignalSpy(widget.discover_tools_requested)
+    widget.set_auto_discovery_enabled(True)
+    widget.show()
+    widget.hide()
+    qt_app.processEvents()
+    assert spy.count() == 0
+
+
+def test_discovery_uses_worker_and_does_not_write_local_config(page, qt_app, monkeypatch):
+    calls = []
+
+    def discover(service, java, jar):
+        calls.append((service.base_dir, java, jar, QThread.currentThread() == qt_app.thread()))
+        return RandomizerToolDiscovery(java, "detected-jar", True, "Outils vérifiés. Enregistrez les outils locaux.")
+
+    monkeypatch.setattr(RandomizerToolDiscoveryService, "discover", discover)
+    monkeypatch.setattr(RandomizerToolStore, "save", lambda *_args: pytest.fail("discovery wrote config"))
+    page.randomizer_widget.set_tool_paths("selected-java", "")
+    page.randomizer_widget.discover_button.click()
+    assert calls == [(page.profiles.root.parent, "selected-java", "", False)]
+    assert page.randomizer_widget.tool_paths() == {"java_path": "selected-java", "jar_path": "detected-jar"}
+    assert page.randomizer_widget._tool_state == "verified"
+    assert "Enregistrez" in page.randomizer_widget.tool_status_label.text()
+
+
+def test_partial_discovery_keeps_explicit_choices_and_unverified_status(page, monkeypatch):
+    def discover(_service, java, jar):
+        return RandomizerToolDiscovery(java, "verified-jar", False, "Java choisi non vérifié. Choix conservé.")
+
+    monkeypatch.setattr(RandomizerToolDiscoveryService, "discover", discover)
+    page.randomizer_widget.set_tool_paths("missing-java", "")
+    page.randomizer_widget.discover_button.click()
+    assert page.randomizer_widget.tool_paths() == {"java_path": "missing-java", "jar_path": "verified-jar"}
+    assert page.randomizer_widget._tool_state == "unverified"
+    assert "Choix conservé" in page.randomizer_widget.tool_status_label.text()
 
 
 def test_worker_dialog_cannot_close_while_verification_is_running(qt_app):

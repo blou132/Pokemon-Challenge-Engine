@@ -1,5 +1,5 @@
 """Explicit Randomizer settings, separate from local tools and execution."""
-from PySide6.QtCore import QSignalBlocker, Signal
+from PySide6.QtCore import QSignalBlocker, QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGridLayout,
     QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget,
@@ -26,12 +26,18 @@ CATEGORY_NOTES = {
 class RandomizerConfiguration(QWidget):
     changed = Signal()
     verify_tool_requested = Signal(str, str)
+    discover_tools_requested = Signal(str, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._loading = False
         self._tool_state = "unverified"
         self._game_supported = False
+        self._auto_discovery_enabled = False
+        self._auto_discovery_attempted = False
+        self._discovery_timer = QTimer(self)
+        self._discovery_timer.setSingleShot(True)
+        self._discovery_timer.timeout.connect(self._auto_discover)
         box = QVBoxLayout(self)
         box.setContentsMargins(0, 0, 0, 0)
         box.addWidget(label(f"Randomizer · ZX {ZX_VERSION}", "subtitle"))
@@ -82,7 +88,10 @@ class RandomizerConfiguration(QWidget):
         box.addLayout(form)
         self.verify_button = QPushButton("Vérifier et enregistrer les outils locaux")
         self.verify_button.clicked.connect(self._request_verification)
+        self.discover_button = QPushButton("Détecter les outils présents")
+        self.discover_button.clicked.connect(self._request_discovery)
         self.tool_status_label = label("Outils non vérifiés. Aucun téléchargement automatique.", "muted")
+        box.addWidget(self.discover_button)
         box.addWidget(self.verify_button)
         box.addWidget(self.tool_status_label)
         box.addWidget(label("Ces chemins restent sur cet ordinateur et ne sont jamais ajoutés au modèle de challenge.", "muted"))
@@ -105,6 +114,7 @@ class RandomizerConfiguration(QWidget):
                 self.balanced_check.setChecked(False)
         if not self._loading:
             self.changed.emit()
+        self._schedule_discovery()
 
     def _tools_changed(self, *_args):
         self.set_tool_status("unverified", "Outils non vérifiés. La présence d'un chemin ne prouve pas sa compatibilité.")
@@ -112,6 +122,31 @@ class RandomizerConfiguration(QWidget):
     def _request_verification(self):
         paths = self.tool_paths()
         self.verify_tool_requested.emit(paths["java_path"], paths["jar_path"])
+
+    def set_auto_discovery_enabled(self, enabled: bool):
+        self._auto_discovery_enabled = enabled
+        self._schedule_discovery()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._schedule_discovery()
+
+    def _schedule_discovery(self):
+        if self._auto_discovery_enabled and not self._auto_discovery_attempted and self.isVisible():
+            self._discovery_timer.start(0)
+
+    def _auto_discover(self):
+        if self._auto_discovery_enabled and self.isVisible() and self.enabled_check.isChecked() and \
+                not self._auto_discovery_attempted and not all(self.tool_paths().values()):
+            self._request_discovery()
+
+    def _request_discovery(self):
+        if self._tool_state == "checking":
+            return
+        self._auto_discovery_attempted = True
+        self._discovery_timer.stop()
+        paths = self.tool_paths()
+        self.discover_tools_requested.emit(paths["java_path"], paths["jar_path"])
 
     def options(self) -> RandomizerOptions:
         return RandomizerOptions(tuple(key for key in CATEGORIES if self.category_checks[key].isChecked()),
@@ -164,6 +199,7 @@ class RandomizerConfiguration(QWidget):
         for widget in (self.java_edit, self.jar_edit, *self.browse_buttons):
             widget.setEnabled(not busy)
         self.verify_button.setEnabled(not busy and all(self.tool_paths().values()))
+        self.discover_button.setEnabled(not busy)
 
 
 class RandomizerToolVerificationDialog(QDialog):
@@ -172,6 +208,7 @@ class RandomizerToolVerificationDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Vérification des outils Randomizer")
         self.error = ""
+        self.result_data = None
         self.operation = operation
         box = QVBoxLayout(self)
         self.status_label = label("Vérification du JAR officiel et de Java en cours…")
@@ -181,11 +218,15 @@ class RandomizerToolVerificationDialog(QDialog):
         self.buttons.setEnabled(False)
         box.addWidget(self.buttons)
         self.runner = SetupTaskRunner(self)
-        self.runner.succeeded.connect(lambda _result: self.accept())
+        self.runner.succeeded.connect(self._succeeded)
         self.runner.failed.connect(self._failed)
 
     def begin(self):
         self.runner.start(self.operation)
+
+    def _succeeded(self, result):
+        self.result_data = result
+        self.accept()
 
     def _failed(self, message):
         self.error = message

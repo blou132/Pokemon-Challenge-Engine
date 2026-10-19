@@ -156,7 +156,10 @@ def parse_message(payload: bytes) -> BridgeMessage:
     if not isinstance(data["session_id"], str) or re.fullmatch(r"[0-9a-f]{32}", data["session_id"]) is None:
         raise ProtocolError("Identifiant de session invalide.")
     _choice(data["event"], "event", EVENTS)
-    if data["emulator"] != "desmume" or not isinstance(data["script_version"], str) or data["script_version"] not in SUPPORTED_SCRIPT_VERSIONS[version]:
+    valid_emulator = data["emulator"] == "desmume" or (
+        data["emulator"] == "melonds" and version == 2 and data["script_version"] == SCRIPT_VERSION
+    )
+    if not valid_emulator or not isinstance(data["script_version"], str) or data["script_version"] not in SUPPORTED_SCRIPT_VERSIONS[version]:
         raise ProtocolError("Émulateur ou version du script incompatible.")
     _choice(data["game_id"], "game_id", GAME_IDS, nullable=True)
     _choice(data["game_region"], "game_region", GAME_REGIONS, nullable=True)

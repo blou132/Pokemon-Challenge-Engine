@@ -17,6 +17,7 @@ from app.ui.widgets.common import INSTALLATION_LABELS, label
 from app.ui.widgets.nuzlocke import species_name
 from app.ui.widgets.rule_observation import rule_observation_text, shiny_label
 from app.ui.widgets.allowed_pokemon import AllowedPokemonDialog
+from app.ui.widgets.derived_evolutions import DerivedEvolutionsDialog
 from app.core.allowed_pokemon import designation_purpose
 from app.services.save_manager_service import SaveManagerService
 from app.services.rom_transformation_service import transformation_options
@@ -543,6 +544,9 @@ class RunDetailsDialog(QDialog):
         self._build_progress()
         self._build_team()
         self._build_rules()
+        self.evolutions_button = QPushButton("Consulter les évolutions de la ROM dérivée…")
+        self.evolutions_button.clicked.connect(self._show_evolution_conditions)
+        self._tab_layouts["Règles"].addWidget(self.evolutions_button)
         self._build_history()
         self._build_saves()
         self.tabs.currentChanged.connect(lambda index: self._refresh_backup(force=True) if index == 5 else None)
@@ -696,6 +700,19 @@ class RunDetailsDialog(QDialog):
             self.isolate_button.setEnabled(False)
             self.designation_button.setEnabled(False)
 
+    def _show_evolution_conditions(self):
+        try:
+            transformation = self._transformation_provider.for_run(self.run)
+            if transformation is None:
+                raise ValueError("Données de la ROM dérivée indisponibles.")
+        except (OSError, ValueError) as exc:
+            self.error_label.setText(str(exc))
+            self.error_label.show()
+            return
+        dialog = DerivedEvolutionsDialog(transformation, self)
+        dialog.exec()
+        dialog.deleteLater()
+
     def set_run(self, run):
         self.run = run
         self.designation_button.setVisible(designation_purpose(run.active_rules) is not None)
@@ -708,6 +725,10 @@ class RunDetailsDialog(QDialog):
         except (OSError, ValueError) as exc:
             transformation = None
             transformation_notice = "\n\nROM dérivée non vérifiée : " + str(exc)
+        self.evolutions_button.setVisible("randomizer" in run.rules_snapshot.get("active_rules", []))
+        self.evolutions_button.setEnabled(transformation is not None)
+        self.evolutions_button.setToolTip("Données indisponibles tant que la provenance de la ROM n'est pas vérifiée."
+                                          if transformation is None else "Consultation sans modification de la ROM ou de la sauvegarde.")
         self.error_label.hide()
         self.delete_button.setEnabled(True)
         self.isolate_button.setEnabled(True)

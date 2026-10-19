@@ -142,6 +142,31 @@ def test_old_java_fails_before_copy(transformation, monkeypatch):
     assert not list(transformation.destination.parent.glob(".pce-transform-*"))
 
 
+def test_optional_evolution_conditions_are_preserved_without_inference(transformation):
+    data = report()
+    data["pokemon"][0].update(evolutions=[25], identity_evolutions=[25], evolution_conditions=[
+        {"species_id": 25, "form": 0, "method": "LEVEL", "parameter": 16}])
+    transformation.changes["report"] = data
+    result = transform(transformation)
+    restored = json.loads(result.report_path.read_text(encoding="utf-8"))
+    assert restored["pokemon"][0]["evolution_conditions"] == data["pokemon"][0]["evolution_conditions"]
+    assert "evolution_conditions" not in restored["pokemon"][1]
+
+
+@pytest.mark.parametrize("bad", [None, [{}], [{"species_id": 25, "form": 0, "method": "LEVEL", "parameter": True}],
+    [{"species_id": 25, "form": 32, "method": "LEVEL", "parameter": 16}],
+    [{"species_id": 25, "form": 0, "method": "LEVEL", "parameter": 65536}],
+    [{"species_id": 25, "form": 0, "method": "<script>", "parameter": 16}],
+    [{"species_id": 26, "form": 0, "method": "LEVEL", "parameter": 16}]])
+def test_malformed_or_inconsistent_evolution_conditions_are_rejected(transformation, bad):
+    data = report()
+    data["pokemon"][0].update(evolutions=[25], identity_evolutions=[25], evolution_conditions=bad)
+    transformation.changes["report"] = data
+    with pytest.raises(ValueError, match="[Cc]ondition"):
+        transform(transformation)
+    assert not transformation.destination.exists()
+
+
 @pytest.mark.parametrize("compiler_response", [None, "", "java.compiler@17.0.1\nexports javax.tools"])
 def test_runtime_without_compiler_fails_before_copy(transformation, monkeypatch, compiler_response):
     calls = []

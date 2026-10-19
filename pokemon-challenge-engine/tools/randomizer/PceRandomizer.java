@@ -109,6 +109,14 @@ public class PceRandomizer {
                     if (evo++ > 0) out.print(',');
                     out.print(e.to.baseForme == null ? e.to.number : e.to.baseForme.number);
                 }
+                out.print("],\"evolution_conditions\":[");
+                evo = 0;
+                for (Evolution e : p.evolutionsFrom) {
+                    if (evo++ > 0) out.print(',');
+                    int target = e.to.baseForme == null ? e.to.number : e.to.baseForme.number;
+                    out.print("{\"species_id\":" + target + ",\"form\":" + e.to.formeNumber
+                        + ",\"method\":\"" + e.type.name() + "\",\"parameter\":" + e.extraInfo + "}");
+                }
                 out.print("]}");
             }
             out.println("]}");

@@ -182,6 +182,19 @@ class RomTransformationService:
                 individuals = row["identity_evolutions"]
                 if not isinstance(individuals, list) or any(type(item) is not int or item not in evolutions for item in individuals):
                     raise ValueError("Évolutions d'identité incohérentes avec les données de la ROM.")
+            if "evolution_conditions" in row:
+                conditions = row["evolution_conditions"]
+                if not isinstance(conditions, list) or len(conditions) > 7:
+                    raise ValueError("Conditions d'évolution invalides.")
+                for condition in conditions:
+                    if not isinstance(condition, dict) or set(condition) != {"species_id", "form", "method", "parameter"} or \
+                            type(condition["species_id"]) is not int or not 1 <= condition["species_id"] <= 649 or \
+                            type(condition["form"]) is not int or not 0 <= condition["form"] <= 31 or \
+                            not isinstance(condition["method"], str) or not re.fullmatch(r"[A-Z][A-Z0-9_]{0,63}", condition["method"]) or \
+                            type(condition["parameter"]) is not int or not 0 <= condition["parameter"] <= 65535:
+                        raise ValueError("Condition d'évolution mal formée.")
+                if [condition["species_id"] for condition in conditions] != evolutions:
+                    raise ValueError("Conditions incohérentes avec les cibles d'évolution.")
         if any((species, 0) not in seen for species in range(1, 650)):
             raise ValueError("Des espèces manquent dans la table des types effectifs.")
         return report

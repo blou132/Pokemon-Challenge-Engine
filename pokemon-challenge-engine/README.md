@@ -32,10 +32,21 @@ confirmation ; la préparation produit ensuite une ROM dédiée. L'import d'une
 ancienne sauvegarde est refusé pour cette nouvelle ROM. Un ancien modèle
 Randomizer sans paramètres explicites ne déclenche aucune transformation.
 
-Blanc FR rev0 : copie dérivée créée, ouverte puis rouverte dans DeSmuME, identité
-et heartbeat Lua vérifiés. **Starter, rencontre, combat et sauvegarde de progression
-de cette ROM dérivée restent à valider.** Le [rapport](docs/verification.md)
-distingue cet essai des contrôles d'équipe vérifiés sur Blanc non randomisé.
+Blanc : le test utilisateur du 16 octobre confirme des **starters, équipes de
+dresseurs (dont Bianca) et rencontres sauvages randomisés dans le jeu**.
+Le contrôle du 19 octobre vérifie aussi l'équipe Lua, un type modifié, la
+sauvegarde dans le jeu et la reprise après fermeture de PCE et DeSmuME sur une
+aventure Blanc FR0 isolée. Les évolutions en jeu et les objets restent à valider.
+Le [rapport](docs/verification.md) distingue le retour utilisateur, les lectures
+réelles et les tests automatisés ; il précise la portée de chaque essai.
+
+Pour Starter Only et Solo Run, **Détails → Règles → Désigner / corriger l'individu
+autorisé** enregistre une déclaration manuelle à partir de l'équipe observée.
+Le suivi compare les identités, sans prétendre prouver l'origine du starter ni
+l'utilisation d'un Pokémon en combat. Chaque correction reste dans l'historique.
+Dans cette même fiche, **Consulter les évolutions de la ROM dérivée** présente les
+conditions enregistrées par les nouveaux exports Randomizer. Les anciens rapports
+signalent les conditions absentes ; aucun niveau n'est inventé depuis une cible.
 
 ## Mes parties — V0.4.1
 

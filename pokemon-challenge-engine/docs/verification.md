@@ -1,5 +1,146 @@
 # Vérification V0.5 en développement et historique
 
+## Poursuite V0.5 — du 16 au 19 octobre 2026
+
+Branche `feat/v0.5-challenge-observation`, reprise depuis `18ac17e`.
+Les résultats historiques ci-dessous restent conservés avec leur périmètre.
+
+### Relance complète de référence
+
+La suite de `18ac17edd01b74db60964c540eb900e7106f18a9`, après la correction
+historique déjà présente dans ce commit, a été relancée dans un checkout séparé.
+Résultat : **2 376 réussis, aucun échec, aucune erreur, aucun ignoré**, en
+**1 421,539 secondes**. La commande utilise le Python du projet, depuis le dossier
+de l'application :
+
+```powershell
+$env:PCE_LUA51_DLL = '<DLL Lua 5.1 locale vérifiée>'
+python -m pytest -q --junitxml=runtime/v05-reference-full-with-lua.xml
+```
+
+Le rapport local est conservé sous
+`runtime/v05-reference-tests/pokemon-challenge-engine/runtime/v05-reference-full-with-lua.xml`
+à la racine du dépôt. La DLL reste locale et n'est pas redistribuée.
+
+Deux tentatives antérieures restent des échecs exécutés, pas des validations :
+
+- 2 375 réussis et un délai dépassé dans l'activation d'une fenêtre ; le cas seul,
+  puis les deux fichiers concernés (34 tests), ont réussi sans modification.
+- 1 941 réussis, trois délais dépassés, une erreur de fermeture et 432 ignorés.
+  Les tests Lua ne trouvaient pas la DLL dans le checkout séparé. La variable
+  explicite rétablit leur exécution ; les trois cas en échec passent nommément
+  dans la relance complète ci-dessus. Aucun test n'a été supprimé ou désactivé.
+
+### Changements et non-régression après la référence
+
+- `e299856` : recherche bornée dans les sous-dossiers RetroBat, invalidation
+  du cache lors de l'apparition d'une ROM, liens/jonctions exclus.
+- `cabba77` : détection des outils locaux Randomizer ; validation d'un vrai JDK
+  avec compilateur, conservation des chemins saisis et absence de téléchargement.
+- `572812e` : déclaration, correction et retrait de l'individu Starter Only/Solo
+  Run, identité forte, historique par partie et comparaison de présence.
+  Les tests couvrent aussi les clones, identités faibles, formulaires périmés,
+  évolutions documentées et limites de stockage. Aucun test historique modifié.
+
+La suite complète de ce lot, exécutée avec la DLL Lua locale explicitement
+configurée, donne **2 457 réussis, aucun échec, un ignoré**, en **774,78 secondes** :
+`python -m pytest -q --tb=short --durations=10 --junitxml=runtime/v05-validation/tests-20261016-full.xml`.
+Le seul ignoré est la création réelle d'un lien symbolique, refusée par Windows
+avec `WinError 1314` ; les tests simulant le refus de liens/jonctions ont été exécutés.
+Le ciblage préalable de désignation/observation/suivi donne 190 réussis en 26,80 s.
+Compilation Python, audit du dépôt et `git diff --check` réussis.
+Aucun build PyInstaller ni ZIP n'a été produit pour ce lot.
+
+### Conditions d'évolution des ROM dérivées
+
+`247b78f` ajoute un champ facultatif au rapport et sa consultation depuis les
+règles de la partie, avec vérification de provenance au clic. Les anciens rapports
+restent acceptés et affichent les conditions manquantes comme inconnues.
+Après intégration avec Starter/Solo : **122 tests ciblés réussis en 24,66 s**
+(transformation, dialogue des évolutions, désignation, règles Randomizer, isolation).
+
+L'adaptateur Java a été compilé puis exécuté avec le JDK local 21 sur une copie
+neuve de Blanc FR0 : 667 lignes et 320 conditions, ROM de sortie identique à la
+référence `e2327f0c154919b0aee1c7467684e9fa551730afe30809a0af18043a2e7317a0`,
+source inchangée selon hash, taille et signature de fichier. Les starters exportés
+indiquent 246 → 375 (niveau 30), 418 → 606 (niveau 26), aucune évolution exposée
+pour 632. Cela ne prouve pas leur déclenchement dans le jeu.
+Preuve locale : `runtime/evolution-conditions-worktree/runtime/evolution-conditions-verification.json`.
+Trois anciens rapports et ce nouveau rapport ont aussi été relus avec le nouveau
+validateur, sans modification de leurs empreintes.
+
+Suite complète finale du 19 octobre, incluant ce lot : **2 470 réussis, aucun
+échec ni erreur, un ignoré**, en **1 052,60 secondes**. Commande :
+`python -m pytest -q --tb=short --durations=10 --junitxml=runtime/v05-validation/tests-20261019-full.xml`,
+avec la même DLL Lua locale. Le seul ignoré reste le test de lien symbolique
+refusé par Windows (`WinError 1314`). Compilation Python et audit du dépôt
+réussis ; 138 liens locaux des documents vérifiés, aucune cible absente.
+
+### Retour de jeu réel fourni par l'utilisateur
+
+Le 16 octobre, l'utilisateur confirme sur **Pokémon Blanc avec DeSmuME** :
+
+- starters modifiés ;
+- équipes de dresseurs randomisées, dont Bianca ;
+- Pokémon sauvages randomisés sur les routes.
+
+Il signale avoir corrigé un problème de commandes lié à Lua, sans fournir de
+diff permettant d'attribuer cette correction au lecteur de production.
+Le harnais local de validation injectait des boutons ; il est distinct des
+scripts Lua distribués, qui n'utilisent pas `joypad.set`. Son injection est
+désormais limitée à une commande explicite, avec relâchement, puis rend la main
+aux commandes normales. Ce changement de harnais n'est pas un correctif produit.
+
+L'utilisateur précise **ne pas avoir sauvegardé**. La reprise de progression,
+les évolutions, les objets et les autres modes restent à tester. Aucun UUID,
+seed, relevé d'équipe Lua ou contrôle de types n'est déduit de ce seul retour.
+Un combat joué ne valide pas automatiquement un lecteur mémoire de combat.
+
+### Sauvegarde et reprise réelles — 19 octobre
+
+La partie de test `V05 White Randomizer real`, créée par les dialogues Qt PCE le
+16 octobre, utilise la seed 5122026, les huit catégories et la ROM dérivée dont
+l'empreinte figure ci-dessus. Les entrées de test sont envoyées par QTest dans
+PCE et par boutons Lua dans DeSmuME ; aucune donnée Pokémon n'est simulée et
+aucune écriture RAM n'est ajoutée. Ce n'est pas un parcours intégral à la souris.
+
+À la reprise du travail le 19 octobre, cette aventure contenait une progression
+datée du 18 octobre. Son acquisition pendant l'interruption n'est pas attribuée
+au harnais. Un backup du DSV a été créé par le bouton PCE avant le nouvel essai.
+
+| Contrôle réellement exécuté | Résultat |
+| --- | --- |
+| Identité et autoload | `IRAF / FR / 0`, `white_fr_rev0`, Lua 0.5.0, nouvelle session à chaque lancement |
+| Équipe comparée au jeu et à PCE | Un Embrylex (246), N5, PV20/20, forme 0 ; identité forte conservée |
+| Type modifié | **Combat** dans le résumé du jeu, `fighting` dans le rapport lié à la ROM |
+| Règles affichées | Level Cap20 conforme pour cette observation ; présence non conforme à Monotype Spectre et Shiny Only, sans conclusion sur l'usage en combat |
+| Sauvegarde Pokémon | Menu **Sauver**, confirmation et message de fin affiché ; DSV propre de 524410 octets mis à jour le 19 octobre |
+| Fermeture et réouverture | Fermetures normales de DeSmuME puis PCE ; **Reprendre → Jouer** sur le même UUID, autoload et retour visible sur Route 1 |
+| Persistance | Même équipe, même identité, même zone et snapshot de règles ; nouvelles données Lua dans une nouvelle session ; ROM et DSV inchangés par la reprise |
+
+Les huit originaux surveillés (deux ROM, deux DSV, DeSmuME, son INI et deux DLL)
+conservent empreintes, tailles et dates. Le backup préalable est conservé dans
+l'espace de cette seule partie. Aucun save state n'a été utilisé pour la reprise.
+
+Preuves locales exclues de Git : `runtime/v05u3/oct19-before-reopen.json`,
+`oct19-reopen-verification.json`, `oct19saved.png`, `oct19resumed.png`,
+`oct19typesverified.png`, `oct19rules.png` et `final.json` dans ce même dossier.
+Ces preuves ne valident ni une évolution, ni un objet ramassé/utilisé, ni un taux
+shiny personnalisé, ni une nouvelle lecture mémoire de combat. Starter/Solo reste
+testé sur observations synthétiques, sans désignation réelle effectuée ici.
+
+### Extension structurelle à Noir 2 — 19 octobre
+
+Le service de transformation et l'adaptateur final ont réellement exécuté ZX
+sur une copie neuve de Noir 2 FR0 (`IREF`), seed 5122026, huit catégories et
+puissance similaire. La source conserve son hash et sa signature ; aucun DSV
+n'est utilisé. Les huit catégories changent, 673 lignes et 320 conditions sont
+relues. Starters exportés : 212, 590, 134. Dérivée : 288064060 octets, SHA-256
+`f51e8544ba81364294205cec6f59281a97d5e6b2b069e8195e1f543a011a6b3d`.
+Preuve locale : `runtime/v05-black2-transform-20261019-verification.json`.
+**Aucun lancement de cette ROM dans DeSmuME ni lecture Lua n'est effectué par
+cet essai.** Noir et Blanc 2 ne sont pas testés réellement dans ce lot.
+
 ## Premiers lots V0.5 — essais des 13 et 14 octobre, finalisation le 15 octobre 2026
 
 Branche `feat/v0.5-challenge-observation`, base `40dc841`, sans fusion dans `main`.

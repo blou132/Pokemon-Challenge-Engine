@@ -13,9 +13,16 @@ La V0.4.1 est finalisée sur `feat/v0.4.1-run-flow-autolua` au commit
 stades et historique ont un moteur et une interface ; les lectures de combat et
 captures restent partielles ou indisponibles. Le Randomizer sur copies constitue
 un lot distinct, maintenant raccordé à la création et à l'isolation des nouvelles
-parties. Une ROM Blanc dérivée a démarré puis été rouverte avec heartbeat Lua ;
-son équipe et sa progression ne sont pas encore validées. Aucun taux shiny
-personnalisé n'est activé sans patch validé.
+parties. Le retour utilisateur du 16 octobre confirme les starters, dresseurs et
+sauvages randomisés sur Blanc. Le contrôle du 19 octobre ajoute une équipe
+randomisée lue par Lua, un type modifié comparé au jeu et une sauvegarde suivie
+d'une reprise après fermeture de PCE et DeSmuME, sur une aventure Blanc FR0 isolée.
+Les évolutions et objets restent à valider en jeu. Les nouveaux rapports exposent
+les conditions d'évolution ; les anciennes parties restent lisibles sans les inventer.
+Starter Only et Solo Run disposent d'une désignation individuelle manuelle
+historisée ; le contrôle de présence ne prouve pas l'utilisation en combat.
+Aucun taux shiny personnalisé n'est activé sans patch validé ; les obstacles et
+catégories sont détaillés dans la [recherche technique](shiny-rate-research.md).
 Le contrôle final V0.4.1 du 13 octobre 2026 compte **1 829 tests réussis, aucun échec ni
 ignoré**, dont les 1 716 cas précédents et 113 nouveaux pour les fichiers par
 aventure, les suppressions et le changement de session. Les résultats historiques

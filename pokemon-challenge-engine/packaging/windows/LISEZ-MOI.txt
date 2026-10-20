@@ -1,0 +1,60 @@
+POKEMON CHALLENGE ENGINE - WINDOWS
+
+1. Extraire toute l'archive dans un dossier local.
+2. Double-cliquer sur Pokemon-Challenge-Engine.exe.
+3. Ajouter ses ROM personnelles dans Paramètres puis créer une aventure dans Mes parties.
+
+Python et PowerShell ne sont pas nécessaires pour lancer l'application.
+Conserver le dossier _internal près de l'EXE. Ne pas exécuter depuis l'archive ZIP.
+Le programme ne nécessite pas de droits administrateur.
+
+DONNEES
+Par défaut : %LOCALAPPDATA%\Pokemon-Challenge-Engine
+Parties, copies ROM dédiées, sauvegardes, states, backups, profils, préférences
+et journaux sont indépendants du dossier de l'EXE et conservés aux mises à jour.
+Le chemin exact figure dans Paramètres > Données et anciennes parties.
+Pour importer une installation Python existante : fermer l'ancien PCE et les
+émulateurs, puis utiliser Importer une ancienne installation dans Paramètres.
+Choisir le dossier contenant runs et profiles. Aucun écrasement de partie n'est
+autorisé. Les préférences déjà présentes sont conservées. Redémarrer après import.
+
+MODE PORTABLE FACULTATIF
+Fermer PCE, puis double-cliquer Enable-Portable-Mode.vbs. Les prochaines données
+seront écrites dans user-data près de l'EXE. Le dossier doit être inscriptible.
+Les données antérieures restent dans LOCALAPPDATA et peuvent être importées.
+Pour une mise à jour portable, conserver user-data et pce-portable.json ; copier
+uniquement les fichiers de l'application lorsque PCE et les émulateurs sont fermés.
+Ne pas supprimer le dossier portable sans sauvegarder user-data.
+Si Windows désactive les scripts VBS, créer pce-portable.json à côté de l'EXE
+contenant exactement : {"schema_version":1}
+Un dossier synchronisé doit être entièrement disponible hors ligne. Ne pas
+exécuter deux instances modifiant les mêmes données sur des machines différentes.
+
+COMPOSANTS
+Les composants vérifiés présents figurent dans distribution-manifest.json.
+Un paquet sans composant melonDS validé ne remplace pas l'émulateur installé.
+PCE signale les composants manquants. Aucune ROM, sauvegarde, BIOS ou firmware
+Nintendo n'est inclus. Utiliser uniquement ses propres fichiers légitimes.
+Le Randomizer nécessite ZX 4.6.1 officiel et un JDK 11+ avec compilateur.
+Télécharger ZX depuis https://github.com/Ajarmar/universal-pokemon-randomizer-zx/releases/tag/v4.6.1
+et un JDK depuis https://adoptium.net/temurin/releases/ ; extraire dans un dossier
+local, puis choisir java.exe et PokeRandoZX.jar dans les options Randomizer.
+PCE vérifie le JDK et le SHA256 attendu du JAR avant transformation. Le JAR et
+Java ne sont pas inclus dans cette archive. La licence ZX est dans
+application-source/tools/randomizer/COPYING et ses instructions dans README.md.
+
+RACCOURCI ET DIAGNOSTIC
+Create-Desktop-Shortcut.vbs crée facultativement un raccourci sans écraser celui
+qui existe déjà. Sinon Windows permet de créer un raccourci de l'EXE.
+Les journaux tournants sont dans logs/app.log sous le dossier de données.
+La version est visible dans l'interface et dans les propriétés de l'EXE.
+
+VALIDATION
+Consulter le rapport de livraison pour les fonctionnalités réellement validées.
+Un test Qt et persistance réussi ne prouve pas le fonctionnement d'un jeu.
+Un essai sur ce poste de développement avec environnement isolé ne constitue
+pas un essai sur une installation Windows vierge.
+
+Licences, notices et sources : THIRD-PARTY-NOTICES.txt, licenses,
+third-party-sources et application-source. Les composants tiers optionnels
+conservent leur licence et manifeste sous third-party.

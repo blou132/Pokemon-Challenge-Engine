@@ -1,0 +1,39 @@
+Pokemon Challenge Engine - third-party notices
+
+Python: Python Software Foundation License. Full runtime license is in licenses.
+https://www.python.org/downloads/source/
+
+Qt / PySide6 / Shiboken 6.11.2: Qt open source LGPLv3 / GPLv3 licensing applies
+to the distributed modules. Full licenses and third-party notices are in licenses.
+Unmodified corresponding Qt Base, SVG, Image Formats, Translations and
+PySide/Shiboken source archives are included in third-party-sources, with their
+upstream URLs and verified SHA256 in sources.json. These archives contain the
+build scripts and notices for the library sources and their bundled components.
+https://doc.qt.io/qt-6/licensing.html
+https://doc.qt.io/qtforpython-6/licenses.html
+
+Qt/PySide shared libraries remain separate under _internal. Users may replace
+them with ABI-compatible modified libraries. No restriction is imposed on
+modification of these libraries or reverse engineering to debug modifications.
+Editable application source and the build recipe are included in application-source
+to permit rebuilding the executable with modified compatible Qt/PySide libraries.
+Build in a local Python virtual environment on Windows using the documented
+PyInstaller recipe. No signing requirement or technical lock prevents replacement.
+
+PyInstaller 6.22.3: GPL-2.0-or-later with bootloader exception, allowing packaged
+applications to be distributed under their own terms. License texts in licenses.
+https://pyinstaller.org/en/stable/license.html
+
+PceRandomizer.java: GPL-3.0-or-later, source and COPYING included under
+application-source/tools/randomizer. The external ZX JAR and Java runtime are
+not included. Their installation and verification are explicit user actions.
+https://github.com/Ajarmar/universal-pokemon-randomizer-zx
+
+Microsoft runtime libraries originate only from the official Python/PySide
+wheels or the Python runtime used by the builder. No emulator DLL is collected
+from a user's installation. Optional emulator components supply separate
+license/source notices and a SHA256 inventory in third-party.
+
+The geometric PCE icon is original; no official Pokemon graphic is included.
+Pokemon names and game identifiers describe compatibility; the project is
+unaffiliated with Nintendo, Game Freak, The Pokemon Company, Qt, or emulator authors.

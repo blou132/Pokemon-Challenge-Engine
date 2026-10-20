@@ -5,6 +5,10 @@ désactivés pour Noir, Blanc, Noir 2 et Blanc 2 FR révision 0.** Aucun patch d
 génération n'a été validé sur ces versions. Shiny Only observe les Pokémon
 présents ; il ne change pas leur probabilité d'apparition.
 
+Complément du 20 octobre : [identification ARM9 en lecture seule](shiny-arm9-identification.md),
+avec quatre fichiers locaux analysés et un outil reproductible. Cette étape
+identifie un prédicat statique ; elle ne valide aucun patch de génération.
+
 ## Génération et apparence
 
 Le statut shiny Gen V dépend du PID et des identifiants du dresseur d'origine :

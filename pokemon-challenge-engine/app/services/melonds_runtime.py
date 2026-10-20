@@ -18,9 +18,11 @@ from app.services.run_isolation_service import _regular
 from app.services.external_process import child_environment, external_dll_search
 
 UPSTREAM_COMMIT = "b86390e4428bf38ce4c1ce0e9ca446d6d25955e8"
-# Populated only after the native build and its redistributable dependencies
-# have been verified. A self-declared local manifest cannot authorize an EXE.
-VERIFIED_MANIFEST_SHA256 = frozenset()
+# Native 1.1-pce.1 build, official signed MSYS2 dependencies and corresponding
+# sources, verified 2026-10-20. A self-declared manifest cannot authorize an EXE.
+VERIFIED_MANIFEST_SHA256 = frozenset({
+    "ae761a26559aa9fb4d1eb4552f9a16a9644a115d0f0d6379b9b03262986b2cdf",
+})
 
 
 def verify_installation(executable: Path) -> dict:

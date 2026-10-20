@@ -451,7 +451,7 @@ def test_quick_action_cancel_returns_no_payload(qt_app, catalog, manager, monkey
     assert prompt_run_action(None, catalog, run, "manual_capture") is None
 
 
-@pytest.mark.parametrize("size", [(1366, 768), (1920, 1080)])
+@pytest.mark.parametrize("size", [(1260, 740), (1366, 768), (1920, 1080)])
 @pytest.mark.parametrize("count", [0, 1, 20])
 def test_library_and_details_fit_target_windows(qt_app, catalog, manager, size, count):
     for index in range(count):
@@ -467,6 +467,9 @@ def test_library_and_details_fit_target_windows(qt_app, catalog, manager, size, 
         assert scroll.verticalScrollBar().maximum() > 0
     assert not page.grab().isNull()
     if count:
+        for run_card in page.cards:
+            assert run_card.stats_label.height() >= run_card.stats_label.heightForWidth(run_card.stats_label.width())
+            assert run_card.resume_button.height() >= run_card.resume_button.sizeHint().height()
         details = page.open_details(page.visible_run_ids[0])
         qt_app.processEvents()
         assert details.width() < size[0] and details.height() < size[1]

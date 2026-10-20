@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from PySide6.QtCore import QSignalBlocker, QTimer, Signal
-from PySide6.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QPushButton, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget
 
 from app.ui.run_dialogs import (
     RunDetailsDialog, STATUS_LABELS, active_deaths, badges_text, display_date,
@@ -19,6 +19,8 @@ class RunCard(QWidget):
     def __init__(self, run, catalog, *, active=False, highlighted=False, parent=None):
         super().__init__(parent)
         self.run_id = run.run_id
+        # Let the page scroll instead of compressing the statistics and actions.
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         frame, box = card()

@@ -137,6 +137,18 @@ def test_import_confirmation_identifies_source_and_preserves_original(dialog, tm
     assert list(tmp_path.iterdir()) == [source]  # The controller performs the copy after acceptance.
 
 
+def test_melonds_import_error_names_both_supported_save_formats(dialog, tmp_path):
+    # UI validation only: runtime verification has its own service tests.
+    dialog.melonds_executable = tmp_path / "melonDS.exe"
+    dialog.emulator_combo.model().item(dialog.emulator_combo.findData("melonds")).setEnabled(True)
+    choose(dialog.emulator_combo, "melonds")
+    choose(dialog.save_mode_combo, "import")
+    dialog.save_edit.setText(str(tmp_path / "missing.sav"))
+    dialog.accept()
+    assert dialog.result() != QDialog.DialogCode.Accepted
+    assert "fichier .dsv ou .sav existant" in dialog.error_label.text()
+
+
 def test_details_emit_delete_and_isolate_without_mutating_run(qt_app, catalog, tmp_path):
     manager = RunManager(tmp_path / "runs")
     run = manager.create("Ancienne partie", "white")

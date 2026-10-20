@@ -433,7 +433,8 @@ class NewRunDialog(QDialog):
             path = Path(values["save_path"]) if values["save_path"] else None
             suffixes = {".dsv", ".sav"} if self.emulator_combo.currentData() == "melonds" else {".dsv"}
             if path is None or path.suffix.lower() not in suffixes or not path.is_file():
-                self.error_label.setText("Choisissez une sauvegarde normale compatible existante, ou démarrez une nouvelle aventure.")
+                formats = ".dsv ou .sav" if self.emulator_combo.currentData() == "melonds" else ".dsv"
+                self.error_label.setText(f"Choisissez un fichier {formats} existant, ou démarrez une nouvelle aventure.")
                 self.error_label.show()
                 return
             if QMessageBox.question(

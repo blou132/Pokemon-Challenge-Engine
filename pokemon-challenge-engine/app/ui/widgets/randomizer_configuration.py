@@ -1,11 +1,11 @@
 """Explicit Randomizer settings, separate from local tools and execution."""
 from PySide6.QtCore import QSignalBlocker, QTimer, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGridLayout,
+    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGridLayout,
     QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget,
 )
 
-from app.services.rom_transformation_service import CATEGORIES, SUPPORTED_CODES, RandomizerOptions, ZX_VERSION
+from app.services.rom_transformation_service import ADVANCED_DEFAULTS, CATEGORIES, SUPPORTED_CODES, RandomizerOptions, ZX_VERSION
 from app.ui.setup_tasks import SetupTaskRunner
 from app.ui.widgets.common import label
 
@@ -15,11 +15,29 @@ CATEGORY_LABELS = {
     "trainers": "Dresseurs, champions compris", "movesets": "Capacités apprises",
     "abilities": "Talents", "field_items": "Objets de terrain",
     "evolutions": "Évolutions", "types": "Types des Pokémon",
+    "shop_items": "Objets des boutiques", "pickup_items": "Objets du talent Ramassage",
+}
+ADVANCED_LABELS = {
+    "starter_legendaries": "Starters : autoriser les légendaires",
+    "starter_mythicals": "Starters : autoriser les fabuleux",
+    "wild_legendaries": "Sauvages : autoriser légendaires et fabuleux",
+    "trainer_legendaries": "Dresseurs : autoriser légendaires et fabuleux",
+    "wild_similar_strength": "Sauvages : puissance similaire",
+    "trainer_similar_strength": "Dresseurs : puissance similaire",
+    "evolution_similar_strength": "Évolutions : puissance similaire",
+    "evolution_same_type": "Évolutions : privilégier le même type",
+    "evolution_three_stages": "Évolutions : au plus trois stades",
+    "evolution_force_change": "Évolutions : exclure la cible d'origine",
+    "movesets_same_type": "Capacités : privilégier le type du Pokémon",
+    "types_follow_evolutions": "Types : suivre les évolutions",
+    "wild_type_themed": "Sauvages : un thème de type par zone",
 }
 CATEGORY_NOTES = {
     "trainers": "Inclut les champions ; aucun mode champions seuls.",
     "movesets": "Capacités apprises par niveau, pas toutes les CT ni les tuteurs.",
-    "field_items": "Objets de terrain ordinaires, pas tous les objets du jeu.",
+    "field_items": "Objets ordinaires et CT au sol compatibles avec ZX, pas tous les objets du jeu.",
+    "shop_items": "Boutiques compatibles hors boutiques de CT ; les prix restent inchangés.",
+    "pickup_items": "Table d'objets du talent Ramassage, pas les cadeaux ni objets tenus.",
 }
 
 
@@ -59,7 +77,36 @@ class RandomizerConfiguration(QWidget):
         self.balanced_check = QCheckBox("Privilégier une puissance similaire")
         self.balanced_check.setToolTip("Pour les sauvages, dresseurs et évolutions sélectionnés ; ne garantit pas l'équilibre du challenge.")
         self.balanced_check.toggled.connect(self._options_changed)
-        grid.addWidget(self.balanced_check, 4, 0, 1, 2)
+        row = (len(CATEGORIES) + 1) // 2
+        grid.addWidget(self.balanced_check, row, 0, 1, 2)
+        self.advanced_check = QCheckBox("Réglages indépendants personnalisés")
+        self.advanced_check.toggled.connect(self._options_changed)
+        grid.addWidget(self.advanced_check, row + 1, 0, 1, 2)
+        self.advanced_widget = QWidget()
+        advanced_grid = QGridLayout(self.advanced_widget)
+        self.advanced_checks = {}
+        for index, (key, title) in enumerate(ADVANCED_LABELS.items()):
+            check = QCheckBox(title)
+            check.setChecked(ADVANCED_DEFAULTS[key])
+            check.toggled.connect(self._options_changed)
+            self.advanced_checks[key] = check
+            advanced_grid.addWidget(check, index // 2, index % 2)
+        self.trainer_mode = QComboBox()
+        for title, value in (("Équipes aléatoires", "random"), ("Thèmes de types pour les dresseurs", "type_themed"),
+                             ("Thèmes de types pour champions et Conseil 4", "type_themed_elite4_gyms")):
+            self.trainer_mode.addItem(title, value)
+        self.trainer_mode.currentIndexChanged.connect(self._options_changed)
+        advanced_grid.addWidget(self.trainer_mode, 7, 0, 1, 2)
+        advanced_grid.addWidget(label("Les options ne s'appliquent qu'aux catégories cochées. ZX ne sépare pas les fabuleux "
+            "des légendaires sauvages/dresseurs et ne propose pas de filtre de type arbitraire. Les rivaux sont inclus "
+            "dans les dresseurs ; leur équipe ne suit pas automatiquement le starter choisi.", "muted"), 8, 0, 1, 2)
+        grid.addWidget(self.advanced_widget, row + 2, 0, 1, 2)
+        presets = QHBoxLayout()
+        for title, preset in (("Classique", "classic"), ("Complet", "full"), ("Personnalisé", "custom")):
+            button = QPushButton(title)
+            button.clicked.connect(lambda _checked=False, value=preset: self.apply_preset(value))
+            presets.addWidget(button)
+        grid.addLayout(presets, row + 3, 0, 1, 2)
         box.addWidget(self.options_widget)
         self.seed_label = label("Seed du challenge : à définir", "muted")
         self.compatibility_label = label("", "muted")
@@ -106,10 +153,14 @@ class RandomizerConfiguration(QWidget):
             edit.setText(filename)
 
     def _options_changed(self, *_args):
+        if not hasattr(self, "advanced_widget"):
+            return
         self.options_widget.setEnabled(self.enabled_check.isChecked() and self._game_supported)
+        advanced = self.advanced_check.isChecked()
+        self.advanced_widget.setVisible(advanced)
         eligible = any(self.category_checks[key].isChecked() for key in ("wild", "trainers", "evolutions"))
-        self.balanced_check.setEnabled(eligible)
-        if not eligible:
+        self.balanced_check.setEnabled(eligible and not advanced)
+        if not eligible or advanced:
             with QSignalBlocker(self.balanced_check):
                 self.balanced_check.setChecked(False)
         if not self._loading:
@@ -149,14 +200,30 @@ class RandomizerConfiguration(QWidget):
         self.discover_tools_requested.emit(paths["java_path"], paths["jar_path"])
 
     def options(self) -> RandomizerOptions:
+        advanced = None
+        if self.advanced_check.isChecked():
+            advanced = {key: check.isChecked() for key, check in self.advanced_checks.items()}
+            advanced["trainer_mode"] = self.trainer_mode.currentData()
         return RandomizerOptions(tuple(key for key in CATEGORIES if self.category_checks[key].isChecked()),
-                                 self.balanced_check.isChecked())
+                                 self.balanced_check.isChecked(), advanced)
+
+    def apply_preset(self, preset):
+        if preset == "custom":
+            self.advanced_check.setChecked(True)
+        else:
+            self.set_options(RandomizerOptions(CATEGORIES if preset == "full" else ("wild", "starters", "trainers")))
+        self.changed.emit()
 
     def set_options(self, options: RandomizerOptions, *, enabled=True):
         if not isinstance(options, RandomizerOptions) or type(enabled) is not bool:
             raise ValueError("Configuration Randomizer invalide.")
         self._loading = True
         try:
+            self.advanced_check.setChecked(options.advanced is not None)
+            advanced = options.advanced or ADVANCED_DEFAULTS
+            for key, check in self.advanced_checks.items():
+                check.setChecked(advanced[key])
+            self.trainer_mode.setCurrentIndex(self.trainer_mode.findData(advanced["trainer_mode"]))
             for key, check in self.category_checks.items():
                 check.setChecked(key in options.categories)
             self.balanced_check.setChecked(options.balanced)
@@ -164,6 +231,10 @@ class RandomizerConfiguration(QWidget):
             self._options_changed()
         finally:
             self._loading = False
+
+    def set_randomizer_active(self, active: bool):
+        self.enabled_check.setVisible(active)
+        self.options_widget.setVisible(active)
 
     def configuration(self) -> dict | None:
         if self.enabled_check.isChecked() and not self._game_supported:

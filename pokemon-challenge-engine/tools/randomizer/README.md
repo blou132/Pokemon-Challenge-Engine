@@ -52,13 +52,25 @@ Depuis le dossier de l'application, avec les chemins choisis par l'utilisateur :
 python -m tools.randomize_rom --source "C:\chemin\source.nds" --destination "C:\chemin\nouvelle-derivee" --game white --java "C:\chemin\jdk\bin\java.exe" --jar "C:\chemin\PokeRandoZX.jar" --seed 5122026 --categories wild starters trainers --balanced
 ```
 
-Les huit catégories réellement intégrées sont `wild`, `starters`, `trainers`,
-`movesets`, `abilities`, `field_items`, `evolutions`, `types`. `trainers` inclut
+Les dix catégories réellement intégrées sont `wild`, `starters`, `trainers`,
+`movesets`, `abilities`, `field_items`, `evolutions`, `types`, `shop_items`,
+`pickup_items`. `trainers` inclut
 les champions : aucun réglage indépendant « champions seulement » n'est exposé.
 `movesets` concerne les capacités apprises, pas toutes les CT/tuteurs. Les objets
-sont les objets de terrain ordinaires, pas un remplacement global de tous les
-objets. `--balanced` applique les options de puissance similaire aux rencontres,
+sont les objets et CT de terrain, les boutiques compatibles hors CT et la table
+Ramassage, pas un remplacement global de tous les objets. `--balanced` applique les options de puissance similaire aux rencontres,
 dresseurs et évolutions sélectionnés. Cela ne garantit pas un challenge équilibré.
+
+`--advanced-options fichier.json` reçoit l'objet complet des contrôles
+indépendants documentés dans [rom-transformations.md](../../docs/rom-transformations.md).
+`--monotype-type fire --monotype-mode pure --categories starters` remplace
+réellement les trois starters sans demander les autres catégories. Avec d'autres
+catégories, la sélection est calculée après relecture des types et évolutions
+randomisés. L'adaptateur refuse une population admissible inférieure à trois.
+Les paramètres JSON reproductibles sont conservés séparément des chemins locaux.
+
+`python -m tools.check_randomizer_java --java ... --jar ...` compile et exécute
+les vérifications synthétiques du code Java réel ; aucun jeu n'est lancé.
 
 L'adaptateur accepte séparément IRBF, IRAF, IREF et IRDF, FR révision 0. Il vérifie
 les CRC de ROM originale définis par ZX avant la transformation ; les hacks ou

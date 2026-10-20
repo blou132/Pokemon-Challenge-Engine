@@ -41,14 +41,16 @@ GPL-3.0-or-later.
 | Dresseurs | Équipes des dresseurs, champions compris ; pas d'option séparée « champions seulement » |
 | Capacités apprises | Movesets ; pas une randomisation générale des CT et tuteurs |
 | Talents | Talents des espèces |
-| Objets de terrain | Objets ordinaires au sol ; pas tous les objets du jeu |
+| Objets de terrain | Objets ordinaires et CT au sol exposés par ZX ; pas tous les objets du jeu |
+| Boutiques | Inventaires compatibles hors boutiques de CT ; prix conservés |
+| Ramassage | Table d'objets du talent Ramassage |
 | Évolutions | Destinations des évolutions |
 | Types | Types des espèces et formes effectivement exposées par ZX |
 | Puissance similaire | Option de ZX appliquée aux rencontres, dresseurs et évolutions sélectionnés ; aucune garantie de difficulté équilibrée |
 
 La modification demandée est vérifiée par comparaison des structures relues
 avant et après transformation. Une catégorie sélectionnée inchangée est refusée ;
-une des huit catégories modifiée sans sélection est également refusée. ZX modifie
+une des dix catégories modifiée sans sélection est également refusée. ZX modifie
 aussi son Pokémon d'introduction et ses marqueurs internes de randomisation : le
 contrôle de catégories ne prétend pas limiter toute différence binaire à ces tables.
 
@@ -60,6 +62,94 @@ Un code de jeu valide seul ne suffit pas. Une ROM déjà modifiée n'est pas une
 entrée acceptée pour cette chaîne.
 
 ## Création, isolation et reprise
+
+### Réglages indépendants et starters Monotype (20 octobre 2026)
+
+Les préréglages **Classique** (sauvages, starters, dresseurs), **Complet**
+(dix catégories) et **Personnalisé** sont disponibles dans l'éditeur. Les cases
+de catégories restent indépendantes. Les réglages avancés enregistrent un objet
+`advanced` complet : permission des légendaires/fabuleux starters séparée,
+permission des légendaires et fabuleux sauvages/dresseurs, puissance similaire
+séparée pour sauvages/dresseurs/évolutions, préférence de type des capacités,
+types suivant les évolutions, thèmes de types sauvages, thèmes de types des
+dresseurs (tous ou champions/Conseil 4), évolutions de même type, limite à trois
+stades et exclusion de la destination originale. Le thème de type sauvage et
+la puissance similaire sauvage sont exclusifs dans l'API ZX : une combinaison
+contradictoire est refusée. Les paramètres des catégories désactivées restent
+mémorisés et ne changent pas ces catégories.
+
+Ces contrôles sont reliés aux setters réels de
+[Settings.java](https://github.com/Ajarmar/universal-pokemon-randomizer-zx/blob/7f00eb866ed35c8fe3963f078b6a2e0979dc2b8c/src/com/dabomstew/pkrandom/Settings.java).
+ZX ne sépare pas fabuleux et légendaires dans les rencontres/dresseurs. Il ne
+permet pas ici de sélectionner arbitrairement une liste de types sauvages,
+ni de randomiser uniquement les rivaux. Le mode de thème champions/Conseil 4
+randomise aussi les autres dresseurs sans thème. Le suivi automatique du starter
+par le rival n'est pas activé. Objets tenus, cadeaux et statiques ne sont pas
+inclus dans les trois catégories d'objets proposées.
+
+Pour une **nouvelle configuration Monotype**, l'éditeur propose le remplacement
+réel des trois starters. La case est indépendante de l'activation du Randomizer.
+Le snapshot ajoute `monotype_starters` avec `type_id`, `mode` et
+`prefer_evolutions`. Le mode Souple accepte le type primaire ou secondaire,
+Strict exige le type primaire, Pur exige exclusivement le type sélectionné.
+La sélection utilise trois espèces de base distinctes, tirées avec un générateur
+déterministe séparé de ZX. Les légendaires/fabuleux sont permis par défaut ;
+les restrictions explicites des starters Randomizer s'appliquent lorsqu'elles
+sont configurées. Les espèces ayant une évolution et dont toutes les évolutions
+d'identité exposées restent compatibles sont prioritaires, puis les autres
+espèces compatibles complètent le choix. La création de Munja est exclue de
+ce graphe d'identité. Moins de trois candidats provoque un échec explicite,
+sans publier de ROM.
+
+Lorsque types ou évolutions sont randomisés, la sélection intervient **après**
+leur relecture depuis la ROM intermédiaire. L'API réelle
+[`Gen5RomHandler.setStarters`](https://github.com/Ajarmar/universal-pokemon-randomizer-zx/blob/7f00eb866ed35c8fe3963f078b6a2e0979dc2b8c/src/com/dabomstew/pkrandom/romhandlers/Gen5RomHandler.java#L859)
+écrit les scripts, graphismes, cris et textes compatibles. La ROM finale est
+sauvegardée puis rechargée ; les trois espèces, types admissibles et catégories
+inchangées sont vérifiés avant publication. Les filtres légendaires demandés
+sont également revérifiés sur les starters, rencontres et équipes relus.
+
+Les rapports nouveaux portent `schema_version: 2` et les paramètres exacts
+`adapter_options`. Les rapports V1 et snapshots historiques restent lisibles
+sans réécriture ni activation implicite. Le manifeste enregistre
+`["upr-zx-4.6.1", "pce-starters-v1"]` lorsqu'un filtre PCE de starters intervient.
+`settings_string` et `check_value` décrivent l'étape ZX ; le rapport indique
+`check_value_scope: "zx_stage"`. La provenance complète utilise les options
+du manifeste et l'empreinte de la ROM finale, et ne confond pas le code ZX
+avec une empreinte de la deuxième étape.
+
+### Vérifications de cette extension
+
+Le programme Java de vérification synthétique compile le véritable adaptateur
+contre le JAR épinglé et exerce les trois modes, les types effectifs, la
+préférence d'évolution, la reproductibilité, les filtres indépendants et
+l'insuffisance de candidats :
+
+```powershell
+python -m tools.check_randomizer_java --java "C:\chemin\jdk\bin\java.exe" --jar "C:\chemin\PokeRandoZX.jar"
+```
+
+Il a réussi avec JDK 21.0.10. Des transformations Java réelles ont également
+réussi sur les copies personnelles Blanc FR0 et Noir 2 FR0 : dix catégories,
+filtres starters sans légendaires/fabuleux, puissance similaire indépendante,
+évolutions de même type/au plus trois stades/cible modifiée, capacités de même
+type, types suivant les évolutions, thèmes champions/Conseil 4, seed 5122026.
+Le Monotype Feu **Pur** Blanc produit `[147, 603, 25]` avec les types effectifs
+Feu seuls. Deux exécutions ont produit exactement le SHA-256
+`023c357e51826829b51fd5485e3bf27c49aae6a650ee3207876920fcd4ba12e1`.
+Le Monotype Feu **Strict** Noir 2 produit `[498, 147, 404]` avec le type
+primaire Feu ; SHA-256
+`dc6c28280c9b8e19526e6da3b6ea7845e78830998f925aae719f155533cd67d6`.
+Un essai Blanc Monotype Souple seul a également remplacé les starters.
+Le pipeline a revérifié les empreintes sources inchangées.
+
+Ces essais prouvent des structures ROM persistées et relues, pas l'écran
+de sélection, une partie jouée, les performances ou la validité de toutes
+les seeds. Aucun émulateur n'a été lancé pour ces essais. Noir et Blanc 2
+n'ont pas été transformés dans cette extension faute de ROM source validée
+dans son périmètre. Le taux shiny reste original. Les combinaisons de règles
+sont testées comme configurations et comme suivi synthétique ; cela ne
+prouve pas les événements non observables en jeu.
 
 Dans le challenge, les réglages reproductibles sont figés sous
 `settings.rom_transformation` :

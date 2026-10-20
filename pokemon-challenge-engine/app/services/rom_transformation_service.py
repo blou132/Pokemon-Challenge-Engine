@@ -25,7 +25,16 @@ ZX_VERSION = "4.6.1"
 ZX_COMMIT = "7f00eb866ed35c8fe3963f078b6a2e0979dc2b8c"
 ZX_JAR_SHA256 = "380dc1e6c704a9a4ed8433e8b7892a149390f8912b9107a2a0e7263cfd71c7d8"
 ZX_RELEASE = "https://github.com/Ajarmar/universal-pokemon-randomizer-zx/releases/tag/v4.6.1"
-CATEGORIES = ("wild", "starters", "trainers", "movesets", "abilities", "field_items", "evolutions", "types")
+LEGACY_CATEGORIES = ("wild", "starters", "trainers", "movesets", "abilities", "field_items", "evolutions", "types")
+CATEGORIES = LEGACY_CATEGORIES + ("shop_items", "pickup_items")
+ADVANCED_DEFAULTS = {
+    "starter_legendaries": True, "starter_mythicals": True,
+    "wild_legendaries": False, "trainer_legendaries": False,
+    "wild_similar_strength": False, "trainer_similar_strength": False, "evolution_similar_strength": False,
+    "evolution_same_type": False, "evolution_three_stages": False, "evolution_force_change": False,
+    "movesets_same_type": False, "types_follow_evolutions": False,
+    "wild_type_themed": False, "trainer_mode": "random",
+}
 SUPPORTED_CODES = {"black": "IRBF", "white": "IRAF", "black2": "IREF", "white2": "IRDF"}
 GEN5_TYPES = frozenset({"normal", "fighting", "flying", "poison", "ground", "rock", "bug", "ghost", "steel",
                        "fire", "water", "grass", "electric", "psychic", "ice", "dragon", "dark"})
@@ -37,6 +46,8 @@ ADAPTER = Path(__file__).resolve().parents[2] / "tools" / "randomizer" / "PceRan
 class RandomizerOptions:
     categories: tuple[str, ...] = ("wild", "starters", "trainers")
     balanced: bool = False
+    advanced: dict | None = None
+    monotype_starters: dict | None = None
 
     def __post_init__(self):
         if not isinstance(self.categories, tuple) or not self.categories or \
@@ -47,9 +58,40 @@ class RandomizerOptions:
             raise ValueError("Le réglage d'équilibrage doit être un booléen.")
         if self.balanced and not set(self.categories) & {"wild", "trainers", "evolutions"}:
             raise ValueError("L'équilibrage concerne les rencontres, dresseurs ou évolutions.")
+        if self.advanced is not None:
+            if not isinstance(self.advanced, dict) or set(self.advanced) != set(ADVANCED_DEFAULTS):
+                raise ValueError("Paramètres avancés Randomizer incomplets ou inconnus.")
+            for key in ADVANCED_DEFAULTS:
+                if key != "trainer_mode" and type(self.advanced[key]) is not bool:
+                    raise ValueError("Les paramètres avancés Randomizer doivent être booléens.")
+            if self.advanced["trainer_mode"] not in ("random", "type_themed", "type_themed_elite4_gyms"):
+                raise ValueError("Mode des dresseurs inconnu.")
+            if self.balanced or self.advanced["wild_similar_strength"] and self.advanced["wild_type_themed"]:
+                raise ValueError("Choisissez des restrictions sauvages compatibles et un équilibrage indépendant.")
+        if self.monotype_starters is not None:
+            mono = self.monotype_starters
+            if not isinstance(mono, dict) or set(mono) != {"type_id", "mode", "prefer_evolutions"} or \
+                    not isinstance(mono["type_id"], str) or mono["type_id"] not in GEN5_TYPES or mono["mode"] not in ("soft", "strict", "pure") or \
+                    type(mono["prefer_evolutions"]) is not bool or "starters" not in self.categories:
+                raise ValueError("Configuration des starters Monotype invalide.")
 
     def to_dict(self):
-        return {"categories": [item for item in CATEGORIES if item in self.categories], "balanced": self.balanced}
+        result = {"categories": [item for item in CATEGORIES if item in self.categories], "balanced": self.balanced}
+        if self.advanced is not None:
+            result["advanced"] = dict(self.advanced)
+        if self.monotype_starters is not None:
+            result["monotype_starters"] = dict(self.monotype_starters)
+        return result
+
+    def adapter_properties(self):
+        values = dict(self.advanced or {})
+        values.update({"monotype_" + key: value for key, value in (self.monotype_starters or {}).items()})
+        return {key: str(value).lower() if type(value) is bool else value for key, value in values.items()}
+
+    def transformation_order(self):
+        custom = self.monotype_starters is not None or "starters" in self.categories and self.advanced is not None and \
+            (not self.advanced["starter_legendaries"] or not self.advanced["starter_mythicals"])
+        return ["upr-zx-4.6.1"] + (["pce-starters-v1"] if custom else [])
 
 
 @dataclass(frozen=True)
@@ -148,12 +190,16 @@ class RomTransformationService:
         if _regular(path).stat().st_size > 1024 * 1024:
             raise ValueError("Rapport Randomizer trop volumineux.")
         report = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(report, dict) or report.get("schema_version") != 1 or report.get("tool_version") != ZX_VERSION or report.get("game_code") != game_code:
+        if not isinstance(report, dict) or report.get("schema_version") not in (1, 2) or report.get("tool_version") != ZX_VERSION or report.get("game_code") != game_code:
             raise ValueError("Identité ou version du rapport Randomizer incorrecte.")
+        if options.adapter_properties() and report.get("adapter_options") != options.adapter_properties():
+            raise ValueError("Le rapport ne confirme pas les paramètres avancés demandés.")
         categories = report.get("categories", {})
         if not isinstance(categories, dict):
             raise ValueError("Catégories du rapport invalides.")
         for name in CATEGORIES:
+            if name not in LEGACY_CATEGORIES and name not in categories and name not in options.categories and report["schema_version"] == 1:
+                continue  # Historical reports predate the additional item categories.
             pair = categories.get(name, {})
             if not isinstance(pair, dict) or any(not isinstance(pair.get(key), str) or len(pair[key]) != 64 or
                    any(char not in "0123456789abcdef" for char in pair[key]) for key in ("before", "after")):
@@ -197,6 +243,15 @@ class RomTransformationService:
                     raise ValueError("Conditions incohérentes avec les cibles d'évolution.")
         if any((species, 0) not in seen for species in range(1, 650)):
             raise ValueError("Des espèces manquent dans la table des types effectifs.")
+        if options.monotype_starters is not None:
+            from app.core.monotype import matches_type
+            starters = report.get("starters")
+            effective = {(row["species_id"], row["form"]): row["types"] for row in rows}
+            mono = options.monotype_starters
+            if not isinstance(starters, list) or len(starters) != 3 or \
+                    any(type(item) is not int or not 1 <= item <= 649 for item in starters) or len(set(starters)) != 3 or \
+                    any(not matches_type(effective[item, 0], mono["type_id"], mono["mode"]) for item in starters):
+                raise ValueError("Les trois starters relus ne respectent pas le Monotype demandé.")
         return report
 
     def transform(self, source: str | Path, destination_directory: str | Path, *, game_id: str,
@@ -205,6 +260,10 @@ class RomTransformationService:
             raise ValueError("La seed doit être un entier compris entre 0 et 9223372036854775807.")
         if not isinstance(options, RandomizerOptions):
             raise ValueError("Paramètres Randomizer invalides.")
+        # Snapshot caller-owned dictionaries before validating and running tools.
+        options = RandomizerOptions(options.categories, options.balanced,
+                                    dict(options.advanced) if options.advanced is not None else None,
+                                    dict(options.monotype_starters) if options.monotype_starters is not None else None)
         source = _regular(Path(source))
         destination = local_path(destination_directory)
         if destination.exists() or not destination.parent.is_dir() or source.is_relative_to(destination):
@@ -231,9 +290,15 @@ class RomTransformationService:
             with _regular(ADAPTER).open("rb") as reader, adapter.open("xb") as writer:
                 shutil.copyfileobj(reader, writer)
             output, report_path = staging / "derived.nds", staging / "report.json"
+            extra_args = []
+            if options.adapter_properties():
+                properties = staging / "adapter.properties"
+                with properties.open("x", encoding="ascii") as handle:
+                    handle.write("\n".join(f"{key}={value}" for key, value in sorted(options.adapter_properties().items())) + "\n")
+                extra_args.append(str(properties))
             self._execute([str(self.java_path), "-Xmx2048M", "-Djava.awt.headless=true", "-cp", str(self.jar_path),
                            str(adapter), str(working), str(output), str(report_path), str(seed),
-                           ",".join(options.to_dict()["categories"]), str(options.balanced).lower(), found[1]],
+                           ",".join(options.to_dict()["categories"]), str(options.balanced).lower(), found[1], *extra_args],
                           cwd=staging, timeout=600)
             if file_signature(source) != source_signature or file_hash(source) != source_hash or \
                     file_hash(working) != source_hash or file_hash(self.jar_path) != ZX_JAR_SHA256:
@@ -253,7 +318,7 @@ class RomTransformationService:
                         "source_size": source.stat().st_size, "output_sha256": output_hash,
                         "output_size": output.stat().st_size, "output_file": "derived.nds",
                         "report_sha256": file_hash(report_path), "settings_string": report.get("settings_string"),
-                        "transformation_order": ["upr-zx-4.6.1"],
+                        "transformation_order": options.transformation_order(),
                         "validation": {"source_unchanged": True, "rom_reloaded_by_tool": True,
                                        "selected_categories_changed": True, "emulator": "not_tested",
                                        "lua": "not_tested", "shiny_rate": "original"}}
@@ -280,14 +345,22 @@ def transformation_options(challenge_snapshot: dict) -> RandomizerOptions | None
     value = challenge_snapshot.get("settings", {}).get("rom_transformation")
     if value is None:
         return None
-    if "randomizer" not in challenge_snapshot.get("active_rules", []) or not isinstance(value, dict) or \
-            set(value) != {"kind", "categories", "balanced"} or value.get("kind") != "zx" or \
+    if not isinstance(value, dict) or not {"kind", "categories", "balanced"} <= set(value) or \
+            set(value) - {"kind", "categories", "balanced", "advanced", "monotype_starters"} or value.get("kind") != "zx" or \
             not isinstance(value.get("categories"), list):
         raise ValueError("Configuration de transformation ROM invalide ou Randomizer inactif.")
+    active = challenge_snapshot.get("active_rules", [])
+    mono = value.get("monotype_starters")
+    options = RandomizerOptions(tuple(value["categories"]), value["balanced"], value.get("advanced"), mono)
+    if "randomizer" not in active and (mono is None or set(options.categories) != {"starters"} or options.advanced is not None):
+        raise ValueError("Configuration de transformation ROM invalide ou Randomizer inactif.")
+    if mono is not None and ("monotype" not in active or not isinstance(mono, dict) or
+            any(mono.get(key) != (challenge_snapshot.get("monotype") or {}).get(key) for key in ("type_id", "mode"))):
+        raise ValueError("Les starters doivent correspondre à la règle Monotype active.")
     seed = challenge_snapshot.get("seed")
     if type(seed) is not int or not 0 <= seed <= 2**63 - 1:
         raise ValueError("La seed Randomizer doit être comprise entre 0 et 9223372036854775807.")
-    return RandomizerOptions(tuple(value["categories"]), value["balanced"])
+    return options
 
 
 class RandomizerToolStore:
@@ -335,7 +408,7 @@ def verified_transformation_report(directory: Path, rom: Path, *, game_id: str, 
             data.get("game_id") != game_id or data.get("game_code") != SUPPORTED_CODES.get(game_id) or \
             data.get("region") != "FR" or data.get("revision") != 0 or data.get("seed") != configuration.get("seed") or \
             data.get("options") != options.to_dict() or data.get("output_file") != "derived.nds" or \
-            data.get("transformation_order") != ["upr-zx-4.6.1"]:
+            data.get("transformation_order") != options.transformation_order():
         raise ValueError("La provenance de la ROM dérivée ne correspond pas à cette partie.")
     tool = data.get("tool")
     if not isinstance(tool, dict) or tool.get("version") != ZX_VERSION or tool.get("commit") != ZX_COMMIT or \

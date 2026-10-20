@@ -6,7 +6,7 @@ import secrets
 
 from PySide6.QtCore import Signal, QSignalBlocker
 from PySide6.QtWidgets import (
-    QAbstractItemView, QComboBox, QFormLayout, QGridLayout, QHBoxLayout,
+    QAbstractItemView, QCheckBox, QComboBox, QFormLayout, QGridLayout, QHBoxLayout,
     QHeaderView, QLineEdit, QPushButton, QSpinBox, QTableWidget,
     QTableWidgetItem, QTextBrowser, QWidget,
 )
@@ -25,6 +25,7 @@ from app.services.randomizer_tool_discovery_service import RandomizerToolDiscove
 from app.ui.monotype_wheel import MonotypeDialog
 from app.ui.widgets.randomizer_configuration import (
     CATEGORY_LABELS, RandomizerConfiguration, RandomizerToolVerificationDialog,
+    ADVANCED_LABELS,
 )
 from app.ui.widgets.common import MODE_LABELS, STATUS_LABELS, card, label, page_layout
 
@@ -48,7 +49,7 @@ def challenge_summary(challenge: Challenge, catalog: Catalog) -> str:
         type_name = next((t["name"] for t in catalog.types if t["id"] == config["type_id"]), config["type_id"])
         mode = {"soft": "Souple", "strict": "Strict", "pure": "Pur"}[config["mode"]]
         lines.extend(["", f"Monotype : {type_name} · {mode}", f"Tirage n° {config['roll_index'] + 1}"])
-    if "randomizer" in challenge.active_rules:
+    if "randomizer" in challenge.active_rules or "rom_transformation" in challenge.settings:
         options = transformation_options(challenge.to_dict())
         if options is None:
             lines.extend(["", "Randomizer déclaré uniquement · aucune transformation demandée dans ce modèle historique."])
@@ -57,6 +58,12 @@ def challenge_summary(challenge: Challenge, catalog: Catalog) -> str:
                           "Catégories : " + ", ".join(CATEGORY_LABELS[key] for key in options.categories),
                           "Puissance similaire : " + ("oui" if options.balanced else "non"),
                           f"Seed de la ROM : {challenge.seed} · nouvelle aventure sans import de sauvegarde."])
+            if options.advanced is not None:
+                lines.extend(f"{ADVANCED_LABELS[key]} : {'oui' if value else 'non'}"
+                             for key, value in options.advanced.items() if key in ADVANCED_LABELS)
+                lines.append("Mode dresseurs : " + options.advanced["trainer_mode"])
+            if options.monotype_starters:
+                lines.append("Trois starters Monotype distincts : remplacement dans la copie, types et évolutions effectifs.")
     parameters = challenge.settings.get("rule_parameters", {})
     for rule_id, values in parameters.items():
         if rule_id in challenge.active_rules and values:
@@ -219,6 +226,12 @@ class ChallengePage(QWidget):
         extras_box.addWidget(self.monotype_row)
         self.monotype_note = label("La roue configure le type de la règle Monotype active. Sans tirage manuel, le type est déterminé par la seed.", "muted")
         extras_box.addWidget(self.monotype_note)
+        self.monotype_starters_check = QCheckBox("Remplacer les trois starters dans la ROM dédiée (ZX requis)")
+        self.monotype_starters_check.setChecked(True)
+        self.monotype_starters_check.setToolTip("Trois espèces distinctes compatibles, légendaires autorisés, évolutions compatibles privilégiées. "
+            "Le choix utilise les types et évolutions effectifs après randomisation et la seed du challenge.")
+        self.monotype_starters_check.toggled.connect(self.invalidate)
+        extras_box.addWidget(self.monotype_starters_check)
         self.shiny_rate_group = QWidget()
         shiny_form = QFormLayout(self.shiny_rate_group)
         shiny_form.setContentsMargins(0, 0, 0, 0)
@@ -505,10 +518,12 @@ class ChallengePage(QWidget):
         randomizer_active = "randomizer" in active
         self.monotype_row.setVisible(monotype_active)
         self.monotype_note.setVisible(monotype_active)
+        self.monotype_starters_check.setVisible(monotype_active)
         self.wheel_button.setEnabled(monotype_active)
         self.shiny_rate_group.setVisible(shiny_active)
         self._update_shiny_rate_support()
-        self.randomizer_widget.setVisible(randomizer_active)
+        self.randomizer_widget.setVisible(randomizer_active or monotype_active and self.monotype_starters_check.isChecked())
+        self.randomizer_widget.set_randomizer_active(randomizer_active)
         seed_text = self.seed_edit.text().strip()
         seed = int(seed_text) if seed_text.isascii() and seed_text.isdecimal() else None
         self.randomizer_widget.set_context(self.game_combo.currentData(), seed)
@@ -533,13 +548,21 @@ class ChallengePage(QWidget):
                           "preset_id": self._current_preset_id()},
                 monotype=monotype,
             )
+            configuration = None
             if "randomizer" in self.challenge.active_rules:
                 configuration = self.randomizer_widget.configuration()
-                if configuration is not None:
-                    self.challenge.settings["rom_transformation"] = configuration
-                    errors = self.engine.validate(self.challenge)
-                    if errors:
-                        raise ValueError(" ".join(errors))
+            if "monotype" in self.challenge.active_rules and self.monotype_starters_check.isChecked():
+                if configuration is None:
+                    configuration = {"kind": "zx", "categories": ["starters"], "balanced": False}
+                elif "starters" not in configuration["categories"]:
+                    configuration["categories"].append("starters")
+                configuration["monotype_starters"] = {"type_id": self.challenge.monotype["type_id"],
+                    "mode": self.challenge.monotype["mode"], "prefer_evolutions": True}
+            if configuration is not None:
+                self.challenge.settings["rom_transformation"] = configuration
+                errors = self.engine.validate(self.challenge)
+                if errors:
+                    raise ValueError(" ".join(errors))
         except ValueError as exc:
             self.invalidate()
             self.show_feedback(str(exc))
@@ -628,6 +651,7 @@ class ChallengePage(QWidget):
                 control.setValue(challenge.settings.get("rule_parameters", {}).get(rule_id, {}).get(key, self.catalog.rules[rule_id].parameters[key]["default"]))
         self.monotype_config = dict(challenge.monotype) if challenge.monotype else None
         options = transformation_options(challenge.to_dict())
+        self.monotype_starters_check.setChecked(options is not None and options.monotype_starters is not None)
         self.randomizer_widget.set_options(options or RandomizerOptions(),
             enabled=options is not None or "randomizer" not in challenge.active_rules)
         self.name_edit.setText(name + " · copie" if name else "")

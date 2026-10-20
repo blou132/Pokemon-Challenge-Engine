@@ -23,7 +23,8 @@ class RunTransformationProvider:
         configured = transformation_options(run.rules_snapshot)
         if configured is None:
             return None
-        root = local_path(self.runs_directory / validate_run_id(run.run_id) / "play")
+        backend = (run.launch_profile or {}).get("emulator_kind", "desmume")
+        root = local_path(self.runs_directory / validate_run_id(run.run_id) / ("play-melonds" if backend == "melonds" else "play"))
         directory = root / "transformation"
         rom = local_path((run.launch_profile or {}).get("rom_path", ""))
         expected = root / "game" / f"{run.game_id}-{run.run_id}.nds"
@@ -33,7 +34,7 @@ class RunTransformationProvider:
                      directory / "PceRandomizer.java"]
         signatures = tuple(file_signature(_regular(path)) for path in artifacts)
         key = (run.run_id, run.game_id, run.rom_fingerprint, run.seed,
-               tuple(configured.to_dict()["categories"]), configured.balanced, signatures)
+               json.dumps(configured.to_dict(), sort_keys=True), signatures)
         if key in self._cache:
             return deepcopy(self._cache[key])
         marker = artifacts[1]

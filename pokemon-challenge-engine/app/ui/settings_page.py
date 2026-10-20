@@ -50,6 +50,15 @@ class SettingsPage(QWidget):
         subtitle.setObjectName("subtitle")
         content.addWidget(subtitle)
 
+        storage_card, storage_layout = self._card("Données et anciennes parties")
+        content.addWidget(storage_card)
+        self.data_directory_label = QLabel(str(config_service.path.parent))
+        self.data_directory_label.setWordWrap(True)
+        storage_layout.addWidget(self.data_directory_label)
+        self.import_data_button = QPushButton("Importer une ancienne installation…")
+        self.import_data_button.clicked.connect(self._import_data)
+        storage_layout.addWidget(self.import_data_button)
+
         installation_card, installation_layout = self._card("Installation")
         content.addWidget(installation_card)
         self.installation_state = QLabel("Recherche automatique en cours…")
@@ -221,6 +230,10 @@ class SettingsPage(QWidget):
             rom_paths=self.config.rom_paths | {key: edit.text().strip() for key, edit in self.rom_edits.items()},
             save_path=self.save_edit.text().strip(),
         )
+
+    def _import_data(self) -> None:
+        from app.ui.user_data_import import import_old_data
+        import_old_data(self, self.config_service.path.parent)
 
     def _test(self) -> None:
         config = self._current_config()

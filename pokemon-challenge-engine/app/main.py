@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 
 from app import __version__
 from app.core.catalog import Catalog
+from app.paths import resolve_app_paths
 from app.ui.main_window import MainWindow
 from app.ui.theme import STYLESHEET
 
@@ -45,24 +46,39 @@ def application_icon() -> QIcon:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Préparation locale de challenges Pokémon")
     parser.add_argument("--debug", action="store_true", help="Activer les logs détaillés, dont la commande de lancement")
+    parser.add_argument("--data-dir", type=Path, help="Dossier absolu des données personnelles")
+    parser.add_argument("--self-test", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.self_test is not None and args.data_dir is None:
+        parser.error("--self-test exige --data-dir vers un dossier de validation isolé")
     app = QApplication(sys.argv[:1])
     app.setApplicationName("Pokemon Challenge Engine")
     app.setOrganizationName("Pokemon Challenge Engine")
+    app.setApplicationVersion(__version__)
     app.setStyle("Fusion")
     app.setStyleSheet(STYLESHEET)
     app.setWindowIcon(application_icon())
     try:
-        configure_logging(PROJECT_DIR, args.debug)
+        paths = resolve_app_paths(args.data_dir)
+        configure_logging(paths.data, args.debug)
         logging.info("Démarrage de Pokemon Challenge Engine V%s", __version__)
-        catalog = Catalog.load(PROJECT_DIR / "data")
-        window = MainWindow(catalog, PROJECT_DIR)
+        catalog = Catalog.load(paths.resources / "data")
+        window = MainWindow(catalog, paths.data)
     except (ValueError, OSError) as exc:
         logging.error("Initialisation impossible : %s", type(exc).__name__)
         QMessageBox.critical(None, "Démarrage impossible", f"Les données de l'application ne peuvent pas être chargées.\n\n{exc}\n\nVérifiez les fichiers JSON et les droits d'accès au dossier.")
         return 1
+    def unhandled_exception(kind, value, traceback):
+        logging.error("Erreur inattendue dans l'interface", exc_info=(kind, value, traceback))
+        QMessageBox.critical(window, "Erreur inattendue", "L'action n'a pas pu être terminée. "
+                             f"Consultez le journal dans {paths.data / 'logs'}.")
+    sys.excepthook = unhandled_exception
     window.show()
-    QTimer.singleShot(0, window.start_first_run)
+    if args.self_test is not None:
+        from app.distribution_check import run_check
+        QTimer.singleShot(100, lambda: run_check(app, window, paths, args.self_test))
+    else:
+        QTimer.singleShot(0, window.start_first_run)
     return app.exec()
 
 

@@ -121,6 +121,7 @@ def test_four_game_profiles_publish_valid_party_and_only_documented_tracking(tmp
     {"memory_profile": "white_fr_rev0"}, {"sequence": True}, {"timestamp": -1},
     {"source_revision": "main"}, {"bridge_version": "1.1"}, {"party_count": 7},
     {"party_count": True}, {"party_hex": "00"}, {"map_id": 65536}, {"unexpected": 1},
+    {"status": []}, {"status": {}}, {"timestamp": 1.5},
 ])
 def test_rejects_identity_revision_and_transport_mismatches(tmp_path, change):
     bridge, reader = start(tmp_path, PROFILES[0])
@@ -163,6 +164,14 @@ def test_changed_zones_persist_until_ack_and_stop_prevents_new_publications(tmp_
     assert len(bridge.poll().observations) == 2
     bridge.stop()
     assert not publish(reader, frame(PROFILES[0], reader.session_id, sequence=4))
+
+
+@pytest.mark.parametrize("status,count", [("not_ready", True), ("not_ready", 6), ("invalid_data", 0), ("unsupported", 1)])
+def test_rejects_incoherent_heartbeat_state(tmp_path, status, count):
+    bridge, reader = start(tmp_path, PROFILES[0])
+    with pytest.raises(ValueError, match="incohérent"):
+        publish(reader, frame(PROFILES[0], bridge.session_id, status=status,
+                              party_count=count, party_hex=None, map_id=None))
 
 
 def test_rejects_oversized_and_duplicate_json_without_publication(tmp_path):

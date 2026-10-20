@@ -63,7 +63,7 @@ inline void PublishFrame(const melonDS::NDS& nds, int instanceID)
         {"timestamp", static_cast<double>(QDateTime::currentSecsSinceEpoch())},
         {"console_type", nds.ConsoleType}, {"rom_code", code}, {"rom_revision", revision},
         {"ram_code", ramCode}, {"ram_revision", ramRevision},
-        {"memory_profile", profile ? QJsonValue(profile->id) : QJsonValue()},
+        {"memory_profile", profile ? QJsonValue(QString::fromLatin1(profile->id)) : QJsonValue()},
         {"party_count", QJsonValue()}, {"party_hex", QJsonValue()},
         {"map_id", QJsonValue()}, {"status", "unsupported"}
     };
@@ -94,7 +94,14 @@ inline void PublishFrame(const melonDS::NDS& nds, int instanceID)
     // A failed atomic replace must not degrade to overwriting a visible file.
     output.setDirectWriteFallback(false);
     const auto data = QJsonDocument(frame).toJson(QJsonDocument::Compact);
+    static bool warned = false;
     if (!output.open(QIODevice::WriteOnly) || output.write(data) != data.size() || !output.commit())
-        melonDS::Platform::Log(melonDS::Platform::LogLevel::Warn, "PCE: unable to publish frame snapshot\n");
+    {
+        if (!warned)
+            melonDS::Platform::Log(melonDS::Platform::LogLevel::Warn, "PCE: unable to publish frame snapshot\n");
+        warned = true;
+    }
+    else
+        warned = false;
 }
 }

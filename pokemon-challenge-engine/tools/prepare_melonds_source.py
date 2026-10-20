@@ -17,6 +17,25 @@ UPSTREAM_REVISION = "b86390e4428bf38ce4c1ce0e9ca446d6d25955e8"
 PROJECT = Path(__file__).resolve().parents[1]
 
 
+def patch_qt5_metatypes(source: Path) -> None:
+    """Qt5 needs explicit registration for the existing cheat-dialog pointers."""
+    header = Path(source) / "src/frontend/qt_sdl/CheatImportDialog.h"
+    original = header.read_bytes()
+    newline = b"\r\n" if b"\r\n" in original else b"\n"
+    marker = b"namespace Ui { class CheatImportDialog; }"
+    if original.count(marker) != 1 or b"Q_DECLARE_METATYPE(melonDS::ARCode*)" in original:
+        raise ValueError("Point d'insertion des metatypes Qt5 inattendu.")
+    addition = newline.join((
+        b"// Qt5 requires these explicit pointer metatypes; Qt6 registers them automatically.",
+        b"#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)",
+        b"Q_DECLARE_METATYPE(melonDS::ARCode*)",
+        b"Q_DECLARE_METATYPE(melonDS::ARCodeCat*)",
+        b"Q_DECLARE_METATYPE(melonDS::ARDatabaseEntry*)",
+        b"#endif", b"", marker,
+    ))
+    header.write_bytes(original.replace(marker, addition))
+
+
 def prepare(source: Path, project: Path = PROJECT) -> None:
     source = Path(source).resolve()
     revision = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
@@ -58,6 +77,7 @@ def prepare(source: Path, project: Path = PROJECT) -> None:
     patched = patched.replace(call, call + newline +
                              b"                PCEBridge::PublishFrame(*emuInstance->nds, emuInstance->getInstanceID());")
     thread.write_bytes(patched)
+    patch_qt5_metatypes(source)
     manifest = {
         "bridge_version": "1.1-pce.1", "upstream_revision": UPSTREAM_REVISION,
         "upstream_release": "https://github.com/melonDS-emu/melonDS/releases/tag/1.1",

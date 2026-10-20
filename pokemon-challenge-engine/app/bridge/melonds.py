@@ -79,7 +79,7 @@ class MelonDSBridgeReader:
 
     def __init__(self, session_dir: Path, session_id: str, expected_code: str,
                  expected_revision: int, *, resource_dir: Path = RESOURCE_DIR) -> None:
-        if re.fullmatch(r"[0-9a-f]{32}", session_id) is None:
+        if not isinstance(session_id, str) or re.fullmatch(r"[0-9a-f]{32}", session_id) is None:
             raise ValueError("Identifiant de session melonDS invalide.")
         if not isinstance(expected_code, str) or re.fullmatch(r"[A-Z0-9]{4}", expected_code) is None:
             raise ValueError("Code de ROM melonDS invalide.")
@@ -122,7 +122,7 @@ class MelonDSBridgeReader:
                         (code, revision, game_id, region)), None)
         if frame["memory_profile"] != (profile["id"] if profile else None):
             raise ValueError("Profil mémoire melonDS incompatible avec la cartouche.")
-        if frame["status"] not in {"ok", "not_ready", "unsupported", "invalid_data"}:
+        if not isinstance(frame["status"], str) or frame["status"] not in {"ok", "not_ready", "unsupported", "invalid_data"}:
             raise ValueError("État de lecture melonDS invalide.")
         message = {
             "protocol_version": 2, "session_id": self.session_id, "sequence": frame["sequence"],
@@ -135,6 +135,12 @@ class MelonDSBridgeReader:
         if frame["status"] != "ok":
             if frame["party_hex"] is not None or frame["map_id"] is not None:
                 raise ValueError("Données présentes sans lecture melonDS validée.")
+            count = frame["party_count"]
+            valid_count = (frame["status"] == "unsupported" and count is None) or (
+                frame["status"] == "not_ready" and type(count) is int and count == 0
+            ) or (frame["status"] == "invalid_data" and _integer(count, 7, 255))
+            if not valid_count:
+                raise ValueError("État d'équipe melonDS incohérent.")
             if frame["status"] == "invalid_data":
                 message.update(event="bridge_error", error="Données Pokémon transitoires ou incohérentes.")
             return message

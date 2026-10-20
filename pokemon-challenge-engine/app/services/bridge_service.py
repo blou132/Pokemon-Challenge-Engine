@@ -34,6 +34,7 @@ class BridgeService:
         self._started_at: float | None = None
         self._expected_code: str | None = None
         self._expected_revision: int | None = None
+        self.native_reader = None
 
     @property
     def state(self) -> BridgeState:
@@ -72,6 +73,7 @@ class BridgeService:
         return self._state
 
     def stop(self) -> BridgeState:
+        self.native_reader = None
         if self._session_dir is not None:
             try:
                 (self._session_dir / "stop").touch(exist_ok=True)
@@ -195,6 +197,8 @@ class BridgeService:
             return self._state
         now = self._clock()
         try:
+            if self.native_reader is not None:
+                self.native_reader.poll()
             latest = self._latest_snapshot()
             if latest is not None and latest[0] > self._state.sequence:
                 with latest[1].open("rb") as handle:
@@ -209,8 +213,8 @@ class BridgeService:
         except FileNotFoundError:
             # Le producteur peut retirer l'ancien instantané pendant cette lecture.
             pass
-        except (OSError, ProtocolError) as exc:
-            detail = str(exc) if isinstance(exc, ProtocolError) else "Impossible de lire le dossier local de la passerelle."
+        except (OSError, ValueError) as exc:
+            detail = str(exc) if isinstance(exc, ValueError) else "Impossible de lire le dossier local de la passerelle."
             self._state = replace(self._state, status="error", party_size=None, party=None,
                                   observation=None, observations=(), last_error=detail)
         last_activity = self._state.last_received_at

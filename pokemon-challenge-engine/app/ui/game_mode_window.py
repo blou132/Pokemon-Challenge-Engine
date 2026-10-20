@@ -310,6 +310,8 @@ class GameModeWindow(QMainWindow):
                 self._cancel_lua_pipeline()
 
     def _resolve_lua_choice(self, options):
+        if options.get("emulator_kind") == "melonds":
+            return
         from app.services.emulator_capabilities import detect_capabilities
         choice = options.get("lua_connection", "ask")
         if choice == "manual" or not detect_capabilities(options["emulator_path"]).known_build:
@@ -337,6 +339,9 @@ class GameModeWindow(QMainWindow):
         if not self.validate_requested_run():
             return
         options = deepcopy(self.launch_options(game_id))
+        if reconnect and options.get("emulator_kind") == "melonds" and self.service.state.running:
+            self.page.set_session_phase("error", "Fermez melonDS puis rejouez cette partie pour renouveler sa connexion.")
+            return
         if self.persistent_run is None and not reconnect:
             previous_choice = options.get("lua_connection", "ask")
             self._resolve_lua_choice(options)
@@ -353,8 +358,12 @@ class GameModeWindow(QMainWindow):
         self._lua_pipeline = {"generation": self._launch_generation, "game_id": game_id,
             "run_id": self.requested_run_id, "options": options,
             "reconnect": reconnect, "request": None}
-        self.page.set_session_phase("preparing", "Création d'une nouvelle session Lua…", busy=True)
-        self._lua_pipeline["request"] = self.controller.start(game_id, self._lua_pipeline["options"]["rom_path"])
+        if options.get("emulator_kind") == "melonds":
+            self.page.set_session_phase("preparing", "Préparation du suivi melonDS en lecture seule…", busy=True)
+            self._lua_pipeline["request"] = self.controller.start(game_id, options["rom_path"], emulator_kind="melonds")
+        else:
+            self.page.set_session_phase("preparing", "Création d'une nouvelle session Lua…", busy=True)
+            self._lua_pipeline["request"] = self.controller.start(game_id, options["rom_path"])
 
     def _pipeline_matches(self, pipeline):
         return (pipeline is not None and pipeline is self._lua_pipeline
@@ -378,6 +387,13 @@ class GameModeWindow(QMainWindow):
         self._connection_session = bridge.session_id
         pending["session_id"] = bridge.session_id
         options = pending["options"]
+        if options.get("emulator_kind") == "melonds":
+            self.service.bridge_environment = {"PCE_BRIDGE_DIR": str(bridge.session_dir),
+                                               "PCE_BRIDGE_SESSION": bridge.session_id}
+            self._lua_pipeline = None
+            self._lua_message = "melonDS démarré. En attente d'une lecture effective de l'équipe…"
+            self._launch_process(pending["game_id"])
+            return
         self.page.set_session_phase("preparing", "Préparation de l'autoload Lua…", busy=True)
         def prepare():
             automatic = options.get("lua_connection", "ask") == "auto" and not pending["reconnect"]
@@ -462,8 +478,11 @@ class GameModeWindow(QMainWindow):
                 and state.session_id == self._connection_session):
             self._bridge_state_changed(state)
             return
-        message = ("DeSmuME a démarré mais Lua ne s'est pas connecté." if self.service.state.running else
-                   "Aucun heartbeat Lua reçu pour cette session.")
+        if self.launch_options(game).get("emulator_kind") == "melonds":
+            message = "Aucune lecture du pont melonDS reçue. Vérifiez le composant PCE et le jeu démarré."
+        else:
+            message = ("DeSmuME a démarré mais Lua ne s'est pas connecté." if self.service.state.running else
+                       "Aucun heartbeat Lua reçu pour cette session.")
         self.page.set_session_phase("error", message + " " + self._lua_message)
 
     def _launch_process(self, game_id, *, prepare_lua=False):
@@ -760,6 +779,11 @@ class GameModeWindow(QMainWindow):
         self.graphics_settings.set_executable(options["emulator_path"])
         self.save_settings.set_context(game_id, options)
         self.save_settings.set_emulator_running(self.service.state.running)
+        melon = options.get("emulator_kind") == "melonds"
+        for key in ("controls", "graphics"):
+            self.settings_tabs.setTabEnabled(self._tab_ids[key], not melon)
+        if melon:
+            self.launch_settings.setToolTip("Réglez clavier, manette, écrans et graphismes dans Config de la fenêtre melonDS. Ces réglages restent propres à cette partie.")
 
     def open_settings(self, tab="interface"):
         if tab == "installation":

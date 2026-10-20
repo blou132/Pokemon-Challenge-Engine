@@ -71,6 +71,8 @@ class RunLaunchService:
         return values, source, None
 
     def prepare(self, run):
+        if (run.launch_profile or {}).get("emulator_kind") == "melonds":
+            return self._prepare_melonds(run)
         snapshot = deepcopy(run.launch_profile or {})
         source = snapshot.pop("_source", None)
         pending_isolation = snapshot.pop("_isolation_pending", False)
@@ -162,3 +164,42 @@ class RunLaunchService:
         return {"game_id": run.game_id, "run_id": run.run_id, "profile": values,
                 "health": health, "rom_fingerprint": run.rom_fingerprint,
                 "source": source, "actions": []}
+
+    def _prepare_melonds(self, run):
+        from app.core.run_manager import RunManager
+        from app.services.run_isolation_service import RunIsolationService
+        manager = RunManager(self.base_dir / "runs")
+        isolation = RunIsolationService(manager)
+        if (run.launch_profile or {}).get("_isolation_pending"):
+            values = deepcopy(run.launch_profile)
+            source = values.get("_source")
+            if source and source.get("source_path"):
+                prepared = RomPreparationService(self.setup.cache_root).prepare(source["source_path"],
+                    member=source.get("archive_member"), expected_game=run.game_id)
+                values["rom_path"] = str(prepared.path)
+            if not self._exists(values.get("rom_path")):
+                values, source, error = self._recover(run, values, source)
+                if error:
+                    raise ValueError(error)
+            if values != run.launch_profile:
+                def associate(current):
+                    if current._storage_revision != run._storage_revision:
+                        raise ValueError("La partie a changé pendant la recherche.")
+                    current.launch_profile = deepcopy(values)
+                    if source:
+                        current.launch_profile["_source"] = source
+                run = manager.update(run.run_id, associate)
+            run = isolation.isolate(run)
+        isolation.validate(run)
+        path = isolation.expected_save_path(run)
+        if path.exists():
+            isolation.mark_save_observed(run)
+        elif not isolation.save_may_be_missing(run):
+            raise ValueError("La sauvegarde melonDS de cette aventure a disparu ; restaurez un backup.")
+        source = (run.launch_profile or {}).get("_source")
+        snapshot = {key: value for key, value in run.launch_profile.items() if not key.startswith("_")}
+        values = validate_config({"launch_profiles": {run.game_id: snapshot}}, self.config,
+                                 self.base_dir)["launch_profiles"][run.game_id]
+        return {"game_id": run.game_id, "run_id": run.run_id, "profile": values,
+                "health": {"ready": True, "launch_ready": True, "issues": []},
+                "rom_fingerprint": run.rom_fingerprint, "source": source, "actions": []}

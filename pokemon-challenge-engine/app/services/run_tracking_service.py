@@ -638,11 +638,14 @@ class RunTrackingService:
         if not isinstance(profile, dict):
             raise ValueError("Référence de lancement invalide.")
         validate_json_data(profile)
-        owned = self.manager.root / run.run_id / "play"
+        from app.services.run_isolation_service import RunIsolationService
+        owned = RunIsolationService(self.manager).directory(run)
         if owned.exists() or any(value and Path(value).is_relative_to(owned)
                                  for key, value in (run.launch_profile or {}).items() if key in {"rom_path", "emulator_path", "save_path"}):
             protected = ("rom_path", "emulator_path", "ini_path", "save_path", "save_state_directory",
                          "save_state_stem", "backup_directory")
+            if profile.get("emulator_kind", "desmume") != (run.launch_profile or {}).get("emulator_kind", "desmume"):
+                raise ValueError("Le changement d'émulateur exige la migration explicite de cette partie.")
             if any(profile.get(key) != run.launch_profile.get(key) for key in protected):
                 raise ValueError("Les chemins de cette aventure sont indépendants et ne peuvent pas être remplacés par des fichiers partagés.")
             if rom_fingerprint is not None and rom_fingerprint != run.rom_fingerprint:

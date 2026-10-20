@@ -7,6 +7,7 @@ import subprocess
 
 from app.core.game_detector import GAME_CODE_PREFIXES
 from app.services.config_service import AppConfig
+from app.services.external_process import child_environment, external_dll_search
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +64,11 @@ class LauncherService:
         command = self.build_command(game_id)
         logger.debug("Commande DeSmuME : %r", command)
         try:
-            process = subprocess.Popen(
-                command, shell=False, cwd=str(Path(command[0]).parent),
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-            )
+            with external_dll_search():
+                process = subprocess.Popen(
+                    command, shell=False, cwd=str(Path(command[0]).parent), env=child_environment(),
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                )
         except OSError as exc:
             logger.error("Impossible de démarrer DeSmuME (erreur système %s).", exc.errno)
             raise ValueError("Impossible de démarrer DeSmuME. Vérifiez l'exécutable et ses droits d'accès.") from exc

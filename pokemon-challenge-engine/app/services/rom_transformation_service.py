@@ -12,6 +12,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import time
 from uuid import uuid4
 
@@ -170,9 +171,13 @@ class RomTransformationService:
     @staticmethod
     def _execute(command: list[str], *, cwd: Path, timeout: float):
         try:
-            result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
-                                    errors="replace", timeout=timeout, check=False,
-                                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+            if getattr(sys, "frozen", False):
+                from app.services.external_process import run_external
+                result = run_external(command, cwd=cwd, timeout=timeout)
+            else:
+                result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
+                                        errors="replace", timeout=timeout, check=False,
+                                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         except subprocess.TimeoutExpired as exc:
             raise ValueError("Le Randomizer a dépassé le délai autorisé. La source est conservée.") from exc
         except OSError as exc:

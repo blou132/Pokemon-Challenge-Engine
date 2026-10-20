@@ -475,7 +475,9 @@ class MainWindow(QMainWindow):
                     snapshot["_source"] = deepcopy(source)
                 self._run_action(run.run_id, "update_launch_reference", {
                     "profile": snapshot, "rom_fingerprint": result["rom_fingerprint"]})
-                message = "Partie prête. Jouer prépare la connexion Lua et lance DeSmuME ; le temps commence avec les messages du jeu."
+                message = ("Partie prête. Jouer lance melonDS et son suivi en lecture seule ; l'équipe reste inconnue jusqu'à sa lecture."
+                           if snapshot.get("emulator_kind") == "melonds" else
+                           "Partie prête. Jouer prépare la connexion Lua et lance DeSmuME ; le temps commence avec les messages du jeu.")
             else:
                 message = "Environnement à vérifier : " + "\n".join(result["health"]["issues"])
             self.game_mode_window.set_run_notice(message)
@@ -496,7 +498,7 @@ class MainWindow(QMainWindow):
             self.runs_page.refresh_visible()
 
     def _run_action(self, run_id, action, payload):
-        if action in {"delete", "isolate"}:
+        if action in {"delete", "isolate", "melonds"}:
             self._manage_run_files(run_id, action)
             return
         active = self.run_controller.active_run
@@ -596,7 +598,25 @@ class MainWindow(QMainWindow):
         try:
             from app.services.run_isolation_service import RunIsolationService
             run = self.runs.load(run_id)
-            if action == "isolate":
+            if action == "melonds":
+                from app.services.melonds_runtime import find_installation
+                from app.services.melonds_run_service import MelonDSRunService
+                executable = find_installation(self.base_dir)
+                if executable is None:
+                    raise ValueError("Le composant melonDS avec suivi PCE n'est pas installé ou son intégrité est invalide.")
+                answer = QMessageBox.question(self, "Copier cette aventure vers melonDS ?",
+                    f"Préparer une copie de la ROM et de la sauvegarde de « {run.name} » pour melonDS ?\n\n"
+                    "La sauvegarde normale .dsv sera convertie en .sav dans un nouveau dossier. "
+                    "Les fichiers DeSmuME, les règles et l'historique seront conservés. "
+                    "Les save states DeSmuME ne sont pas compatibles : la reprise utilise la dernière sauvegarde du jeu.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+                if answer != QMessageBox.StandardButton.Yes:
+                    return
+                self._detach_run(run_id)
+                run = self.runs.load(run_id)
+                service = MelonDSRunService(self.runs)
+                self.run_files.start(lambda: {"action": "isolated", "run": service.prepare(run, executable, migrate=True)})
+            elif action == "isolate":
                 service = RunIsolationService(self.runs)
                 if service.is_isolated(run):
                     service.validate(run)

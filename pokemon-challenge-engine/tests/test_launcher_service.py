@@ -9,6 +9,7 @@ import pytest
 
 from app.services.config_service import AppConfig
 from app.services.launcher_service import LauncherService
+from app.services.external_process import child_environment
 
 
 @pytest.fixture
@@ -35,6 +36,7 @@ def test_build_and_launch_preserve_rom_and_save(configured: tuple[LauncherServic
     with patch("app.services.launcher_service.subprocess.Popen", return_value=process) as popen:
         assert service.launch("black2") is process
     popen.assert_called_once_with(command, shell=False, cwd=str(emulator.parent),
+                                  env=child_environment(),
                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     assert {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in (rom, save)} == originals
 

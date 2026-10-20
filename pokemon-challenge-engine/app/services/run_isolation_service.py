@@ -63,9 +63,14 @@ class RunIsolationService:
         self.running_probe = running_probe or EmulatorWindowManager().running_executable
 
     def directory(self, run: Run) -> Path:
-        return local_path(self.manager._directory(run.run_id) / "play")
+        name = "play-melonds" if (run.launch_profile or {}).get("emulator_kind") == "melonds" else "play"
+        return local_path(self.manager._directory(run.run_id) / name)
 
     def _paths(self, run: Run) -> dict[str, Path]:
+        if (run.launch_profile or {}).get("emulator_kind") == "melonds":
+            from app.services.melonds_run_service import MelonDSRunService
+            name = Path(run.launch_profile["emulator_path"]).name
+            return MelonDSRunService(self.manager).paths(run, name)
         root = self.directory(run)
         stem = f"{run.game_id}-{run.run_id}"
         return {"rom_path": root / "game" / (stem + ".nds"),
@@ -149,6 +154,17 @@ class RunIsolationService:
         return result.to_bytes()
 
     def isolate(self, run: Run, *, import_save=None, import_states=False) -> Run:
+        if (run.launch_profile or {}).get("emulator_kind") == "melonds":
+            from app.services.melonds_run_service import MelonDSRunService
+            if import_states:
+                raise ValueError("Les états DeSmuME ne sont pas compatibles avec melonDS.")
+            if self.is_isolated(run):
+                self.validate(run)
+                if import_save is not None:
+                    raise ValueError("Cette partie possède déjà ses fichiers ; aucun import ne les remplacera.")
+                return self.manager.load(run.run_id)
+            return MelonDSRunService(self.manager, running_probe=self.running_probe).prepare(
+                run, Path(run.launch_profile["emulator_path"]), import_save=import_save)
         if self.manager.active_id == run.run_id:
             raise ValueError("Arrêtez la session et le suivi de cette partie avant de préparer ses fichiers.")
         if self.is_isolated(run):
@@ -304,6 +320,9 @@ class RunIsolationService:
         staging.rmdir()
 
     def validate(self, run: Run) -> None:
+        if (run.launch_profile or {}).get("emulator_kind") == "melonds":
+            from app.services.melonds_run_service import MelonDSRunService
+            return MelonDSRunService(self.manager).validate(run)
         root = self.directory(run)
         self._check_location(root)
         marker = _regular(root / "isolation.json")

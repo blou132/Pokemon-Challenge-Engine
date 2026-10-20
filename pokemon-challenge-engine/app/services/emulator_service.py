@@ -45,7 +45,9 @@ class EmulatorService:
         self.base_dir = Path(base_dir).resolve()
         self.bridge = bridge
 
-    def prepare(self, game_id: str, rom_path: str = "") -> Path:
+    def prepare(self, game_id: str, rom_path: str = "", *, emulator_kind="desmume") -> Path:
+        if emulator_kind not in {"desmume", "melonds"}:
+            raise ValueError("Émulateur inconnu.")
         if game_id not in GAME_IDS:
             raise ValueError("Sélectionnez Pokémon Noir, Blanc, Noir 2 ou Blanc 2.")
         code, revision = None, None
@@ -61,6 +63,23 @@ class EmulatorService:
             if len(code) != 4 or not code.isascii() or not code.isalnum() or GAME_CODE_PREFIXES.get(code[:3]) != game_id:
                 raise ValueError("L'en-tête de ROM ne correspond pas au jeu sélectionné.")
             revision = header[30]
+        if emulator_kind == "melonds":
+            from app.bridge.melonds import MelonDSBridgeReader
+            if code is None or revision is None:
+                raise ValueError("Le suivi melonDS exige la ROM identifiée de cette partie.")
+            state = self.bridge.start(game_id, code, revision)
+            if state.status == "error":
+                raise ValueError(state.last_error)
+            try:
+                self.bridge.native_reader = MelonDSBridgeReader(self.bridge.session_dir, self.bridge.session_id,
+                    code, revision, resource_dir=RESOURCE_DIR)
+                marker = self.bridge.session_dir / "melonds-session.json"
+                _atomic_text(marker, json.dumps({"session_id": self.bridge.session_id, "game_code": code,
+                                                "revision": revision, "emulator": "melonds"}))
+            except (OSError, ValueError):
+                self.bridge.stop()
+                raise
+            return marker
         profiles = json.loads((RESOURCE_DIR / "data/memory_profiles.json").read_text(encoding="utf-8"))
         tracking_profiles = json.loads((RESOURCE_DIR / "data/tracking_profiles.json").read_text(encoding="utf-8"))
         capture_zones = json.loads((RESOURCE_DIR / "data/capture_zones.json").read_text(encoding="utf-8"))

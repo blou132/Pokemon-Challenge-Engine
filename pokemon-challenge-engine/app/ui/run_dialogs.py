@@ -180,6 +180,13 @@ class NewRunDialog(QDialog):
             if game.status == "supported":
                 self.game_combo.addItem(game.name, game.id)
         self.profile_combo = QComboBox()
+        from app.services.melonds_runtime import find_installation
+        self.melonds_executable = find_installation(base_dir) if base_dir is not None else None
+        self.emulator_combo = QComboBox()
+        self.emulator_combo.addItem("DeSmuME · Lua", "desmume")
+        self.emulator_combo.addItem("melonDS · suivi PCE en lecture seule", "melonds")
+        self.emulator_combo.model().item(1).setEnabled(self.melonds_executable is not None)
+        self.emulator_combo.setToolTip("melonDS nécessite le composant PCE vérifié fourni avec la distribution Windows.")
         self.source_combo = QComboBox()
         for text, key in (("Partie classique", "classic"), ("Depuis un modèle existant", "profile"),
                           ("Challenge personnalisé", "custom")):
@@ -192,7 +199,7 @@ class NewRunDialog(QDialog):
         self.save_mode_combo.addItem("Nouvelle aventure — sans ancienne sauvegarde", "new")
         self.save_mode_combo.addItem("Importer une sauvegarde existante", "import")
         self.save_edit = QLineEdit()
-        self.save_edit.setPlaceholderText("Fichier .dsv existant à copier dans cette partie")
+        self.save_edit.setPlaceholderText("Sauvegarde existante à copier dans cette partie")
         save_row = QHBoxLayout()
         self.save_row = save_row
         save_row.addWidget(self.save_edit, 1)
@@ -202,6 +209,7 @@ class NewRunDialog(QDialog):
         self.configured_save_button = QPushButton("Choisir la sauvegarde détectée / configurée")
         self.configured_save_button.clicked.connect(self._use_configured_save)
         form.addRow("Jeu", self.game_combo)
+        form.addRow("Émulateur", self.emulator_combo)
         form.addRow("Configuration", self.source_combo)
         form.addRow("Modèle", self.profile_combo)
         form.addRow("", self.configure_button)
@@ -356,13 +364,20 @@ class NewRunDialog(QDialog):
             self.save_edit.setText(self._configured_save())
 
     def _browse_save(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Copier une sauvegarde existante dans la nouvelle partie", self.save_edit.text(), "Sauvegardes DeSmuME (*.dsv)")
+        pattern = "Sauvegardes Pokémon (*.dsv *.sav)" if self.emulator_combo.currentData() == "melonds" else "Sauvegardes DeSmuME (*.dsv)"
+        path, _ = QFileDialog.getOpenFileName(self, "Copier une sauvegarde existante dans la nouvelle partie", self.save_edit.text(), pattern)
         if path:
             self.save_edit.setText(path)
 
     def selection(self):
         game_id = self.game_combo.currentData()
         launch = deepcopy(self.launch_profiles.get(game_id))
+        if self.emulator_combo.currentData() == "melonds":
+            if self.melonds_executable is None:
+                raise ValueError("Le composant melonDS PCE vérifié est indisponible.")
+            launch = launch or {}
+            launch.update(emulator_kind="melonds", emulator_path=str(self.melonds_executable),
+                          ini_path="", apply_settings=False, lua_connection="manual")
         save_mode = self.save_mode_combo.currentData()
         save = (self.save_edit.text().strip() or None) if save_mode == "import" else None
         if launch is not None:
@@ -416,8 +431,9 @@ class NewRunDialog(QDialog):
                 return
         if values["save_mode"] == "import":
             path = Path(values["save_path"]) if values["save_path"] else None
-            if path is None or path.suffix.lower() != ".dsv" or not path.is_file():
-                self.error_label.setText("Choisissez un fichier .dsv existant à importer, ou démarrez une nouvelle aventure.")
+            suffixes = {".dsv", ".sav"} if self.emulator_combo.currentData() == "melonds" else {".dsv"}
+            if path is None or path.suffix.lower() not in suffixes or not path.is_file():
+                self.error_label.setText("Choisissez une sauvegarde normale compatible existante, ou démarrez une nouvelle aventure.")
                 self.error_label.show()
                 return
             if QMessageBox.question(
@@ -672,7 +688,7 @@ class RunDetailsDialog(QDialog):
         box = self._tab_layouts["Sauvegardes"]
         box.addWidget(label("Progression PCE", "sectionTitle"))
         box.addWidget(label("Règles, temps, équipe, notes et historique sont enregistrés automatiquement dans le stockage persistant des parties. Ils ne sont pas une sauvegarde du jeu.", "muted"))
-        box.addWidget(label("Sauvegarde Pokémon DeSmuME", "sectionTitle"))
+        box.addWidget(label("Sauvegarde Pokémon dans l'émulateur", "sectionTitle"))
         self.save_label = label("")
         self.backup_label = label("Dernier backup : Non renseigné", "muted")
         self._backup_context = None
@@ -686,6 +702,9 @@ class RunDetailsDialog(QDialog):
         self.isolate_button.setToolTip("Associer les anciens fichiers à cette partie sans modifier les originaux.")
         self.isolate_button.clicked.connect(lambda: self.action_requested.emit(self.run_id, "isolate", {}))
         box.addWidget(self.isolate_button)
+        self.melonds_button = QPushButton("Copier cette aventure vers melonDS…")
+        self.melonds_button.clicked.connect(lambda: self.action_requested.emit(self.run_id, "melonds", {}))
+        box.addWidget(self.melonds_button)
         box.addWidget(label("PCE ne déclenche pas de sauvegarde en jeu. Les backups et restaurations utilisent le gestionnaire existant.", "muted"))
         box.addStretch()
 
@@ -698,6 +717,7 @@ class RunDetailsDialog(QDialog):
             self.resume_button.setEnabled(False)
             self.delete_button.setEnabled(False)
             self.isolate_button.setEnabled(False)
+            self.melonds_button.setEnabled(False)
             self.designation_button.setEnabled(False)
 
     def _show_evolution_conditions(self):
@@ -732,6 +752,7 @@ class RunDetailsDialog(QDialog):
         self.error_label.hide()
         self.delete_button.setEnabled(True)
         self.isolate_button.setEnabled(True)
+        self.melonds_button.setVisible((run.launch_profile or {}).get("emulator_kind", "desmume") == "desmume")
         self.title_label.setText(run.name)
         game = self.catalog.games.get(run.game_id)
         rules = rule_names(run, self.catalog)

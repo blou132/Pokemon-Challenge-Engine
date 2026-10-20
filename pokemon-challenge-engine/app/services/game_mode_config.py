@@ -20,7 +20,7 @@ SPEEDS = ("x1", "x2", "x4", "MAX")
 
 
 def launch_defaults(game: str, legacy: AppConfig, base: Path) -> dict:
-    return {"game_id": game, "rom_path": legacy.rom_paths.get(game, ""), "emulator_path": legacy.desmume_path,
+    return {"game_id": game, "emulator_kind": "desmume", "rom_path": legacy.rom_paths.get(game, ""), "emulator_path": legacy.desmume_path,
             "ini_path": "", "controls_profile": "default", "graphics_preset": "original", "speed": "x1",
             "game_mode": True, "apply_settings": False, "challenge_profile_id": None, "lua_connection": "ask",
             "save_path": "", "save_state_directory": "", "save_state_stem": "",
@@ -53,6 +53,8 @@ def validate_config(data: dict, legacy: AppConfig, base: Path) -> dict:
         profile = template | values
         if profile["game_id"] != game or profile["speed"] not in SPEEDS:
             raise ValueError("Jeu ou vitesse du profil invalide.")
+        if profile["emulator_kind"] not in ("desmume", "melonds"):
+            raise ValueError("Émulateur du profil inconnu.")
         if profile["lua_connection"] not in ("ask", "auto", "manual"):
             raise ValueError("Mode de connexion Lua invalide.")
         for key in ("game_mode", "apply_settings", "backup_on_launch", "backup_on_close", "backup_periodic"):

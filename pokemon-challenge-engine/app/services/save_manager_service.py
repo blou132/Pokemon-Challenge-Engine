@@ -103,8 +103,8 @@ class SaveManagerService:
     def inspect_save(save_path: str | Path, game_id: str) -> SaveFileInfo:
         _game(game_id)
         path = _path(save_path)
-        if path.suffix.lower() != ".dsv":
-            raise SaveManagerError("Choisissez une sauvegarde normale DeSmuME .dsv.")
+        if path.suffix.lower() not in {".dsv", ".sav"}:
+            raise SaveManagerError("Choisissez une sauvegarde normale DeSmuME .dsv ou melonDS .sav.")
         return SaveManagerService._info(path, game_id)
 
     @staticmethod
@@ -121,16 +121,19 @@ class SaveManagerService:
             raise SaveManagerError("Impossible de lire les métadonnées du fichier.") from exc
 
     @staticmethod
-    def inspect_slots(directory: str | Path, stem: str, game_id: str) -> tuple[SaveFileInfo, ...]:
+    def inspect_slots(directory: str | Path, stem: str, game_id: str, *, emulator_kind="desmume") -> tuple[SaveFileInfo, ...]:
         """Convention officielle StateSlots / nom.ds0…nom.ds9, sans lire le contenu."""
         _game(game_id)
+        if emulator_kind not in {"desmume", "melonds"}:
+            raise SaveManagerError("Format de save states inconnu.")
         folder = _path(directory)
         if not isinstance(stem, str) or not stem.strip() or stem in {".", ".."} or \
                 re.search(r'[\\/:*?"<>|\x00-\x1f]', stem) or stem.endswith((" ", ".")):
             raise SaveManagerError("Le nom des slots doit être un simple nom de fichier, sans extension .dsN.")
         if not folder.is_dir():
             raise SaveManagerError("Le dossier des slots est introuvable.")
-        return tuple(SaveManagerService._info(_path(folder / f"{stem}.ds{slot}"), game_id, slot)
+        extension = "ml" if emulator_kind == "melonds" else "ds"
+        return tuple(SaveManagerService._info(_path(folder / f"{stem}.{extension}{slot}"), game_id, slot)
                      for slot in range(10))
 
     @contextmanager
@@ -171,7 +174,7 @@ class SaveManagerService:
                     raise ValueError("Entrée invalide")
                 record = BackupRecord(**entry)
                 _game(record.game_id)
-                pattern = rf"{record.game_id}_\d{{4}}-\d{{2}}-\d{{2}}_\d{{2}}-\d{{2}}-\d{{2}}(?:_\d+)?\.dsv"
+                pattern = rf"{record.game_id}_\d{{4}}-\d{{2}}-\d{{2}}_\d{{2}}-\d{{2}}-\d{{2}}(?:_\d+)?\.(?:dsv|sav)"
                 if not isinstance(record.filename, str) or not re.fullmatch(pattern, record.filename) or \
                         record.filename in names or type(record.size) is not int or not 0 <= record.size <= MAX_SAVE_BYTES or \
                         not isinstance(record.sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", record.sha256) or \
@@ -210,8 +213,8 @@ class SaveManagerService:
     def list_backups_for_save(self, save_path: str | Path, game_id: str | None = None) -> tuple[BackupRecord, ...]:
         """Read the existing manifest for this exact source, without inspecting save contents."""
         source = _path(save_path)
-        if source.suffix.lower() != ".dsv":
-            raise SaveManagerError("Choisissez une sauvegarde normale DeSmuME .dsv.")
+        if source.suffix.lower() not in {".dsv", ".sav"}:
+            raise SaveManagerError("Choisissez une sauvegarde normale DeSmuME .dsv ou melonDS .sav.")
         key = hashlib.sha256(os.path.normcase(str(source)).encode("utf-8")).hexdigest()
         return tuple(record for record in self.list_backups(game_id) if record.source_key == key)
 
@@ -246,8 +249,8 @@ class SaveManagerService:
         if reason not in BACKUP_REASONS:
             raise SaveManagerError("Motif de backup invalide.")
         source = _path(save_path)
-        if source.suffix.lower() != ".dsv" or source.is_relative_to(self.root):
-            raise SaveManagerError("Choisissez une sauvegarde .dsv extérieure au dossier dédié aux backups.")
+        if source.suffix.lower() not in {".dsv", ".sav"} or source.is_relative_to(self.root):
+            raise SaveManagerError("Choisissez une sauvegarde .dsv ou .sav extérieure au dossier dédié aux backups.")
         if not source.is_file():
             raise SaveManagerError("La sauvegarde normale est introuvable.")
         with self._locked():
@@ -264,15 +267,16 @@ class SaveManagerService:
             size, digest = self._copy_consistent(source, temporary)
             now = datetime.now(timezone.utc)
             stem = f"{game_id}_{now.strftime('%Y-%m-%d_%H-%M-%S')}"
+            suffix = source.suffix.lower()
             # Ne pas réattribuer le nom d'une copie supprimée par la rétention
             # quelques millisecondes plus tôt dans la même seconde.
             same_second = [item.filename for item in records
-                           if item.filename == f"{stem}.dsv" or item.filename.startswith(f"{stem}_")]
-            counters = [0 if name == f"{stem}.dsv" else int(Path(name).stem.rsplit("_", 1)[1])
+                           if Path(item.filename).stem == stem or item.filename.startswith(f"{stem}_")]
+            counters = [0 if Path(name).stem == stem else int(Path(name).stem.rsplit("_", 1)[1])
                         for name in same_second]
             counter = max(counters) + 1 if counters else 0
             while True:
-                filename = f"{stem}{'_' + str(counter) if counter else ''}.dsv"
+                filename = f"{stem}{'_' + str(counter) if counter else ''}{suffix}"
                 candidate = self.root / filename
                 try:
                     # Lien atomique avec création exclusive : jamais d'écrasement, même en collision.
@@ -321,14 +325,16 @@ class SaveManagerService:
         if type(retention) is not int or not 1 <= retention <= 10000:
             raise SaveManagerError("Rétention invalide.")
         target = _path(target_path)
-        if target.suffix.lower() != ".dsv" or target.is_relative_to(self.root) or not target.is_file():
-            raise SaveManagerError("La cible doit être la sauvegarde .dsv existante, hors du dossier de backups.")
+        if target.suffix.lower() not in {".dsv", ".sav"} or target.is_relative_to(self.root) or not target.is_file():
+            raise SaveManagerError("La cible doit être la sauvegarde .dsv ou .sav existante, hors du dossier de backups.")
         with self._locked():
             records = self._load()
             record = next((item for item in records if item.filename == filename and item.game_id == game_id), None)
             if record is None:
                 raise SaveManagerError("Backup inconnu ou associé à un autre jeu.")
             source = self._verified(record)
+            if source.suffix.lower() != target.suffix.lower():
+                raise SaveManagerError("Les formats de sauvegarde diffèrent ; utilisez une conversion explicite.")
             temporary: Path | None = None
             try:
                 with tempfile.NamedTemporaryFile(dir=target.parent, prefix=".pce-restore_", suffix=".tmp", delete=False) as handle:

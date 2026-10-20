@@ -5,9 +5,11 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import stat
 import tempfile
+import tomllib
 
 from app.core.profile_manager import _read_json
 from app.core.run_manager import RunManager
@@ -105,9 +107,11 @@ def _copy_tree(source: Path, destination: Path, signatures: dict) -> None:
 def _relocate_run(staged: Path, source: Path, destination: Path, identifier: str) -> None:
     manager = RunManager(staged / "runs")
     run = manager.load(identifier)
-    original_play = source / "runs" / identifier / "play"
-    final_play = destination / "runs" / identifier / "play"
-    staged_play = staged / "runs" / identifier / "play"
+    kind = (run.launch_profile or {}).get("emulator_kind", "desmume")
+    name = "play-melonds" if kind == "melonds" else "play"
+    original_play = source / "runs" / identifier / name
+    final_play = destination / "runs" / identifier / name
+    staged_play = staged / "runs" / identifier / name
     if not staged_play.exists():
         return
     # Limit relocation to a recognised owned environment. Do not rewrite
@@ -128,6 +132,8 @@ def _relocate_run(staged: Path, source: Path, destination: Path, identifier: str
             if key in run.launch_profile:
                 run.launch_profile[key] = relocated(run.launch_profile[key])
     manager.save(run)
+    if kind == "melonds":
+        _relocate_melonds_config(staged_play / "emulator/portable/melonDS.toml", original_play, final_play)
     ini_path = staged_play / "emulator" / "desmume.ini"
     if ini_path.exists():
         document = IniDocument(ini_path.read_bytes())
@@ -143,6 +149,32 @@ def _relocate_run(staged: Path, source: Path, destination: Path, identifier: str
             if record.get("source_key") == old_key:
                 record["source_key"] = new_key
         backups.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _relocate_melonds_config(path: Path, original: Path, destination: Path) -> None:
+    """Change only owned output paths; retain all keyboard/rendering preferences."""
+    from app.services.melonds_runtime import validate_config
+    config = validate_config(path, original)
+    values = {"SaveFilePath": str(destination / "saves"), "SavestatePath": str(destination / "states")}
+    text = path.read_text(encoding="utf-8")
+    section, seen, lines = None, set(), []
+    for line in text.splitlines(keepends=True):
+        heading = re.fullmatch(r"\s*\[([^\[\]]+)\]\s*(?:#.*)?", line.strip())
+        if heading:
+            section = heading[1]
+        key = re.match(r"[ \t]*(SaveFilePath|SavestatePath)[ \t]*=", line) if section == "Instance0" else None
+        if key:
+            seen.add(key[1])
+            line = key[0] + " " + json.dumps(values[key[1]], ensure_ascii=False) + "\n"
+        lines.append(line)
+    if seen != set(values):
+        raise ValueError("La configuration melonDS ne permet pas un déplacement sûr des chemins.")
+    config["Instance0"].update(values)
+    rewritten = "".join(lines)
+    if tomllib.loads(rewritten) != config:
+        raise ValueError("Le déplacement modifierait d'autres réglages melonDS ; import refusé.")
+    path.write_text(rewritten, encoding="utf-8")
+    validate_config(path, destination)
 
 
 def execute_import(plan: ImportPlan) -> dict:

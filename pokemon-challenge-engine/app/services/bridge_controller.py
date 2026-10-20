@@ -67,7 +67,7 @@ class _BridgeWorker(QObject):
                 self._publish_tracking(replace(self._tracking_state, status="error", message=str(exc)))
 
     @Slot(str, str, int)
-    def start(self, game_id: str, rom_path: str, request_id: int = 0) -> None:
+    def start(self, game_id: str, rom_path: str, request_id: int = 0, *, emulator_kind="desmume") -> None:
         if self._timer is not None:
             self._timer.stop()
         if self.bridge.session_id is not None:
@@ -78,7 +78,8 @@ class _BridgeWorker(QObject):
         try:
             if self.emulator is None:
                 self.emulator = EmulatorService(self.base_dir, self.bridge)
-            script = self.emulator.prepare(game_id, rom_path)
+            script = (self.emulator.prepare(game_id, rom_path, emulator_kind="melonds") if emulator_kind == "melonds"
+                      else self.emulator.prepare(game_id, rom_path))
             if self.bridge.state.status == "error":
                 raise ValueError(self.bridge.state.last_error or "Préparation de la passerelle impossible.")
         except Exception as exc:
@@ -100,6 +101,10 @@ class _BridgeWorker(QObject):
         self.prepared_for_request.emit(request_id, str(script))
         self._publish(self.bridge.state)
         self._timer.start()
+
+    @Slot(str, str, int)
+    def start_melonds(self, game_id, rom_path, request_id):
+        self.start(game_id, rom_path, request_id, emulator_kind="melonds")
 
     @Slot()
     def poll(self) -> None:
@@ -137,6 +142,7 @@ class BridgeController(QObject):
     preparation_failed = Signal(int, str)
     failed = Signal(str)
     _start_requested = Signal(str, str, int)
+    _melonds_requested = Signal(str, str, int)
     _stop_requested = Signal(int)
     _profile_requested = Signal(object)
 
@@ -159,6 +165,7 @@ class BridgeController(QObject):
         worker = _BridgeWorker(self.bridge, self.base_dir)
         worker.moveToThread(thread)
         self._start_requested.connect(worker.start)
+        self._melonds_requested.connect(worker.start_melonds)
         self._stop_requested.connect(worker.stop)
         self._profile_requested.connect(worker.select_profile)
         worker.state_for_request.connect(self._receive_scoped_state)
@@ -220,12 +227,15 @@ class BridgeController(QObject):
             self._receive_failure(message)
 
     @Slot(str, str)
-    def start(self, game_id: str, rom_path: str = "") -> int | None:
+    def start(self, game_id: str, rom_path: str = "", *, emulator_kind="desmume") -> int | None:
         if self._closed:
             return
+        if emulator_kind not in {"desmume", "melonds"}:
+            raise ValueError("Émulateur de suivi inconnu.")
         self._ensure_worker()
         self.request_id += 1
-        self._start_requested.emit(game_id, rom_path, self.request_id)
+        signal = self._melonds_requested if emulator_kind == "melonds" else self._start_requested
+        signal.emit(game_id, rom_path, self.request_id)
         return self.request_id
 
     @Slot()

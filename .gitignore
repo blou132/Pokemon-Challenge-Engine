@@ -12,6 +12,10 @@ config.json.*
 *.local.json
 *.local.*
 desmume.ini
+melonDS.ini
+melonDS.toml
+user-data/
+third-party/
 logs/
 *.log
 *.log.*
@@ -46,6 +50,7 @@ savestates/
 *.[dD][sS][vV].*
 *.[dD][sS][tT]
 *.[dD][sS][0-9]
+*.[mM][lL][0-9]
 *.[dD][uU][cC]
 *.[sS][rR][mM]
 *.state*

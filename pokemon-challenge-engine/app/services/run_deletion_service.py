@@ -96,6 +96,9 @@ class RunDeletionService:
         executable = (run.launch_profile or {}).get("emulator_path")
         if executable and self.running_probe(executable) is not False:
             raise ValueError("Fermez DeSmuME avant de supprimer cette partie, même si PCE ne suit plus sa session.")
+        retained = local_path(directory / "play/emulator/DeSmuME.exe")
+        if retained.is_file() and str(retained) != executable and self.running_probe(retained) is not False:
+            raise ValueError("Fermez aussi l'ancien DeSmuME conservé avant de supprimer cette partie.")
 
         # Old metadata can still reference another run's copy. Refuse to destroy
         # such shared data rather than infer ownership from a filename alone.

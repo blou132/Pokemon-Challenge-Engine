@@ -42,6 +42,7 @@ class GameModeService:
         self._run_options = None
         self._pending_launch_backup = False
         self.backup_observer = None
+        self.bridge_environment = None
         self.state = RunState(message="\n".join(self.store.warnings) or RunState().message)
 
     def reload_preferences(self):
@@ -153,7 +154,13 @@ class GameModeService:
             raise ValueError("Cet exécutable DeSmuME est déjà en cours ; aucun second lancement effectué.")
         config = AppConfig(self.legacy_config.retrobat_path, options["emulator_path"],
                            {game_id: options["rom_path"]}, self.legacy_config.save_path)
-        launcher = self._launcher_factory(config)
+        if options.get("emulator_kind") == "melonds":
+            from app.services.melonds_runtime import MelonDSLauncher
+            if options["apply_settings"]:
+                raise ValueError("Réglez les commandes et graphismes dans Config de melonDS ; l'export DeSmuME est incompatible.")
+            launcher = MelonDSLauncher(options, bridge_environment=self.bridge_environment)
+        else:
+            launcher = self._launcher_factory(config)
         errors = launcher.validate(game_id)
         if errors:
             raise ValueError("\n".join(errors))
@@ -163,7 +170,7 @@ class GameModeService:
                 pending_backup = True
             else:
                 self._backup(options, "launch")
-        if options["apply_settings"]:
+        if options["apply_settings"] and options.get("emulator_kind") != "melonds":
             self._apply_launch_settings(options)
         process = launcher.launch(game_id)
         self.process = process
@@ -172,7 +179,7 @@ class GameModeService:
         self._pending_launch_backup = pending_backup
         self.state = RunState(game_id=game_id, profile_id=profile_id, running=True,
                               requested_speed=options["speed"], pid=process.pid,
-                              message=("DeSmuME démarré. Vitesse demandée ; état réel non confirmé." +
+                              message=(("melonDS" if options.get("emulator_kind") == "melonds" else "DeSmuME") + " démarré. Vitesse demandée ; état réel non confirmé." +
                                        (" Le premier backup sera créé après la première sauvegarde du jeu." if pending_backup else "")))
         return process
 
@@ -206,7 +213,8 @@ class GameModeService:
             if first_backup_notice:
                 message = first_backup_notice
         if code is not None:
-            message = "DeSmuME fermé." if code == 0 else f"DeSmuME arrêté (code {code})."
+            name = "melonDS" if options.get("emulator_kind") == "melonds" else "DeSmuME"
+            message = f"{name} fermé." if code == 0 else f"{name} arrêté (code {code})."
             self._pending_launch_backup = False
             if first_backup_notice:
                 message += " " + first_backup_notice

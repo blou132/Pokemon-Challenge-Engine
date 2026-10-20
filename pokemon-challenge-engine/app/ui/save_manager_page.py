@@ -53,8 +53,8 @@ class SaveManagerPage(QWidget):
 
         normal, normal_layout = card("Sauvegarde normale")
         layout.addWidget(normal)
-        self.save_edit = self._path_row(normal_layout, "Fichier .dsv associé à ce jeu", "save")
-        self.save_info = label("Choisissez explicitement le fichier .dsv utilisé par DeSmuME.", "muted")
+        self.save_edit = self._path_row(normal_layout, "Sauvegarde normale associée à ce jeu", "save")
+        self.save_info = label("Sauvegarde DeSmuME .dsv ou melonDS .sav.", "muted")
         normal_layout.addWidget(self.save_info)
         row = QHBoxLayout()
         self.open_button = QPushButton("Ouvrir le dossier")
@@ -166,7 +166,7 @@ class SaveManagerPage(QWidget):
 
     def _browse(self, edit: QLineEdit, kind: str) -> None:
         if kind == "save":
-            chosen, _ = QFileDialog.getOpenFileName(self, "Choisir la sauvegarde de ce jeu", edit.text(), "Sauvegardes DeSmuME (*.dsv)")
+            chosen, _ = QFileDialog.getOpenFileName(self, "Choisir la sauvegarde de ce jeu", edit.text(), "Sauvegardes Pokémon (*.dsv *.sav)")
         else:
             chosen = QFileDialog.getExistingDirectory(self, "Choisir le dossier", edit.text())
         if chosen:
@@ -253,7 +253,7 @@ class SaveManagerPage(QWidget):
             except ValueError as exc:
                 self.save_info.setText(str(exc))
         else:
-            self.save_info.setText("Aucun fichier .dsv choisi pour ce jeu.")
+            self.save_info.setText("Aucune sauvegarde normale choisie pour ce jeu.")
         self.backup_table.setRowCount(0)
         try:
             for record in self._selected_service().list_backups(game):
@@ -266,7 +266,8 @@ class SaveManagerPage(QWidget):
         slots = None
         if self.states_directory_edit.text().strip() and self.states_stem_edit.text().strip():
             try:
-                slots = self.service.inspect_slots(self.states_directory_edit.text().strip(), self.states_stem_edit.text().strip(), game)
+                slots = self.service.inspect_slots(self.states_directory_edit.text().strip(), self.states_stem_edit.text().strip(), game,
+                    emulator_kind=self._contexts.get(game, {}).get("emulator_kind", "desmume"))
             except ValueError as exc:
                 errors.append(str(exc))
         for row in range(10):
@@ -303,7 +304,8 @@ class SaveManagerPage(QWidget):
             if bool(settings["save_state_directory"]) != bool(settings["save_state_stem"]):
                 raise SaveManagerError("Renseignez le dossier des slots et leur nom commun ensemble.")
             if settings["save_state_directory"]:
-                self.service.inspect_slots(settings["save_state_directory"], settings["save_state_stem"], self.game_combo.currentData())
+                self.service.inspect_slots(settings["save_state_directory"], settings["save_state_stem"], self.game_combo.currentData(),
+                    emulator_kind=self._contexts.get(self.game_combo.currentData(), {}).get("emulator_kind", "desmume"))
         except ValueError as exc:
             self.status_label.setText(str(exc))
             return

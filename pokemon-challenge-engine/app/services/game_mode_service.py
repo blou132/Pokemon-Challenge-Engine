@@ -95,6 +95,8 @@ class GameModeService:
 
     def _apply_launch_settings(self, options: dict) -> None:
         """Configured only by explicit opt-in; exports preserve an INI backup."""
+        if options.get("emulator_kind") == "melonds":
+            raise ValueError("Réglez les commandes et graphismes dans Config de melonDS.")
         from app.services.emulator_settings_service import EmulatorSettingsService
         service = EmulatorSettingsService(Path(options["emulator_path"]),
                                           running_probe=lambda: self.windows.running_executable(options["emulator_path"]))
@@ -179,13 +181,17 @@ class GameModeService:
         self._pending_launch_backup = pending_backup
         self.state = RunState(game_id=game_id, profile_id=profile_id, running=True,
                               requested_speed=options["speed"], pid=process.pid,
-                              message=(("melonDS" if options.get("emulator_kind") == "melonds" else "DeSmuME") + " démarré. Vitesse demandée ; état réel non confirmé." +
+                              message=(("melonDS démarré. Vitesse réglée dans Config > Interface settings > Framerate."
+                                        if options.get("emulator_kind") == "melonds" else
+                                        "DeSmuME démarré. Vitesse demandée ; état réel non confirmé.") +
                                        (" Le premier backup sera créé après la première sauvegarde du jeu." if pending_backup else "")))
         return process
 
     def request_speed(self, value: str) -> RunState:
         if value not in SPEEDS:
             raise ValueError("Vitesse inconnue.")
+        if self._run_options and self._run_options.get("emulator_kind") == "melonds":
+            raise ValueError("Vitesse non pilotée par PCE : utilisez Config > Interface settings > Framerate dans melonDS.")
         self.state = replace(self.state, requested_speed=value, confirmed_speed=None,
                              message="État demandé : " + value + ". Utilisez les raccourcis DeSmuME vérifiés ; état réel non confirmé.")
         return self.state

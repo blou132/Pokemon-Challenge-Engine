@@ -492,6 +492,15 @@ class GameModePage(QWidget):
         self.emulator_note.setText("Votre jeu s'ouvre dans sa propre fenêtre.\n"
                                   f"Ce cadre indique la place réservée à {self.emulator_name}.")
         self.connect_button.setText("Connexion melonDS" if self.is_melonds else "Connexion Lua")
+        for button in self.speed_buttons.values():
+            button.setEnabled(not self.is_melonds)
+            if self.is_melonds:
+                button.setChecked(False)
+            button.setToolTip("Dans melonDS : Config > Interface settings > Framerate." if self.is_melonds else
+                              "État demandé ; aucune vitesse réelle n'est déduite de ce bouton.")
+        for button in self.controls_buttons:
+            button.setEnabled(not self.is_melonds)
+            button.setToolTip("Dans melonDS : Config > Input and hotkeys." if self.is_melonds else "")
         self.arrange_button.setToolTip(f"Déplace uniquement la fenêtre {self.emulator_name} lancée ici, sur l'écran choisi.")
         phase = self._session_phase or ("connected" if self._bridge.connected else
             "waiting_script" if self._bridge.status == "waiting" else
@@ -551,9 +560,10 @@ class GameModePage(QWidget):
         self.game_combo.setEnabled(not state.running and self._bridge.status == "stopped")
         self.profile_combo.setEnabled(not state.running and self._bridge.status == "stopped")
         self._refresh_recovery()
-        self.speed_label.setText(f"État demandé : {state.requested_speed}\nÉtat réel : {state.confirmed_speed or UNAVAILABLE}")
+        self.speed_label.setText("Vitesse non pilotée par PCE.\nDans melonDS : Config > Interface settings > Framerate.\nRaccourcis : Config > Input and hotkeys."
+            if self.is_melonds else f"État demandé : {state.requested_speed}\nÉtat réel : {state.confirmed_speed or UNAVAILABLE}")
         for speed, button in self.speed_buttons.items():
-            button.setChecked(speed == state.requested_speed)
+            button.setChecked(not self.is_melonds and speed == state.requested_speed)
         seconds = state.elapsed_seconds
         self.time_label.setText(f"Session PCE : {seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02}"
                                if state.game_id else "Session PCE : " + UNAVAILABLE)

@@ -93,10 +93,12 @@ class LaunchProfilePage(QWidget):
         layout.addWidget(self.game_combo)
         paths, box = card("Jeu et émulateur")
         self.path_edits = {}
+        self.path_labels = {}
         for key, text, filter_text in (("rom_path", "ROM Nintendo DS", "ROM Nintendo DS (*.nds)"),
                                       ("emulator_path", "Exécutable DeSmuME", "Exécutable Windows (*.exe)"),
                                       ("ini_path", "Configuration DeSmuME (facultatif)", "Configuration (*.ini)")):
-            box.addWidget(label(text))
+            self.path_labels[key] = label(text)
+            box.addWidget(self.path_labels[key])
             row = QHBoxLayout()
             edit = QLineEdit()
             edit.setPlaceholderText("Aucun chemin configuré")
@@ -136,6 +138,9 @@ class LaunchProfilePage(QWidget):
         box.addWidget(self.game_mode)
         box.addWidget(label("Sans export, ces choix restent configurés. Les données Pokémon et les sauvegardes ne sont jamais modifiées par ces réglages.", "muted"))
         layout.addWidget(preferences)
+        self.native_note = label("Dans melonDS : Config > Input and hotkeys pour les commandes ; Config > Video settings pour les graphismes ; Config > Interface settings > Framerate pour la vitesse.", "muted")
+        self.native_note.hide()
+        layout.addWidget(self.native_note)
         self.feedback = label("", "muted")
         layout.addWidget(self.feedback)
         self.save_button = QPushButton("Enregistrer le profil de lancement")
@@ -169,18 +174,32 @@ class LaunchProfilePage(QWidget):
     def _selected(self, *_):
         game_id = self.game_combo.currentData()
         values = self._launch_profiles[game_id]
+        melon = values.get("emulator_kind") == "melonds"
+        for widget in (self.controls_profile, self.graphics_preset, self.speed_combo, self.apply_settings, self.auto_lua):
+            widget.setEnabled(not melon)
+        self.challenge_combo.setEnabled(not melon)
+        self.challenge_combo.setToolTip("Les règles de cette aventure sont figées dans Mes parties." if melon else "")
+        self.apply_settings.setVisible(not melon)
+        self.auto_lua.setVisible(not melon)
+        self.native_note.setVisible(melon)
+        self.path_labels["emulator_path"].setText("Exécutable melonDS" if melon else "Exécutable DeSmuME")
+        self.path_labels["ini_path"].setText("Configuration melonDS (.toml)" if melon else "Configuration DeSmuME (facultatif)")
+        for key in ("emulator_path", "ini_path"):
+            self.path_edits[key].setAccessibleName(self.path_labels[key].text())
         for key, edit in self.path_edits.items():
             edit.setText(values[key])
         self.controls_profile.setText(values["controls_profile"])
         self.graphics_preset.setCurrentIndex(max(0, self.graphics_preset.findData(values["graphics_preset"])))
         self.speed_combo.setCurrentText(values["speed"])
-        self.apply_settings.setChecked(values["apply_settings"])
+        self.apply_settings.setChecked(values["apply_settings"] and not melon)
         self.auto_lua.setChecked(values.get("lua_connection", "ask") != "manual")
         self.game_mode.setChecked(values["game_mode"])
         self._fill_challenges(values.get("challenge_profile_id"))
         self.game_changed.emit(game_id)
 
     def _browse(self, field, filters):
+        if field is self.path_edits["ini_path"] and self._launch_profiles[self.game_combo.currentData()].get("emulator_kind") == "melonds":
+            filters = "Configuration melonDS (*.toml)"
         path, _ = QFileDialog.getOpenFileName(self, "Choisir un fichier", field.text(), filters)
         if path:
             field.setText(path)

@@ -111,7 +111,9 @@ class SaveManagerPage(QWidget):
         states, states_layout = card("Save states — inventaire en lecture seule")
         layout.addWidget(states)
         self.states_directory_edit = self._path_row(states_layout, "Dossier StateSlots de DeSmuME", "directory")
-        states_layout.addWidget(label("Nom commun des fichiers .ds0 à .ds9, sans cette extension", "muted"))
+        self.states_directory_label = states_layout.itemAt(1).widget()
+        self.states_stem_note = label("Nom commun des fichiers .ds0 à .ds9, sans cette extension", "muted")
+        states_layout.addWidget(self.states_stem_note)
         self.states_stem_edit = QLineEdit()
         self.states_stem_edit.setPlaceholderText("Nom exact des fichiers, choisi manuellement")
         states_layout.addWidget(self.states_stem_edit)
@@ -121,7 +123,8 @@ class SaveManagerPage(QWidget):
         self.policy_combo.setCurrentIndex(self.policy_combo.findData("unmanaged"))
         states_layout.addWidget(label("Politique déclarée du challenge"))
         states_layout.addWidget(self.policy_combo)
-        states_layout.addWidget(label("Politique affichée uniquement : PCE ne bloque pas les save states dans DeSmuME. Aucun chargement, enregistrement ou aperçu n'est effectué ici.", "muted"))
+        self.states_policy_note = label("Politique affichée uniquement : PCE ne bloque pas les save states dans DeSmuME. Aucun chargement, enregistrement ou aperçu n'est effectué ici.", "muted")
+        states_layout.addWidget(self.states_policy_note)
         self.states_table = self._table(("Slot", "Présence", "Date", "Taille"), rows=10)
         states_layout.addWidget(self.states_table)
 
@@ -181,6 +184,15 @@ class SaveManagerPage(QWidget):
 
     def set_context(self, game_id: str, settings: dict) -> None:
         self._contexts[game_id] = dict(settings)
+        melon = settings.get("emulator_kind") == "melonds"
+        self.states_directory_label.setText("Dossier des save states melonDS" if melon else "Dossier StateSlots de DeSmuME")
+        self.states_directory_edit.setAccessibleName(self.states_directory_label.text())
+        self.states_stem_note.setText("Nom commun des fichiers .ml0 à .ml9, sans cette extension" if melon else
+                                      "Nom commun des fichiers .ds0 à .ds9, sans cette extension")
+        self.states_policy_note.setText("Inventaire uniquement : PCE ne crée ni ne charge de save state et ne bloque pas leur utilisation. Dans melonDS : File > Save state / Load state."
+            if melon else "Politique affichée uniquement : PCE ne bloque pas les save states dans DeSmuME. Aucun chargement, enregistrement ou aperçu n'est effectué ici.")
+        self.restore_button.setToolTip("Confirmation obligatoire. Fermez melonDS. Une copie de la sauvegarde actuelle sera créée avant remplacement." if melon else
+            "Confirmation obligatoire. Fermez toutes les instances de DeSmuME. Une copie de la sauvegarde actuelle sera créée avant remplacement.")
         self._loading = True
         try:
             index = self.game_combo.findData(game_id)
@@ -225,6 +237,7 @@ class SaveManagerPage(QWidget):
         self.running_probe = probe
 
     def _any_emulator_running(self) -> bool:
+        name = "melonDS" if self._contexts.get(self.game_combo.currentData(), {}).get("emulator_kind") == "melonds" else "DeSmuME"
         if self.emulator_running:
             return True
         if self.running_probe is None:
@@ -232,9 +245,9 @@ class SaveManagerPage(QWidget):
         try:
             result = self.running_probe()
         except Exception as exc:
-            raise SaveManagerError("Impossible de vérifier si DeSmuME est fermé ; restauration refusée.") from exc
+            raise SaveManagerError(f"Impossible de vérifier si {name} est fermé ; restauration refusée.") from exc
         if type(result) is not bool:
-            raise SaveManagerError("État de DeSmuME inconnu ; restauration refusée.")
+            raise SaveManagerError(f"État de {name} inconnu ; restauration refusée.")
         return result
 
     def _selected_service(self) -> SaveManagerService:
@@ -300,7 +313,8 @@ class SaveManagerPage(QWidget):
                 if not info.exists:
                     raise SaveManagerError("Choisissez une sauvegarde existante avant d'enregistrer ce chemin.")
             if any(settings[key] for key in ("backup_on_launch", "backup_on_close", "backup_periodic")) and not settings["save_path"]:
-                raise SaveManagerError("Choisissez d'abord le fichier .dsv à copier automatiquement.")
+                extension = ".sav" if self._contexts.get(self.game_combo.currentData(), {}).get("emulator_kind") == "melonds" else ".dsv"
+                raise SaveManagerError(f"Choisissez d'abord le fichier {extension} à copier automatiquement.")
             if bool(settings["save_state_directory"]) != bool(settings["save_state_stem"]):
                 raise SaveManagerError("Renseignez le dossier des slots et leur nom commun ensemble.")
             if settings["save_state_directory"]:
@@ -322,21 +336,23 @@ class SaveManagerPage(QWidget):
             self.status_label.setText(str(exc))
 
     def _restore_selected(self) -> None:
+        melon = self._contexts.get(self.game_combo.currentData(), {}).get("emulator_kind") == "melonds"
         row = self.backup_table.currentRow()
         if row < 0:
             self.status_label.setText("Sélectionnez un backup dans la liste.")
             return
         try:
             if self._any_emulator_running():
-                raise SaveManagerError("Fermez toutes les instances de DeSmuME avant toute restauration.")
+                raise SaveManagerError("Fermez melonDS avant toute restauration." if melon else "Fermez toutes les instances de DeSmuME avant toute restauration.")
         except ValueError as exc:
             self.status_label.setText(str(exc))
             return
         filename = self.backup_table.item(row, 3).text()
         answer = QMessageBox.question(
             self, "Confirmer la restauration",
-            f"Restaurer {filename} vers le fichier .dsv choisi ?\n\n"
-            "Confirmez que toutes les instances de DeSmuME sont fermées. La sauvegarde actuelle sera remplacée après création d'un backup de sécurité.",
+            (f"Restaurer {filename} vers le fichier .sav choisi ?\n\nConfirmez que melonDS est fermé. La sauvegarde actuelle sera remplacée après création d'un backup de sécurité."
+             if melon else f"Restaurer {filename} vers le fichier .dsv choisi ?\n\n"
+             "Confirmez que toutes les instances de DeSmuME sont fermées. La sauvegarde actuelle sera remplacée après création d'un backup de sécurité."),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:

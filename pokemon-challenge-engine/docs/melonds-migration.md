@@ -13,6 +13,26 @@ Jeu afin de conserver l'association entre le processus et sa session. Une
 connexion confirmée ne remplit jamais une équipe dont aucune lecture valide
 n'a été reçue. Les aventures DeSmuME conservent leurs instructions Lua.
 
+## Commandes dans le Mode Jeu
+
+PCE ne pilote pas la vitesse ni le mapping de melonDS. Les boutons x1/x2/x4/MAX,
+leurs raccourcis PCE et les exports de réglages DeSmuME sont désactivés pour une
+aventure melonDS. Aucun changement de vitesse n'est annoncé comme appliqué.
+Utilisez les menus de la fenêtre melonDS :
+
+- **Config > Input and hotkeys** : clavier, manette et raccourcis natifs.
+- **Config > Interface settings > Framerate** : cadence et avance rapide.
+- **Config > Video settings** : réglages vidéo.
+- **File > Save state / Load state** : création et chargement des états.
+
+Ces chemins sont vérifiés dans `Window.cpp` et `InterfaceSettingsDialog.ui` du
+[melonDS 1.1 épinglé](https://github.com/melonDS-emu/melonDS/tree/b86390e4428bf38ce4c1ce0e9ca446d6d25955e8/src/frontend/qt_sdl).
+L'inventaire PCE consulte les fichiers `.mlN` sans les créer ni les charger ;
+la politique du challenge reste déclarative. Le backup de batterie et le plein
+écran PCE restent disponibles. **Organiser les fenêtres** utilise le placement
+Windows sur l'unique fenêtre du PID et de l'exécutable lancés par PCE, sans
+commande d'émulateur ni saisie clavier. Un résultat absent ou ambigu est refusé.
+
 ## Fichiers et sauvegardes
 
 - DeSmuME utilise `runs/<id>/play/`. melonDS utilise `runs/<id>/play-melonds/`.

@@ -19,6 +19,11 @@ def resource_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def installation_dir() -> Path:
+    """Locate adjacent optional components without creating any user data."""
+    return local_path(Path(sys.executable).parent) if getattr(sys, "frozen", False) else resource_dir()
+
+
 @dataclass(frozen=True)
 class AppPaths:
     resources: Path
@@ -30,7 +35,7 @@ class AppPaths:
 def resolve_app_paths(data_dir: Path | None = None) -> AppPaths:
     resources = resource_dir()
     frozen = bool(getattr(sys, "frozen", False))
-    installation = local_path(Path(sys.executable).parent) if frozen else resources
+    installation = installation_dir()
     marker = installation / PORTABLE_MARKER
     portable = False
     if data_dir is not None:

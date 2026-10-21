@@ -2,7 +2,7 @@
  * PCE adapter for the public API of Universal Pokemon Randomizer ZX 4.6.1.
  * Copyright (C) 2026 Pokemon Challenge Engine contributors.
  * Source is distributed without warranty; see COPYING in this directory.
- * ZX itself is an external user-supplied program, never bundled with PCE.
+ * ZX is a separate program, supplied by the user or a verified portable component.
  */
 import com.dabomstew.pkrandom.FileFunctions;
 import com.dabomstew.pkrandom.RandomSource;

@@ -35,12 +35,13 @@ Les composants vérifiés présents figurent dans distribution-manifest.json.
 Un paquet sans composant melonDS validé ne remplace pas l'émulateur installé.
 PCE signale les composants manquants. Aucune ROM, sauvegarde, BIOS ou firmware
 Nintendo n'est inclus. Utiliser uniquement ses propres fichiers légitimes.
-Le Randomizer nécessite ZX 4.6.1 officiel et un JDK 11+ avec compilateur.
+Le composant Randomizer fourni est détecté automatiquement sans configuration.
+S'il est absent de votre archive, le Randomizer nécessite ZX 4.6.1 officiel et un JDK 11+ avec compilateur.
 Télécharger ZX depuis https://github.com/Ajarmar/universal-pokemon-randomizer-zx/releases/tag/v4.6.1
 et un JDK depuis https://adoptium.net/temurin/releases/ ; extraire dans un dossier
 local, puis choisir java.exe et PokeRandoZX.jar dans les options Randomizer.
-PCE vérifie le JDK et le SHA256 attendu du JAR avant transformation. Le JAR et
-Java ne sont pas inclus dans cette archive. La licence ZX est dans
+PCE vérifie le JDK et le SHA256 attendu du JAR avant transformation. La présence
+du composant randomizer est indiquée dans distribution-manifest.json. La licence ZX est dans
 application-source/tools/randomizer/COPYING et ses instructions dans README.md.
 
 RACCOURCI ET DIAGNOSTIC

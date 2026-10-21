@@ -25,8 +25,11 @@ applications to be distributed under their own terms. License texts in licenses.
 https://pyinstaller.org/en/stable/license.html
 
 PceRandomizer.java: GPL-3.0-or-later, source and COPYING included under
-application-source/tools/randomizer. The external ZX JAR and Java runtime are
-not included. Their installation and verification are explicit user actions.
+application-source/tools/randomizer. When the optional Randomizer component is
+included, it provides official ZX 4.6.1 and Eclipse Temurin OpenJDK 21.0.12.1+1
+(GPL-2.0 with Classpath Exception), with full corresponding sources, original
+JDK legal notices and download provenance under third-party/randomizer.
+Otherwise installation and verification of external tools are explicit user actions.
 https://github.com/Ajarmar/universal-pokemon-randomizer-zx
 
 Microsoft runtime libraries originate only from the official Python/PySide

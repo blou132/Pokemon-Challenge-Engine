@@ -133,7 +133,15 @@ class RomTransformationService:
 
     @classmethod
     def from_local_config(cls, base_dir: Path):
-        data = RandomizerToolStore(base_dir).load()
+        store = RandomizerToolStore(base_dir)
+        if not store.path.exists():
+            # A shipped JDK/ZX pair requires no machine-specific paths or writes.
+            # Never override an existing explicit configuration, even invalid.
+            from app.services.randomizer_tool_discovery_service import RandomizerToolDiscoveryService
+            found = RandomizerToolDiscoveryService(base_dir, environment={}).discover()
+            if found.verified:
+                return cls(found.java_path, found.jar_path)
+        data = store.load()
         return cls(data["java_path"], data["jar_path"])
 
     @staticmethod

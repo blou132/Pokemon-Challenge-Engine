@@ -6,6 +6,7 @@ from pathlib import Path
 import time
 
 from app.services import rom_transformation_service as transformation
+from app.paths import installation_dir
 
 
 MAX_PATH_ENTRIES = 32
@@ -37,6 +38,7 @@ class RandomizerToolDiscoveryService:
 
     def _java_candidates(self):
         name = "java.exe" if os.name == "nt" else "java"
+        yield installation_dir() / "third-party" / "randomizer" / "jdk" / "bin" / name
         home = _automatic_path(self.environment.get("JAVA_HOME", ""))
         if home is not None:
             yield home / "bin" / name
@@ -54,7 +56,8 @@ class RandomizerToolDiscoveryService:
             return RandomizerToolDiscovery(selected_java, selected_jar, verified, message)
 
         jars = (Path(selected_jar),) if selected_jar else (
-            self.base_dir / "PokeRandoZX.jar", self.base_dir / "tools" / "randomizer" / "PokeRandoZX.jar")
+            self.base_dir / "PokeRandoZX.jar", self.base_dir / "tools" / "randomizer" / "PokeRandoZX.jar",
+            installation_dir() / "third-party" / "randomizer" / "PokeRandoZX.jar")
         jar = None
         for candidate in jars:
             if time.monotonic() >= deadline:

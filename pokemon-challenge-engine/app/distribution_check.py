@@ -49,6 +49,12 @@ def run_check(application, window, paths, report_path: Path) -> None:
         for name in ("black.lua", "white.lua", "black2.lua", "white2.lua", "common/bridge.lua"):
             assert (paths.resources / "lua" / name).is_file()
         assert (paths.resources / "tools/randomizer/PceRandomizer.java").is_file()
+        if (paths.installation / "third-party/randomizer").is_dir():
+            from app.services.rom_transformation_service import RomTransformationService
+            tool = RomTransformationService.from_local_config(paths.data)
+            assert tool.java_path.is_relative_to(paths.installation / "third-party/randomizer")
+            assert tool.jar_path.is_relative_to(paths.installation / "third-party/randomizer")
+            report["bundled_randomizer"] = {"verified": True, "java": str(tool.java_path), "jar": str(tool.jar_path)}
         report["screenshot"] = str(report_path.with_suffix(".png"))
         if not window.grab().save(report["screenshot"]):
             raise OSError("Capture de contrôle impossible.")

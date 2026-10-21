@@ -96,10 +96,25 @@ le curl Windows existant lorsque le magasin de certificats Python échoue ; TLS
 reste vérifié. Les sources peuvent être distribuées dans une annexe clairement
 identifiée avec le paquet melonDS. Aucune installation système n'est effectuée.
 
-Le Randomizer conserve son installation explicite : JAR ZX 4.6.1 officiel et
-JDK 11+ avec compilateur, sélectionnés et vérifiés par l'interface existante.
-L'adaptateur Java et sa licence sont inclus ; Java et le JAR ne sont pas collectés
-depuis le poste de développement. Aucun firmware Nintendo n'est livré.
+Le composant Randomizer peut être préparé par
+`packaging/windows/prepare_randomizer_component.py --output DOSSIER_NEUF --cache DOSSIER_CACHE --curl CHEMIN_CURL --zx-jar CHEMIN_JAR_ZX`.
+Le script télécharge Eclipse Temurin OpenJDK **21.0.12.1+1** Windows x64 et ses
+sources complètes depuis la release officielle Adoptium, vérifie leurs SHA256
+publiés et inclut le JAR ZX officiel **4.6.1** uniquement si son empreinte est
+exacte. Les sources ZX du commit fixé sont également embarquées. Il lance le JDK
+avec PATH Windows uniquement et contrôle la version et `jdk.compiler`.
+Il ne modifie ni JAVA_HOME, ni PATH, ni le registre, et n'installe rien globalement.
+
+Passer ce dossier au builder avec un second `--component` l'installe dans
+`third-party/randomizer`. Les outils sont alors trouvés automatiquement, y compris
+par la préparation ROM lorsqu'aucune configuration locale n'existe. Une
+configuration utilisateur existante, même invalide, est conservée sans substitution.
+Les anciens fichiers ne sont pas réécrits pour pointer vers le JDK livré.
+Sans ce composant, l'installation explicite d'un JDK 11+ et du JAR reste disponible.
+Aucun Oracle JDK local ni firmware Nintendo n'est collecté.
+
+Références : [licence et redistribution Temurin](https://adoptium.net/docs/faq/),
+[release exacte](https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.12.1%2B1).
 
 ## Vérification de l'EXE
 

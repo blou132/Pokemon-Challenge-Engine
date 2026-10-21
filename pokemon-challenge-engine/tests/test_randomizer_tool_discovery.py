@@ -40,6 +40,45 @@ def make_java(folder):
     return java
 
 
+def bundled(case, tmp_path, monkeypatch):
+    installation = tmp_path / "Portable application"
+    component = installation / "third-party" / "randomizer"
+    java = make_java(component / "jdk/bin")
+    jar = component / "PokeRandoZX.jar"
+    jar.write_bytes(case.jar.read_bytes())
+    monkeypatch.setattr(discovery, "installation_dir", lambda: installation)
+    case.jar.unlink()
+    return java, jar
+
+
+def test_bundled_tools_are_discovered_without_java_home_or_path(tools_case, tmp_path, monkeypatch):
+    case = tools_case
+    java, jar = bundled(case, tmp_path, monkeypatch)
+    result = service(case).discover()
+    assert result.verified and result.java_path == str(java) and result.jar_path == str(jar)
+    assert not (case.base / "randomizer.local.json").exists()
+
+
+def test_bundled_tools_work_without_machine_specific_configuration(tools_case, tmp_path, monkeypatch):
+    case = tools_case
+    java, jar = bundled(case, tmp_path, monkeypatch)
+    selected = transformation.RomTransformationService.from_local_config(case.base)
+    assert selected.java_path == java and selected.jar_path == jar
+    assert not (case.base / "randomizer.local.json").exists()
+
+
+def test_invalid_explicit_configuration_is_not_hidden_by_bundled_tools(tools_case, tmp_path, monkeypatch):
+    case = tools_case
+    bundled(case, tmp_path, monkeypatch)
+    config = case.base / "randomizer.local.json"
+    original = b'{"schema_version":99,"java_path":"chosen","jar_path":"chosen"}'
+    config.write_bytes(original)
+    with pytest.raises(ValueError, match="invalide"):
+        transformation.RomTransformationService.from_local_config(case.base)
+    assert config.read_bytes() == original
+    assert not case.calls
+
+
 def service(case, environment=None):
     return discovery.RandomizerToolDiscoveryService(case.base, environment=environment or {})
 

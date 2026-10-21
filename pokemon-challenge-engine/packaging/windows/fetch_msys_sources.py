@@ -42,8 +42,11 @@ def fetch(name, msys_root, output, server, curl):
             raise
         status = "No detached source signature published (HTTP 404)"
     else:
+        def msys_path(path):
+            path = path.resolve()
+            return "/" + path.drive[0].lower() + path.as_posix()[2:] if path.drive else str(path)
         verification = subprocess.run([str(msys_root / "usr/bin/gpgv.exe"), "--keyring",
-            str(msys_root / "etc/pacman.d/gnupg/pubring.gpg"), str(signature), str(target)],
+            msys_path(msys_root / "etc/pacman.d/gnupg/pubring.gpg"), msys_path(signature), msys_path(target)],
             capture_output=True, text=True, timeout=120)
         status = "verified" if verification.returncode == 0 else "unverified"
         (output / (name + ".verification.txt")).write_text(verification.stderr, encoding="utf-8")

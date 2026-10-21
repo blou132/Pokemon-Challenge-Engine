@@ -4,12 +4,34 @@ import json
 import logging
 from pathlib import Path
 import sys
+import time
+
+from PySide6.QtCore import QThread
 
 from app import __version__
 from app.core.run_manager import RunManager
 from app.core.gen5_species import species_types
 from app.services.config_service import ConfigService
-from app.ui.runs_page import RunCard
+
+
+def wait_for_run_card_layout(application, page, run_id: str, *, timeout: float = 2.0) -> dict:
+    """Wait for both card layout and its scroll area's deferred layout request."""
+    deadline = time.monotonic() + timeout
+    while True:
+        application.processEvents()
+        widget = next((item for item in page.cards if item.run_id == run_id), None)
+        geometry = {}
+        if widget is not None and widget.isVisible():
+            for name, child in (("card", widget), ("name", widget.name_label),
+                                ("stats", widget.stats_label), ("rules", widget.rules_label),
+                                ("resume", widget.resume_button)):
+                required = child.heightForWidth(child.width()) if child.hasHeightForWidth() else child.sizeHint().height()
+                geometry[name] = {"height": child.height(), "required_height": required, "width": child.width()}
+            if all(item["width"] > 0 and item["height"] >= item["required_height"] for item in geometry.values()):
+                return geometry
+        if time.monotonic() >= deadline:
+            raise AssertionError(f"The adventure card did not reach readable dimensions: {geometry}")
+        QThread.msleep(10)
 
 
 def run_check(application, window, paths, report_path: Path) -> None:
@@ -41,9 +63,8 @@ def run_check(application, window, paths, report_path: Path) -> None:
         assert window.pages.currentWidget() is window.settings_page
         window.runs_button.click()
         window.runs_page.refresh()
-        application.processEvents()
         assert window.pages.currentWidget() is window.runs_page
-        assert any(card.run_id == run.run_id for card in window.runs_page.findChildren(RunCard))
+        report["card_layout"] = wait_for_run_card_layout(application, window.runs_page, run.run_id)
         assert len(window.catalog.games) >= 4 and len(window.catalog.rules) >= 15
         assert species_types(1, "black")
         for name in ("black.lua", "white.lua", "black2.lua", "white2.lua", "common/bridge.lua"):

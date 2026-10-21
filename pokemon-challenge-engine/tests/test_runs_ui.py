@@ -476,3 +476,31 @@ def test_library_and_details_fit_target_windows(qt_app, catalog, manager, size, 
         assert not details.grab().isNull()
         close(details, qt_app)
     close(page, qt_app)
+
+
+@pytest.mark.parametrize("size", [(1260, 740), (1920, 1080)])
+def test_refreshed_library_waits_for_readable_card_layout(qt_app, catalog, tmp_path, size):
+    from app.distribution_check import wait_for_run_card_layout
+    from app.ui.main_window import MainWindow
+
+    previous_style = qt_app.styleSheet()
+    qt_app.setStyleSheet(STYLESHEET)
+    window = MainWindow(catalog, tmp_path)
+    window.resize(*size)
+    window.show()
+    qt_app.processEvents()
+    try:
+        run = create(window.runs, catalog)
+        window.nav_buttons[4].click()
+        window.runs_button.click()
+        window.runs_page.refresh()
+        geometry = wait_for_run_card_layout(qt_app, window.runs_page, run.run_id)
+        assert geometry["stats"]["height"] >= geometry["stats"]["required_height"]
+        assert geometry["resume"]["height"] >= geometry["resume"]["required_height"]
+        # A genuinely clipped child must fail, rather than yield a passing capture.
+        window.runs_page.cards[0].stats_label.setFixedHeight(1)
+        with pytest.raises(AssertionError, match="readable dimensions"):
+            wait_for_run_card_layout(qt_app, window.runs_page, run.run_id, timeout=0)
+    finally:
+        close(window, qt_app)
+        qt_app.setStyleSheet(previous_style)

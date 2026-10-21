@@ -562,6 +562,7 @@ class GameModePage(QWidget):
         self._render_session()
 
     def set_persistent_run(self, run, autosave=None, *, transformation=_KEEP_SELECTION, transformation_error=_KEEP_SELECTION):
+        previous_emulator = self.is_melonds
         if run is None or self._persistent_run is None or self._persistent_run.run_id != run.run_id:
             self._transformation = None
             self._transformation_error = ""
@@ -588,8 +589,9 @@ class GameModePage(QWidget):
             self.profile_combo.setEnabled(True)
             self.profile_combo.setToolTip("")
             self.set_profiles(list(self._profiles.values()), selected_id=None)
-        self.set_run_state(self._run)
-        self.set_bridge_state(self._bridge)
+        if previous_emulator != self.is_melonds:
+            self.set_run_state(self._run)
+            self.set_bridge_state(self._bridge)
 
     @property
     def is_melonds(self):

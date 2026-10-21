@@ -181,3 +181,65 @@ def test_native_error_messages_preserve_received_failure(tmp_path, event, expect
     assert bridge.poll().last_error == expected
     client.send(**fields, error="Erreur précise du producteur")
     assert bridge.poll().last_error == "Erreur précise du producteur"
+
+
+
+def test_unchanged_run_renders_rules_once_after_transport_switch(qt_app, catalog, tmp_path, monkeypatch):
+    from unittest.mock import Mock
+
+    page = GameModePage(catalog)
+    try:
+        run = melon_run(catalog, tmp_path)
+        render = Mock(wraps=page._render_persistent)
+        monkeypatch.setattr(page, "_render_persistent", render)
+        page.set_persistent_run(run)
+        assert page.is_melonds
+        assert page.connection_badge.text().startswith("melonDS")
+        render.reset_mock()
+        run.total_play_seconds += 1
+        page.set_persistent_run(run)
+        assert render.call_count == 1
+        assert page.time_label.text().endswith("00:00:01")
+        run.launch_profile.pop("emulator_kind")
+        page.set_persistent_run(run)
+        assert not page.is_melonds
+        assert page.connection_badge.text().startswith("Lua")
+        render.reset_mock()
+        run.total_play_seconds += 1
+        page.set_persistent_run(run)
+        assert render.call_count == 1
+        assert page.time_label.text().endswith("00:00:02")
+    finally:
+        page.close()
+        page.deleteLater()
+        qt_app.processEvents()
+
+
+def test_transport_labels_do_not_republish_unchanged_bridge_state(qt_app, catalog, tmp_path, monkeypatch):
+    from unittest.mock import Mock
+
+    controller = BridgeController(tmp_path)
+    page = BridgePage(catalog, controller, AppConfig())
+    try:
+        update = Mock(wraps=page.update_state)
+        monkeypatch.setattr(page, "update_state", update)
+        page.persistent_game = "white"
+        page.set_emulator_kind("melonds")
+        assert update.call_count == 1
+        assert not page.game_combo.isEnabled()
+        page.set_emulator_kind("melonds")
+        assert update.call_count == 1
+        page.persistent_game = None
+        page.set_emulator_kind("melonds")
+        assert update.call_count == 2
+        assert page.game_combo.isEnabled()
+        page.set_emulator_kind("desmume")
+        assert update.call_count == 3
+        assert page.title_label.text() == "Connexion DeSmuME"
+        page.set_emulator_kind("desmume")
+        assert update.call_count == 3
+    finally:
+        controller.shutdown()
+        page.close()
+        page.deleteLater()
+        qt_app.processEvents()

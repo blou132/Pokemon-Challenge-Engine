@@ -46,6 +46,7 @@ class BridgePage(QWidget):
         self.config = config
         self._profile_games: dict[str, str] = {}
         self.emulator_kind = "desmume"
+        self._label_context = None
         content = page_layout(self, "Connexion DeSmuME", "Connectez le script Lua pour consulter les données reçues du jeu.")
         self.title_label = content.itemAt(0).widget()
         self.subtitle_label = content.itemAt(1).widget()
@@ -191,6 +192,10 @@ class BridgePage(QWidget):
         self.config = config
 
     def set_emulator_kind(self, emulator_kind: str) -> None:
+        context = (emulator_kind, getattr(self, "persistent_game", None))
+        if context == self._label_context:
+            return
+        self._label_context = context
         melon = emulator_kind == "melonds"
         changed = self.emulator_kind != emulator_kind
         self.emulator_kind = emulator_kind

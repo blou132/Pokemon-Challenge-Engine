@@ -93,6 +93,7 @@ Enable = true
 RelocSRAM = false
 [DLDI]
 Enable = false
+[DSi]
 [DSi.SD]
 Enable = false
 ["3D"]

@@ -32,6 +32,18 @@ JDK legal notices and download provenance under third-party/randomizer.
 Otherwise installation and verification of external tools are explicit user actions.
 https://github.com/Ajarmar/universal-pokemon-randomizer-zx
 
+melonDS 1.1-pce.1: the optional component retains its upstream license, modified
+full source and build recipe in third-party/melonDS. Its dependency-sources.json
+identifies the exact runtime dependency packages. Distribute the following
+companion archive alongside the main portable ZIP; it is part of the delivery:
+Pokemon-Challenge-Engine-melonDS-dependency-sources.zip
+SHA256: e7f2937a5908e05d87e1ec3c46386a1b36622f9e30472a322132e3230643082c
+It includes 14 exact MSYS2 source packages covering every GPL/LGPL dependency in
+the inventory plus ENet, original detached signatures, verification logs and
+additional ENet, FAAD2, ICU and LZ4 notices. See its README.txt, sources.json and
+notice-provenance.json for correspondence. Keep this companion with any copy
+redistributed with the melonDS component. No Nintendo ROM or firmware is supplied.
+
 Microsoft runtime libraries originate only from the official Python/PySide
 wheels or the Python runtime used by the builder. No emulator DLL is collected
 from a user's installation. Optional emulator components supply separate

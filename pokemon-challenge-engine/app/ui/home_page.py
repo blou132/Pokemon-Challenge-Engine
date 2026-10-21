@@ -3,7 +3,7 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QPushButton, QWidget
 
-from app import __version__
+from app import VERSION_LABEL
 from app.core.catalog import Catalog
 from app.ui.widgets.common import INSTALLATION_LABELS, card, label, page_layout
 
@@ -19,7 +19,7 @@ class HomePage(QWidget):
         hero, box = card()
         hero.setObjectName("hero")
         box.setContentsMargins(30, 28, 30, 28)
-        box.addWidget(label(f"POKEMON CHALLENGE ENGINE   /   V{__version__}", "eyebrow"))
+        box.addWidget(label(f"POKEMON CHALLENGE ENGINE   /   {VERSION_LABEL}", "eyebrow"))
         box.addSpacing(8)
         box.addWidget(label("Votre prochaine aventure,\nvos propres règles.", "heroTitle"))
         box.addWidget(label("Créez une partie classique, utilisez un modèle de challenge\nou composez vos propres règles.", "subtitle"))
@@ -61,7 +61,7 @@ class HomePage(QWidget):
         layout.addLayout(stats)
         self.model_count = label("", "subtitle")
         layout.addWidget(self.model_count)
-        layout.addWidget(label(f"V{__version__} · Les règles restent à respecter manuellement dans le jeu. La page Connexion DeSmuME affiche les données transmises par Lua.", "badge"))
+        layout.addWidget(label(f"{VERSION_LABEL} · Les règles restent à respecter manuellement dans le jeu. La page Connexion DeSmuME affiche les données transmises par Lua.", "badge"))
         layout.addStretch()
 
     def set_detection_state(self, report):

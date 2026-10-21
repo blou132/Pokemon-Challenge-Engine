@@ -7,7 +7,7 @@ from PySide6.QtCore import QSignalBlocker, QTimer, Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QMainWindow, QMessageBox, QPushButton, QStackedWidget, QVBoxLayout, QWidget
 
-from app import __version__
+from app import VERSION_LABEL
 from app.core.catalog import Catalog
 from app.core.challenge_engine import ChallengeEngine
 from app.core.profile_manager import ProfileManager
@@ -130,7 +130,7 @@ class MainWindow(QMainWindow):
         side.addWidget(label("UN CHALLENGE À LA FOIS", "eyebrow"))
         side.addWidget(label("Préparez. Sauvegardez.\nPartez à l'aventure.", "muted"))
         side.addSpacing(15)
-        side.addWidget(label(f"V{__version__}   •   LOCAL", "badge"))
+        side.addWidget(label(VERSION_LABEL, "badge"))
         main.addWidget(sidebar)
         self.pages = QStackedWidget()
         self.home_page = HomePage(catalog)
@@ -163,7 +163,7 @@ class MainWindow(QMainWindow):
         self.settings_page.detection_requested.connect(lambda: self.refresh_installation(force=True))
         self.navigate(6)
         self.refresh_home()
-        self.statusBar().showMessage(f"Prêt  ·  V{__version__} : préparation et lecture Lua, règles à respecter manuellement")
+        self.statusBar().showMessage(f"Prêt  ·  {VERSION_LABEL} : préparation et lecture Lua, règles à respecter manuellement")
         if self.config_service.warnings:
             warning_text = "\n".join(self.config_service.warnings)
             QTimer.singleShot(0, lambda: QMessageBox.warning(self, "Configuration à vérifier", warning_text))

@@ -4,6 +4,8 @@ La distribution `onedir` lance `Pokemon-Challenge-Engine.exe` sans console et sa
 Python installé par l'utilisateur. Le dossier `_internal` doit rester près de
 l'EXE. L'icône géométrique est celle de l'application ; la version est issue de
 `app.__version__`, sans modification automatique du numéro de version.
+La version numérique courante est `0.5.0` ; l’interface indique explicitement
+« en validation », sans présenter cette étape comme une validation achevée.
 
 ## Données personnelles
 
@@ -95,6 +97,13 @@ et vérifie leurs signatures avec le keyring local pacman. `--curl` peut utilise
 le curl Windows existant lorsque le magasin de certificats Python échoue ; TLS
 reste vérifié. Les sources peuvent être distribuées dans une annexe clairement
 identifiée avec le paquet melonDS. Aucune installation système n'est effectuée.
+
+L'annexe préparée est `runtime/Pokemon-Challenge-Engine-melonDS-dependency-sources.zip`
+(SHA256 `e7f2937a5908e05d87e1ec3c46386a1b36622f9e30472a322132e3230643082c`).
+La joindre à côté du ZIP principal dans la livraison et les redistributions qui
+incluent melonDS. Ses 14 sources exactes, signatures et notices complémentaires
+sont inventoriées dans son README et ses manifestes. L'annexe est indépendante
+du manifeste runtime immuable de melonDS ; elle n'est pas copiée dans les parties.
 
 Le composant Randomizer peut être préparé par
 `packaging/windows/prepare_randomizer_component.py --output DOSSIER_NEUF --cache DOSSIER_CACHE --curl CHEMIN_CURL --zx-jar CHEMIN_JAR_ZX`.

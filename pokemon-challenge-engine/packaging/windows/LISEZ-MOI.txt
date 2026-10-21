@@ -1,4 +1,5 @@
 POKEMON CHALLENGE ENGINE - WINDOWS
+V0.5.0 · en validation
 
 1. Extraire toute l'archive dans un dossier local.
 2. Double-cliquer sur Pokemon-Challenge-Engine.exe.
@@ -44,6 +45,16 @@ PCE vérifie le JDK et le SHA256 attendu du JAR avant transformation. La présen
 du composant randomizer est indiquée dans distribution-manifest.json. La licence ZX est dans
 application-source/tools/randomizer/COPYING et ses instructions dans README.md.
 
+ANNEXE SOURCES MELONDS
+Pour une archive contenant melonDS, joindre et conserver à côté du ZIP principal :
+Pokemon-Challenge-Engine-melonDS-dependency-sources.zip
+SHA256 : e7f2937a5908e05d87e1ec3c46386a1b36622f9e30472a322132e3230643082c
+Cette annexe fait partie de la livraison. Elle contient les 14 archives sources
+exactes des dépendances GPL/LGPL et ENet, leurs signatures et les notices
+complémentaires ENet, FAAD2, ICU et LZ4. Son README explique leur correspondance
+avec les bibliothèques du composant third-party/melonDS. Ne pas omettre l'annexe
+lors d'une redistribution. Son extraction n'est pas nécessaire pour lancer PCE.
+
 RACCOURCI ET DIAGNOSTIC
 Create-Desktop-Shortcut.vbs crée facultativement un raccourci sans écraser celui
 qui existe déjà. Sinon Windows permet de créer un raccourci de l'EXE.
@@ -51,6 +62,7 @@ Les journaux tournants sont dans logs/app.log sous le dossier de données.
 La version est visible dans l'interface et dans les propriétés de l'EXE.
 
 VALIDATION
+V0.5.0 est une version en validation, pas une annonce de validation complète.
 Consulter le rapport de livraison pour les fonctionnalités réellement validées.
 Un test Qt et persistance réussi ne prouve pas le fonctionnement d'un jeu.
 Un essai sur ce poste de développement avec environnement isolé ne constitue

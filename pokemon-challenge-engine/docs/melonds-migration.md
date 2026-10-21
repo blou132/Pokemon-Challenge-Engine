@@ -64,6 +64,15 @@ configurations dangereuses, les formats de backup et le refus d'une nouvelle ROM
 dérivée avec une ancienne sauvegarde. Les tests de pont utilisent des PK5 et des
 frames synthétiques ; ils ne constituent pas une validation sur console émulée.
 
+Le test natif `tests/test_melonds_native_config.py` compile un petit programme
+C++ avec le parseur et le sérialiseur TOML du checkout melonDS épinglé. Il
+reproduit le refus d'un parent `[DSi]` implicite lorsqu'un réglage scalaire est
+ajouté, puis vérifie la sérialisation de la configuration PCE. Il ne lance pas
+l'émulateur et n'ouvre aucune configuration utilisateur. Pour l'exécuter,
+définissez `PCE_MELONDS_SOURCE` vers ce checkout et `PCE_CXX` vers son compilateur
+`g++`, puis lancez `python -m pytest tests/test_melonds_native_config.py -q`.
+Sans ces deux entrées locales explicites, ces tests sont marqués non exécutés.
+
 Une copie du DSV réel de Pokémon Blanc a été convertie en batterie brute avec
 vérification du hash inchangé de la source. Cela vérifie la conversion de ce
 fichier, **pas encore sa reprise dans melonDS**. La validation de l'exécutable

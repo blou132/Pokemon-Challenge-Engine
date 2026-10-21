@@ -247,3 +247,22 @@ def test_shiny_presentation_rejects_unverified_generation(qt_app):
         assert slot.shiny_label.text() == "Shiny : inconnu"
     finally:
         close(slot, qt_app)
+
+
+def test_game_mode_accepts_shared_immutable_transformation_evidence(page, tmp_path, monkeypatch, catalog):
+    from app.core.transformation_snapshot import TransformationSnapshot
+    from test_randomizer_rule_observation import setup
+    from test_rule_observation import member, observe
+    _, _, service, data = setup(tmp_path, monkeypatch, rules=("monotype", "shiny_only", "level_cap"))
+    data["pokemon"][497]["types"] = ["fire"]
+    observe(service, [member(species=498, level=21)])
+    snapshot = TransformationSnapshot(data)
+    run = service.active_run
+    page.set_persistent_run(run, transformation=snapshot)
+    assert page._transformation is snapshot
+    text = page.rule_observation_label.text()
+    assert "plafond 20" in text
+    assert text == rule_observation_text(run, catalog, transformation=data)
+    page.set_persistent_run(deepcopy(run), transformation=snapshot)
+    assert page._transformation is snapshot
+    assert page.rule_observation_label.text() == text

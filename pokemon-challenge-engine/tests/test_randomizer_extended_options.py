@@ -197,13 +197,13 @@ def test_monotype_owned_pipeline_and_melonds_provider_preserve_sources(randomize
     tool.changes["report"] = data
     isolated = env.service.isolate(create(env, challenge=challenge))
     provider = RunTransformationProvider(env.manager.root)
-    assert provider.for_run(isolated)["starters"] == [1, 2, 3]
+    assert provider.for_run(isolated)["starters"] == (1, 2, 3)
     old = env.service.directory(isolated)
     new = old.with_name("play-melonds")
     old.rename(new)
     isolated.launch_profile["rom_path"] = str(new / "game" / f"{isolated.game_id}-{isolated.run_id}.nds")
     isolated.launch_profile["emulator_kind"] = "melonds"
-    assert provider.for_run(isolated)["starters"] == [1, 2, 3]
+    assert provider.for_run(isolated)["starters"] == (1, 2, 3)
     assert tree(env.source) == original
 
 

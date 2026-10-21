@@ -146,3 +146,23 @@ shiny, une forme alternative, une évolution, un K.O., un objet ou une capture.
 Il passe par les services et un harnais Lua de boutons, pas par un parcours souris
 intégral. Noir 2 : équipe toujours non validée réellement. Noir et Blanc 2 : aucun
 nouvel essai réel de ce lot. **En attente de validation sur la machine utilisateur.**
+
+
+### Réutilisation des données effectives en mémoire
+
+Le fournisseur de transformation expose un `TransformationSnapshot` immuable :
+les copies entre le worker et les vues réutilisent ses données et ses tables
+validées. Le moteur vérifie encore à chaque évaluation le jeu, la génération,
+le SHA de ROM et les catégories configurées. Les cinq fichiers de provenance
+restent contrôlés à chaque appel du fournisseur ; toute signature modifiée
+impose une nouvelle validation. Les anciens contextes dictionnaires restent
+acceptés et sont revalidés à chaque évaluation. Aucun format persistant ne change.
+
+Mesure du 21 octobre 2026, lecture seule d'une partie Blanc FR dérivée, 667 lignes,
+un Pokémon et quatre règles (Randomizer, Monotype, Shiny Only, Level Cap),
+100 répétitions par opération sans profiler : copie de transformation
+15,95 → 0,001 ms, fournisseur déjà chargé 29,78 → 9,48 ms, préparation des tables
+6,97 → 0,021 ms, évaluation 9,51 → 0,095 ms. Le run actif a gagné quatre événements
+entre les deux mesures (35 → 39) ; ce sont des mesures locales indicatives,
+pas une mesure de latence de jeu ou du build distribué. La vérification froide
+et les contrôles anti-liens des chemins restent effectués.

@@ -7,9 +7,10 @@ from dataclasses import dataclass
 
 from app.core.allowed_pokemon import designation_purpose, eligible_individuals, latest_designation
 from app.core.gen5_species import is_unevolved, species_types
-from app.core.monotype import GEN5_TYPE_IDS, matches_type
+from app.core.monotype import matches_type
 from app.core.pokemon_identity import documented_evolution, pokemon_identity
 from app.core.shiny import shiny_status
+from app.core.transformation_snapshot import TransformationSnapshot, pokemon_tables
 from app.models.run import _pokemon
 
 
@@ -74,49 +75,24 @@ class RunPokemonData:
         self.identity_graph = None
         config = run.rules_snapshot.get("settings", {}).get("rom_transformation")
         if (not self.randomized or run.generation != 5 or not isinstance(config, dict)
-                or not isinstance(transformation, dict) or transformation.get("source") != "verified-derived-rom"
+                or not isinstance(transformation, (dict, TransformationSnapshot))
+                or transformation.get("source") != "verified-derived-rom"
                 or transformation.get("game_id") != run.game_id
                 or not run.rom_fingerprint or transformation.get("rom_sha256") != run.rom_fingerprint):
             return
+        frozen = isinstance(transformation, TransformationSnapshot)
         categories = transformation.get("categories")
         requested = config.get("categories")
-        if (config.get("kind") != "zx" or not isinstance(categories, list) or not categories
+        if (config.get("kind") != "zx" or not isinstance(categories, (list, tuple) if frozen else list) or not categories
                 or any(not isinstance(item, str) for item in categories)
                 or len(set(categories)) != len(categories) or not isinstance(requested, list)
                 or any(not isinstance(item, str) for item in requested) or set(categories) != set(requested)):
             return
-        rows = transformation.get("pokemon")
-        if not isinstance(rows, list):
-            return
-        parents, graph = set(), {}
-        identity_complete = True
-        for row in rows:
-            if not isinstance(row, dict):
-                return
-            species, form, types = row.get("species_id"), row.get("form"), row.get("types")
-            edges, identity_edges = row.get("evolutions"), row.get("identity_evolutions")
-            if (type(species) is not int or not 1 <= species <= 649 or type(form) is not int or not 0 <= form <= 31
-                    or (species, form) in self.rows or not isinstance(types, list) or not 1 <= len(types) <= 2
-                    or any(not isinstance(item, str) or item not in GEN5_TYPE_IDS for item in types)
-                    or len(set(types)) != len(types) or not isinstance(edges, list)
-                    or any(type(item) is not int or not 1 <= item <= 649 for item in edges)):
-                self.rows = {}
-                return
-            self.rows[species, form] = tuple(types)
-            parents.update(edges)
-            if (not isinstance(identity_edges, list)
-                    or any(type(item) is not int or item not in edges for item in identity_edges)):
-                identity_complete = False
-            elif form == 0:
-                # Species-only history cannot prove an evolution tied to an
-                # alternate form; do not merge those branches into the base.
-                graph[species] = frozenset(identity_edges)
-        if any((species, 0) not in self.rows for species in range(1, 650)):
-            self.rows = {}
+        tables = transformation.tables if frozen else pokemon_tables(transformation.get("pokemon"))
+        if tables is None:
             return
         self.categories = frozenset(categories)
-        self.parents = parents
-        self.identity_graph = graph if identity_complete else None
+        self.rows, self.parents, self.identity_graph = tables
         self.verified = True
 
     def types(self, species, form=None):

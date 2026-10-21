@@ -123,11 +123,13 @@ def test_provider_returns_effective_data_and_reuses_only_unchanged_artifacts(ran
     assert first["game_id"] == "white"
     assert first["rom_sha256"] == run.rom_fingerprint
     assert len(first["pokemon"]) == 649
-    assert first["categories"] == ["wild", "types"]
+    assert first["categories"] == ("wild", "types")
     def no_hash(*args): raise AssertionError("Should use verified signatures cache")
     monkeypatch.setattr(transformation_module, "file_hash", no_hash)
-    first["pokemon"][0]["types"] = ["fire"]
-    assert provider.for_run(run)["pokemon"][0]["types"] == ["normal"]
+    with pytest.raises(TypeError):
+        first["pokemon"][0]["types"] = ["fire"]
+    assert provider.for_run(run) is first
+    assert provider.for_run(run)["pokemon"][0]["types"] == ("normal",)
 
 
 def test_provider_detects_tampering_after_initial_load(randomizer):

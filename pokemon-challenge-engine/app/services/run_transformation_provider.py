@@ -1,9 +1,9 @@
 """Load actual ROM species data once per unchanged owned adventure artifact."""
 
-from copy import deepcopy
 import json
 from pathlib import Path
 
+from app.core.transformation_snapshot import TransformationSnapshot
 from app.models.run import validate_run_id
 from app.services.discovery_safety import file_hash, file_signature, local_path
 from app.services.rom_transformation_service import _regular, transformation_options, verified_transformation_report
@@ -14,7 +14,7 @@ class RunTransformationProvider:
         self.runs_directory = local_path(runs_directory)
         self._cache = {}
 
-    def for_run(self, run) -> dict | None:
+    def for_run(self, run) -> TransformationSnapshot | None:
         """None means no applied transformation, never assumed original types.
 
         The caller must handle an old Randomizer declaration without provenance
@@ -36,7 +36,7 @@ class RunTransformationProvider:
         key = (run.run_id, run.game_id, run.rom_fingerprint, run.seed,
                json.dumps(configured.to_dict(), sort_keys=True), signatures)
         if key in self._cache:
-            return deepcopy(self._cache[key])
+            return self._cache[key]
         marker = artifacts[1]
         if marker.stat().st_size > 1024 * 1024:
             raise ValueError("Manifeste d'isolation trop volumineux.")
@@ -57,5 +57,6 @@ class RunTransformationProvider:
                   "pokemon": report["pokemon"], "starters": report.get("starters", []),
                   "source": "verified-derived-rom"}
         # A worker tracks one adventure; bound cache memory when switching runs.
-        self._cache = {key: result}
-        return deepcopy(result)
+        snapshot = TransformationSnapshot(result)
+        self._cache = {key: snapshot}
+        return snapshot

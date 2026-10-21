@@ -213,13 +213,15 @@ class GameModePage(QWidget):
         self.right_scroll.setMinimumWidth(300)
         columns.addWidget(self.left_scroll)
         self.center, center = _panel("DeSmuME standalone")
+        self.emulator_heading = center.itemAt(0).widget()
         self.center.setObjectName("gameStage")
         self.center.setMinimumWidth(280)
         self.window_title = label("Fenêtre externe", "sectionTitle")
         self.session_status = label("PARTIE PRÊTE", "eyebrow")
         center.addWidget(self.session_status)
         center.addWidget(self.window_title)
-        center.addWidget(label("Votre jeu s'ouvre dans sa propre fenêtre.\nCe cadre indique la place réservée à DeSmuME.", "muted"))
+        self.emulator_note = label("", "muted")
+        center.addWidget(self.emulator_note)
         center.addStretch(1)
         screen = QFrame()
         screen.setObjectName("dsPlaceholder")
@@ -460,7 +462,6 @@ class GameModePage(QWidget):
 
     def set_bridge_state(self, state: BridgeState):
         self._bridge = state
-        self.connection_badge.setText("Lua · connecté" if state.connected else "Lua · déconnecté")
         self.profile_combo.setEnabled(state.status == "stopped" and not self._run.running)
         self.profile_combo.setToolTip("Terminez la session et arrêtez la connexion Lua avant de changer de profil."
                                      if state.status != "stopped" or self._run.running else "Profil suivi lors de la prochaine connexion Lua.")
@@ -469,7 +470,7 @@ class GameModePage(QWidget):
         matching = state.game_id == self.game_combo.currentData() and (
             self._profile is None or state.game_id == self._profile.challenge.game_id)
         party = state.party if state.connected and matching else None
-        self.team_note.setText(f"{len(party)} / 6 Pokémon · lecture Lua" if party is not None else
+        self.team_note.setText(f"{len(party)} / 6 Pokémon · lecture {self.connection_name}" if party is not None else
                               "Jeu et profil incompatibles" if state.connected and not matching else "Équipe : " + UNAVAILABLE)
         for index, slot in enumerate(self.team_slots):
             slot.set_pokemon(party[index] if party is not None and index < len(party) else None,
@@ -487,33 +488,41 @@ class GameModePage(QWidget):
         self._render_session()
 
     def _render_session(self):
+        self.emulator_heading.setText(f"{self.emulator_name} standalone".upper())
+        self.emulator_note.setText("Votre jeu s'ouvre dans sa propre fenêtre.\n"
+                                  f"Ce cadre indique la place réservée à {self.emulator_name}.")
+        self.connect_button.setText("Connexion melonDS" if self.is_melonds else "Connexion Lua")
+        self.arrange_button.setToolTip(f"Déplace uniquement la fenêtre {self.emulator_name} lancée ici, sur l'écran choisi.")
         phase = self._session_phase or ("connected" if self._bridge.connected else
             "waiting_script" if self._bridge.status == "waiting" else
             "error" if self._bridge.status == "error" else "disconnected")
-        names = {"preparing": "préparation", "waiting_emulator": "attente de DeSmuME",
-                 "waiting_script": "attente du script", "connected": "connecté",
+        names = {"preparing": "préparation", "waiting_emulator": f"attente de {self.emulator_name}",
+                 "waiting_script": "attente des données" if self.is_melonds else "attente du script", "connected": "connecté",
                  "disconnected": "déconnecté", "ready": "déconnecté", "error": "erreur"}
-        self.connection_badge.setText("Lua · " + names[phase])
+        self.connection_badge.setText(self.connection_name + " · " + names[phase])
+        tracking = "PASSERELLE" if self.is_melonds else "LUA"
         title = "DÉMARRAGE" if self._launch_busy else "EN JEU" if self._run.running and phase == "connected" else (
-            "ERREUR LUA" if self._run.running and phase in {"error", "disconnected"} else
-            "ATTENTE LUA" if self._run.running else "PARTIE PRÊTE")
+            f"ERREUR {tracking}" if self._run.running and phase in {"error", "disconnected"} else
+            f"ATTENTE {tracking}" if self._run.running else "PARTIE PRÊTE")
         self.session_status.setText(title)
-        self.launch_button.setText("DeSmuME en cours" if self._run.running else "Préparation…" if self._launch_busy else "Jouer  →")
-        self.launch_button.setToolTip("DeSmuME est déjà lancé. Le suivi attend les messages Lua."
-            if self._run.running and phase != "connected" else "DeSmuME est déjà lancé." if self._run.running
-            else "La préparation doit se terminer avant de jouer." if self._launch_busy else "Lancer cette partie et sa connexion Lua.")
+        self.launch_button.setText(f"{self.emulator_name} en cours" if self._run.running else "Préparation…" if self._launch_busy else "Jouer  →")
+        waiting = "Le suivi attend les données du jeu." if self.is_melonds else "Le suivi attend les messages Lua."
+        self.launch_button.setToolTip(f"{self.emulator_name} est déjà lancé. {waiting}"
+            if self._run.running and phase != "connected" else f"{self.emulator_name} est déjà lancé." if self._run.running
+            else "La préparation doit se terminer avant de jouer." if self._launch_busy else
+            "Lancer cette partie et son suivi melonDS." if self.is_melonds else "Lancer cette partie et sa connexion Lua.")
         terminal = self._persistent_run is not None and self._persistent_run.status not in {"preparing", "active"}
         self.launch_button.setEnabled(not self._run.running and not self._launch_busy and not terminal)
         if self._session_message:
             self.status_label.setText(self._session_message)
-        self.manual_lua_button.setVisible(phase in {"error", "waiting_script", "disconnected"})
+        self.manual_lua_button.setVisible(not self.is_melonds and phase in {"error", "waiting_script", "disconnected"})
         self.lua_diagnostic_button.setVisible(phase == "error")
         if phase == "error":
             self.recovery_row.show()
             self.reconnect_button.show()
             self.reconnect_button.setText("Réessayer la connexion")
         else:
-            self.reconnect_button.setText("Reconnecter Lua")
+            self.reconnect_button.setText("Reconnecter le suivi" if self.is_melonds else "Reconnecter Lua")
         self.reconnect_button.setEnabled(not self._launch_busy)
 
     def set_tracking_state(self, state: TrackingState):
@@ -534,8 +543,9 @@ class GameModePage(QWidget):
 
     def set_run_state(self, state: RunState):
         self._run = state
-        self.window_title.setText(state.window_title or ("DeSmuME démarré · fenêtre recherchée" if state.running else "Fenêtre externe"))
-        self.status_label.setText(state.message)
+        self.window_title.setText(state.window_title or (f"{self.emulator_name} démarré · fenêtre recherchée" if state.running else "Fenêtre externe"))
+        self.status_label.setText("melonDS reste dans une fenêtre séparée."
+                                 if self.is_melonds and state.message == RunState().message else state.message)
         self.launch_button.setEnabled(not state.running)
         self.arrange_button.setEnabled(state.running)
         self.game_combo.setEnabled(not state.running and self._bridge.status == "stopped")
@@ -578,6 +588,20 @@ class GameModePage(QWidget):
             self.profile_combo.setEnabled(True)
             self.profile_combo.setToolTip("")
             self.set_profiles(list(self._profiles.values()), selected_id=None)
+        self.set_run_state(self._run)
+        self.set_bridge_state(self._bridge)
+
+    @property
+    def is_melonds(self):
+        return self._persistent_run is not None and (self._persistent_run.launch_profile or {}).get("emulator_kind") == "melonds"
+
+    @property
+    def emulator_name(self):
+        return "melonDS" if self.is_melonds else "DeSmuME"
+
+    @property
+    def connection_name(self):
+        return "melonDS" if self.is_melonds else "Lua"
 
     def _render_persistent(self):
         run = self._persistent_run
@@ -605,7 +629,7 @@ class GameModePage(QWidget):
                                          for key in rules) or "Aucune règle active")
         seconds = int(run.total_play_seconds)
         self.time_label.setText(f"Temps suivi : {seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02}")
-        self.time_label.setToolTip("Temps confirmé par DeSmuME lancé ici et les messages du jeu associé.")
+        self.time_label.setToolTip(f"Temps confirmé par {self.emulator_name} lancé ici et les messages du jeu associé.")
         self.stat_labels["badges"].setText(f"{run.badges} / 8 · Manuel" if run.badges is not None else "Non renseigné · Manuel")
         self.stat_labels["seed"].setText(str(run.seed) if run.seed is not None else "Non renseigné")
         deaths = [death for death in run.deaths or [] if not death.get("corrected", False)]
@@ -636,7 +660,7 @@ class GameModePage(QWidget):
         party = run.current_party
         matching = self._bridge.connected and self._bridge.game_id == run.game_id
         self.team_note.show()
-        self.team_note.setText("Dernière équipe observée · " + ("Lua connecté" if matching else "hors ligne"))
+        self.team_note.setText("Dernière équipe observée · " + (self.connection_name + " connecté" if matching else "hors ligne"))
         for index, slot in enumerate(self.team_slots):
             slot.set_pokemon(party[index] if index < len(party) else None, known_empty=bool(party), generation=run.generation)
         self.nuzlocke_widget.hide()
@@ -653,13 +677,18 @@ class GameModePage(QWidget):
             message += " · modifications en attente"
         if self._autosave.get("error"):
             message = "Autosave PCE : erreur · " + self._autosave["error"]
-        self.autosave_label.setText(message + "\nSauvegarde Pokémon : gérée dans DeSmuME")
+        self.autosave_label.setText(message + f"\nSauvegarde Pokémon : gérée dans {self.emulator_name}")
 
     def _refresh_recovery(self):
         active = self._bridge.status != "stopped"
         self.recovery_row.setVisible(active or self._run.running)
         self.reconnect_button.setVisible(self._bridge.status in {"disconnected", "error"})
         self.change_game_button.setVisible(active)
+        if self.is_melonds:
+            self.session_notice.setText("Fermez melonDS pour changer de jeu. Le suivi peut être arrêté séparément."
+                if self._run.running else "Suivi melonDS déconnecté : relancez la partie depuis Jouer pour le rétablir."
+                if self._bridge.status == "disconnected" else "Le jeu reste verrouillé tant que le suivi n'est pas arrêté.")
+            return
         self.session_notice.setText("Fermez DeSmuME pour changer de jeu. La session Lua peut être arrêtée séparément."
             if self._run.running else "Session Lua déconnectée : reconnectez-la ou arrêtez-la pour choisir un autre jeu."
             if self._bridge.status == "disconnected" else "Le jeu reste verrouillé tant que la session Lua n'est pas arrêtée.")

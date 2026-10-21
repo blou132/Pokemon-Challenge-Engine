@@ -1,10 +1,10 @@
-"""État réellement reçu de Lua et instructions pour connecter DeSmuME."""
+"""État réellement reçu et instructions propres à l'émulateur sélectionné."""
 
 from datetime import datetime
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSignalBlocker, Slot, QUrl
+from PySide6.QtCore import Qt, QSignalBlocker, Signal, Slot, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QFormLayout, QHeaderView, QHBoxLayout,
@@ -36,6 +36,8 @@ def _display(value: object) -> str:
 
 
 class BridgePage(QWidget):
+    game_mode_requested = Signal()
+
     def __init__(self, catalog: Catalog, controller: BridgeController, config: AppConfig,
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -43,7 +45,10 @@ class BridgePage(QWidget):
         self.controller = controller
         self.config = config
         self._profile_games: dict[str, str] = {}
+        self.emulator_kind = "desmume"
         content = page_layout(self, "Connexion DeSmuME", "Connectez le script Lua pour consulter les données reçues du jeu.")
+        self.title_label = content.itemAt(0).widget()
+        self.subtitle_label = content.itemAt(1).widget()
 
         connection_card, connection = card("Préparer la connexion")
         self.profile_combo = QComboBox()
@@ -86,6 +91,7 @@ class BridgePage(QWidget):
             "1. Choisissez un profil si vous souhaitez suivre un challenge, puis préparez la connexion pour le jeu choisi.\n"
             "2. Dans DeSmuME standalone compatible Lua, ouvrez votre jeu, puis Tools > Lua Scripting > New Lua Script.\n"
             "3. Choisissez le script indiqué ci-dessous, puis cliquez sur Run. Gardez le jeu en cours d'exécution.", "muted")
+        self._lua_instructions = self.instructions.text()
         connection.addWidget(self.instructions)
         self.script_path = QLineEdit()
         self.script_path.setReadOnly(True)
@@ -106,7 +112,8 @@ class BridgePage(QWidget):
         self.script_details_button.toggled.connect(self.script_path.setVisible)
         connection.addWidget(self.script_details_button)
         connection.addWidget(self.script_path)
-        connection.addWidget(label("Les capacités Lua varient selon le build de DeSmuME. La connexion ne modifie aucune règle dans le jeu.", "muted"))
+        self.capability_note = label("Les capacités Lua varient selon le build de DeSmuME. La connexion ne modifie aucune règle dans le jeu.", "muted")
+        connection.addWidget(self.capability_note)
         content.addWidget(connection_card)
 
         status_card, status = card("État de la connexion")
@@ -151,14 +158,17 @@ class BridgePage(QWidget):
         self.protocol_label = self._field(fields, "Protocole reçu / attendu")
         self.protocol_label.setText(str(PROTOCOL_VERSION))
         self.script_version_label = self._field(fields, "Version du script reçue")
+        self.version_title = fields.labelForField(self.script_version_label)
         self.memory_profile_label = self._field(fields, "Profil mémoire reçu")
         self.capabilities_label = self._field(fields, "Capacités reçues")
         self.received_label = self._field(fields, "Instantanés reçus")
         self.event_label = self._field(fields, "Dernier événement Lua")
+        self.event_title = fields.labelForField(self.event_label)
         self.timestamp_label = self._field(fields, "Horodatage du dernier message")
         self.pid_label = self._field(fields, "PID lancé par l'application")
         diagnostics.addLayout(fields)
-        diagnostics.addWidget(label("Le PID indique seulement le dernier processus lancé ici. Seuls les messages Lua confirment la connexion. Les valeurs absentes restent « Non disponible ».", "muted"))
+        self.diagnostics_note = label("Le PID indique seulement le dernier processus lancé ici. Seuls les messages Lua confirment la connexion. Les valeurs absentes restent « Non disponible ».", "muted")
+        diagnostics.addWidget(self.diagnostics_note)
         content.addWidget(diagnostics_card)
         content.addStretch()
 
@@ -179,6 +189,34 @@ class BridgePage(QWidget):
 
     def set_config(self, config: AppConfig) -> None:
         self.config = config
+
+    def set_emulator_kind(self, emulator_kind: str) -> None:
+        melon = emulator_kind == "melonds"
+        changed = self.emulator_kind != emulator_kind
+        self.emulator_kind = emulator_kind
+        self.title_label.setText("Connexion melonDS" if melon else "Connexion DeSmuME")
+        self.subtitle_label.setText("Consultez les données reçues du jeu par la passerelle en lecture seule."
+                                    if melon else "Connectez le script Lua pour consulter les données reçues du jeu.")
+        self.prepare_button.setText("Ouvrir le Mode Jeu" if melon else "Préparer la connexion")
+        self.reconnect_button.setText("Ouvrir le Mode Jeu" if melon else "Reconnecter")
+        if changed:
+            self.script_path.clear()
+            self.script_details_button.setChecked(False)
+            self.instructions.setText("Lancez cette partie avec Jouer dans le Mode Jeu. La passerelle démarre avec melonDS. "
+                "Si le suivi est perdu, fermez melonDS puis relancez la partie avec Jouer."
+                if melon else self._lua_instructions)
+        for widget in (self.copy_script_button, self.folder_script_button, self.script_details_button):
+            widget.setVisible(not melon)
+        self.script_path.setVisible(not melon and self.script_details_button.isChecked())
+        self.capability_note.setText("La passerelle melonDS lit les données disponibles sans modifier les règles du jeu."
+            if melon else "Les capacités Lua varient selon le build de DeSmuME. La connexion ne modifie aucune règle dans le jeu.")
+        self.status_label.setAccessibleName("État du suivi melonDS" if melon else "État de la connexion Lua")
+        self.version_title.setText("Version du protocole de lecture reçue" if melon else "Version du script reçue")
+        self.event_title.setText("Dernier événement melonDS" if melon else "Dernier événement Lua")
+        self.diagnostics_note.setText("Le PID indique seulement le dernier processus lancé ici. " +
+            ("Seules les données reçues de melonDS confirment la connexion." if melon else "Seuls les messages Lua confirment la connexion.") +
+            " Les valeurs absentes restent « Non disponible ».")
+        self.update_state(self.controller.state)
 
     def set_profiles(self, profiles: list[Profile]) -> None:
         """Actualise les choix sans sélectionner implicitement un profil."""
@@ -219,6 +257,11 @@ class BridgePage(QWidget):
 
     @Slot()
     def _start(self) -> None:
+        if self.emulator_kind == "melonds":
+            # The native bridge directory is fixed when the owned process starts.
+            # A standalone preparation would leave that process on the old session.
+            self.game_mode_requested.emit()
+            return
         game_id = getattr(self, "persistent_game", None) or self.game_combo.currentData()
         if game_id is None:
             return
@@ -233,6 +276,11 @@ class BridgePage(QWidget):
 
     @Slot(str)
     def _prepared(self, path: str) -> None:
+        if self.emulator_kind == "melonds":
+            self.script_path.clear()
+            self.instructions.setText("La passerelle est préparée. La connexion sera confirmée par les données reçues de melonDS. "
+                                      "L'équipe reste inconnue tant qu'une lecture valide n'a pas été reçue.")
+            return
         self.script_path.setText(path)
         self.script_path.setCursorPosition(0)
         self.copy_script_button.setEnabled(True)
@@ -253,9 +301,10 @@ class BridgePage(QWidget):
                 self.session_notice.setText("Le dossier n'a pas pu être ouvert. Utilisez Copier le chemin du script.")
 
     def _stop_for_change(self):
-        answer = QMessageBox.question(self, "Arrêter la session Lua ?",
+        melon = self.emulator_kind == "melonds"
+        answer = QMessageBox.question(self, "Arrêter le suivi melonDS ?" if melon else "Arrêter la session Lua ?",
             "L'ancienne session sera arrêtée. Vous pourrez ensuite choisir un autre jeu et préparer une nouvelle connexion. "
-            "DeSmuME restera ouvert. Continuer ?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            + ("melonDS restera ouvert. Continuer ?" if melon else "DeSmuME restera ouvert. Continuer ?"), QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
         if answer == QMessageBox.StandardButton.Yes:
             self.controller.stop()
@@ -267,18 +316,25 @@ class BridgePage(QWidget):
 
     @Slot(object)
     def update_state(self, state: BridgeState) -> None:
-        self.status_label.setText(STATUS_LABELS[state.status])
+        melon = self.emulator_kind == "melonds"
+        status = {"waiting": "En attente des données de melonDS", "connected": "Connectée à melonDS"}.get(state.status) if melon else None
+        self.status_label.setText(status or STATUS_LABELS[state.status])
         self.error_label.setText(state.last_error or "")
         self.error_label.setVisible(bool(state.last_error))
         active = state.status in {"waiting", "connected", "receiving"}
-        self.prepare_button.setEnabled(not active)
+        self.prepare_button.setEnabled(melon or not active)
         # Une session déconnectée peut encore recevoir un message tardif du même jeu.
         self.game_combo.setEnabled(state.status == "stopped" and not getattr(self, "persistent_game", None))
         self.profile_combo.setEnabled(state.status == "stopped" and not getattr(self, "persistent_game", None))
         self.stop_button.setEnabled(state.status != "stopped")
         self.reconnect_button.setVisible(state.status in {"disconnected", "error"})
         self.change_game_button.setVisible(state.status != "stopped")
-        self.session_notice.setText("La session Lua est déconnectée. Reconnectez-la ou arrêtez-la pour changer de jeu."
+        if melon:
+            self.session_notice.setText("Le suivi melonDS est déconnecté. Fermez melonDS puis relancez cette partie avec Jouer."
+                if state.status == "disconnected" else "Le jeu reste verrouillé tant que le suivi n'est pas arrêté."
+                if state.status != "stopped" else "")
+        else:
+            self.session_notice.setText("La session Lua est déconnectée. Reconnectez-la ou arrêtez-la pour changer de jeu."
             if state.status == "disconnected" else "Le jeu reste verrouillé tant que cette session Lua n'est pas arrêtée."
             if state.status != "stopped" else "")
         self.copy_script_button.setEnabled(bool(self.script_path.text()) and state.status != "stopped")

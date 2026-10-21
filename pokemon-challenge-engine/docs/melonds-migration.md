@@ -5,6 +5,14 @@ partie peut sélectionner melonDS lorsque son composant PCE est installé et que
 SHA-256 de son manifeste figure dans la liste des distributions vérifiées.
 Un manifeste simplement ajouté auprès d'un exécutable ne suffit pas à l'autoriser.
 
+Le Mode Jeu et la page **Connexion melonDS** affichent les états du suivi de
+l'aventure sélectionnée. Le suivi démarre avec **Jouer** ; aucun script Lua n'est
+à ouvrir pour melonDS. En cas de déconnexion, fermez melonDS puis relancez la
+partie avec **Jouer**. Les boutons de connexion du diagnostic renvoient au Mode
+Jeu afin de conserver l'association entre le processus et sa session. Une
+connexion confirmée ne remplit jamais une équipe dont aucune lecture valide
+n'a été reçue. Les aventures DeSmuME conservent leurs instructions Lua.
+
 ## Fichiers et sauvegardes
 
 - DeSmuME utilise `runs/<id>/play/`. melonDS utilise `runs/<id>/play-melonds/`.

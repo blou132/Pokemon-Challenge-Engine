@@ -191,7 +191,8 @@ class GameModeWindow(QMainWindow):
             self.run_prepare_requested.emit(self.persistent_run.run_id)
             return
         self._launch_generation += 1
-        self.page.set_session_phase("preparing", "Vérification de l'environnement et du support Lua…", busy=True)
+        self.page.set_session_phase("preparing", "Vérification de l'environnement et de la passerelle melonDS…"
+                                    if self.page.is_melonds else "Vérification de l'environnement et du support Lua…", busy=True)
         if self.persistent_run is not None:
             from app.services.run_launch_service import RunLaunchService
             self._preparing_game = self.persistent_run.game_id
@@ -300,8 +301,9 @@ class GameModeWindow(QMainWindow):
         self._begin_lua(game_id, reconnect=True)
 
     def stop_lua_for_change(self):
-        answer = QMessageBox.question(self, "Arrêter la session Lua ?",
-            "L'ancienne session Lua sera arrêtée. DeSmuME restera ouvert : fermez sa fenêtre avant de lancer un autre jeu. Continuer ?",
+        answer = QMessageBox.question(self, "Arrêter le suivi melonDS ?" if self.page.is_melonds else "Arrêter la session Lua ?",
+            "Le suivi sera arrêté. melonDS restera ouvert : fermez sa fenêtre avant de lancer un autre jeu. Continuer ?"
+            if self.page.is_melonds else "L'ancienne session Lua sera arrêtée. DeSmuME restera ouvert : fermez sa fenêtre avant de lancer un autre jeu. Continuer ?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         if answer == QMessageBox.StandardButton.Yes:
             self.lua_timeout.stop()
@@ -382,7 +384,9 @@ class GameModeWindow(QMainWindow):
         path = Path(script)
         bridge = self.controller.bridge
         if path.parent != bridge.session_dir or path.parent.name != bridge.session_id or (path.parent / "stop").exists():
-            self._bridge_failed(request_id, "Le script ne correspond pas à la nouvelle session Lua.")
+            self._bridge_failed(request_id, "Le dossier ne correspond pas à la nouvelle session melonDS."
+                                if pending["options"].get("emulator_kind") == "melonds" else
+                                "Le script ne correspond pas à la nouvelle session Lua.")
             return
         self._connection_session = bridge.session_id
         pending["session_id"] = bridge.session_id
@@ -440,6 +444,10 @@ class GameModeWindow(QMainWindow):
     def _bridge_failed(self, request_id, message):
         pending = self._lua_pipeline
         if pending is not None and pending["request"] == request_id:
+            if pending["options"].get("emulator_kind") == "melonds":
+                self._lua_pipeline = None
+                self.page.set_session_phase("error", "Suivi melonDS à réparer : " + message)
+                return
             self._autoload_prepared({"pipeline": pending, "enabled": False,
                                     "message": "Session Lua à réparer : " + message})
 
@@ -464,12 +472,16 @@ class GameModeWindow(QMainWindow):
         if matching:
             self.lua_timeout.stop()
             self._lua_message = ""
-            self.page.set_session_phase("connected", "Connexion Lua confirmée par le jeu.")
+            self.page.set_session_phase("connected", "Connexion melonDS confirmée par les données du jeu."
+                                        if self.page.is_melonds else "Connexion Lua confirmée par le jeu.")
         elif state.status in {"stopped", "disconnected", "error"}:
             self.page.set_session_phase("error" if state.status == "error" else "disconnected",
-                state.last_error or ("Jeu lancé, suivi Lua indisponible." if self.service.state.running else ""))
+                state.last_error or (("Jeu lancé, suivi melonDS indisponible." if self.page.is_melonds else
+                                      "Jeu lancé, suivi Lua indisponible.") if self.service.state.running else ""))
         elif state.status == "waiting" and self.page._session_phase != "error":
-            self.page.set_session_phase("waiting_script", self._lua_message or "En attente du script Lua de cette session…")
+            self.page.set_session_phase("waiting_script", self._lua_message or (
+                "En attente des données de melonDS pour cette session…" if self.page.is_melonds else
+                "En attente du script Lua de cette session…"))
 
     def _lua_timed_out(self):
         state = self.controller.state
@@ -508,7 +520,9 @@ class GameModeWindow(QMainWindow):
         self._persistent_notice = ""
         self.process_context_changed.emit(True, game_id)
         self.page.set_run_state(self.service.state)
-        self.page.set_session_phase("waiting_script", self._lua_message or "DeSmuME a démarré. Attente du heartbeat Lua…")
+        self.page.set_session_phase("waiting_script", self._lua_message or (
+            "melonDS a démarré. Attente des données du jeu…" if self.page.is_melonds else
+            "DeSmuME a démarré. Attente du heartbeat Lua…"))
         self.lua_timeout.start()
         self._arrange_pending = self.service.config["interface"]["auto_arrange"]
         self._arrange_attempts = 0
@@ -681,11 +695,11 @@ class GameModeWindow(QMainWindow):
             self.open_settings("interface")
             return
         if not self.service.state.running:
-            self.page.status_label.setText("Lancez DeSmuME depuis ce Mode Jeu avant d'organiser sa fenêtre.")
+            self.page.status_label.setText(f"Lancez {self.page.emulator_name} depuis ce Mode Jeu avant d'organiser sa fenêtre.")
             return
         screen = screens[0]
         if screen.devicePixelRatio() != 1:
-            self.page.status_label.setText("Organisation indisponible avec cette mise à l'échelle Windows. Positionnez DeSmuME manuellement ; le Mode Jeu reste utilisable.")
+            self.page.status_label.setText(f"Organisation indisponible avec cette mise à l'échelle Windows. Positionnez {self.page.emulator_name} manuellement ; le Mode Jeu reste utilisable.")
             return
         if self.windowHandle():
             self.windowHandle().setScreen(screen)
@@ -695,7 +709,7 @@ class GameModeWindow(QMainWindow):
         rect = (point.x(), point.y(), max(200, self.page.center.width() - 24), max(240, self.page.center.height() - 200))
         try:
             self.service.arrange(rect)
-            self.page.status_label.setText("Fenêtre DeSmuME externe positionnée. Ses commandes restent gérées par l'émulateur.")
+            self.page.status_label.setText(f"Fenêtre {self.page.emulator_name} externe positionnée. Ses commandes restent gérées par l'émulateur.")
         except (OSError, ValueError) as exc:
             self.page.status_label.setText(str(exc))
 
@@ -805,7 +819,8 @@ class GameModeWindow(QMainWindow):
         try:
             if self.persistent_run is not None:
                 if self.service.state.running or self.controller.state.status != "stopped":
-                    raise ValueError("Fermez DeSmuME et arrêtez Lua avant de modifier l'environnement de cette partie.")
+                    raise ValueError("Fermez melonDS et arrêtez le suivi avant de modifier l'environnement de cette partie."
+                                     if self.page.is_melonds else "Fermez DeSmuME et arrêtez Lua avant de modifier l'environnement de cette partie.")
                 from app.services.game_mode_config import validate_config
                 snapshot = deepcopy(self.persistent_run.launch_profile or {})
                 source = snapshot.pop("_source", None)

@@ -142,6 +142,7 @@ class MainWindow(QMainWindow):
         self.bridge_controller.state_changed.connect(self.run_controller.consume)
         self.bridge_controller.state_changed.connect(lambda _: self._refresh_pending_installation())
         self.bridge_page = BridgePage(catalog, self.bridge_controller, self.config)
+        self.bridge_page.game_mode_requested.connect(self.open_game_mode)
         for page in (self.home_page, self.challenge_page, self.rules_page, self.profile_page, self.settings_page, self.bridge_page):
             self.pages.addWidget(page)
         main.addWidget(self.pages, 1)
@@ -399,7 +400,9 @@ class MainWindow(QMainWindow):
             else:
                 self.navigate(6)
                 self.runs_page.highlight_run(run_id)
-                self.statusBar().showMessage("Partie enregistrée. Fermez DeSmuME et arrêtez Lua, puis reprenez la partie demandée.")
+                self.statusBar().showMessage("Partie enregistrée. Fermez melonDS et arrêtez le suivi, puis reprenez la partie demandée."
+                    if self.bridge_page.emulator_kind == "melonds" else
+                    "Partie enregistrée. Fermez DeSmuME et arrêtez Lua, puis reprenez la partie demandée.")
                 self._offer_session_switch(run_id)
             return
         try:
@@ -447,6 +450,7 @@ class MainWindow(QMainWindow):
         if not self._validate_requested_run(run.run_id):
             self._show_run_mismatch(run.run_id)
             return
+        self._set_bridge_run(run)
         if self.runs_page is not None:
             self.runs_page.refresh_visible()
             self.runs_page.set_active_run(run.run_id)
@@ -458,7 +462,6 @@ class MainWindow(QMainWindow):
         mode.bind_requested_run(run, self.run_controller.state)
         self.open_game_mode(run.run_id)
         self.bridge_controller.select_profile(None)
-        self.bridge_page.persistent_game = run.game_id
         with QSignalBlocker(self.bridge_page.profile_combo):
             self.bridge_page.profile_combo.setCurrentIndex(0)
         with QSignalBlocker(self.bridge_page.game_combo):
@@ -486,6 +489,7 @@ class MainWindow(QMainWindow):
     def _run_changed(self, run, state):
         if run is None or (self._requested_run_id is not None and run.run_id != self._requested_run_id):
             return
+        self._set_bridge_run(run)
         if self.game_mode_window and self._validate_requested_run(run.run_id):
             self.game_mode_window.set_persistent_run(run, state)
             options = self.game_mode_window.launch_options(run.game_id)
@@ -496,6 +500,14 @@ class MainWindow(QMainWindow):
             self._last_run_saved = marker
             self.runs_page.set_active_run(run.run_id)
             self.runs_page.refresh_visible()
+
+    def _set_bridge_run(self, run):
+        kind = (run.launch_profile or {}).get("emulator_kind", "desmume") if run is not None else "desmume"
+        self.bridge_page.persistent_game = run.game_id if run is not None else None
+        self.bridge_page.set_emulator_kind(kind)
+        name = "melonDS" if kind == "melonds" else "DeSmuME"
+        self.nav_buttons[5].setText(f"↔   Connexion {name}")
+        self.game_mode_button.setToolTip(f"Ouvre les panneaux de jeu autour d'une fenêtre {name} externe.")
 
     def _run_action(self, run_id, action, payload):
         if action in {"delete", "isolate", "melonds"}:
@@ -517,7 +529,10 @@ class MainWindow(QMainWindow):
         dialog = QMessageBox(self)
         dialog.setWindowTitle("Changer de partie")
         dialog.setText("Fermer la session précédente et reprendre la partie demandée ?")
-        dialog.setInformativeText("Enregistrez d'abord dans le jeu. PCE demandera une fermeture normale de DeSmuME, "
+        dialog.setInformativeText("Enregistrez d'abord dans le jeu. PCE demandera une fermeture normale de melonDS, "
+                                  "attendra son arrêt, puis arrêtera le suivi. Aucune fermeture forcée ne sera effectuée."
+                                  if self.bridge_page.emulator_kind == "melonds" else
+                                  "Enregistrez d'abord dans le jeu. PCE demandera une fermeture normale de DeSmuME, "
                                   "attendra son arrêt, puis arrêtera Lua. Aucune fermeture forcée ne sera effectuée.")
         proceed = dialog.addButton("Fermer la session et continuer", QMessageBox.ButtonRole.AcceptRole)
         dialog.addButton("Annuler", QMessageBox.ButtonRole.RejectRole)
@@ -551,11 +566,13 @@ class MainWindow(QMainWindow):
                 mode.refresh_run()
                 if mode.service.state.running:
                     if self._switch_ticks >= 150:
-                        raise ValueError("DeSmuME attend peut-être une confirmation. Fermez sa fenêtre puis reprenez la partie.")
+                        raise ValueError(f"{mode.page.emulator_name} attend peut-être une confirmation. Fermez sa fenêtre puis reprenez la partie.")
                     return
             if self.bridge_controller.state.status != "stopped":
                 if self._switch_ticks >= 150:
-                    raise ValueError("La session Lua ne s'est pas arrêtée. Arrêtez-la depuis Connexion DeSmuME.")
+                    raise ValueError("Le suivi ne s'est pas arrêté. Arrêtez-le depuis Connexion melonDS."
+                                     if self.bridge_page.emulator_kind == "melonds" else
+                                     "La session Lua ne s'est pas arrêtée. Arrêtez-la depuis Connexion DeSmuME.")
                 self.bridge_controller.stop()
                 return
             target = self._switch_target
@@ -579,7 +596,7 @@ class MainWindow(QMainWindow):
         mode = self.game_mode_window
         if mode is not None and mode.persistent_run is not None and mode.persistent_run.run_id == run_id:
             mode.clear_persistent_run()
-            self.bridge_page.persistent_game = None
+            self._set_bridge_run(None)
             self.bridge_page.set_config(self.config)
             self.bridge_page.game_combo.setEnabled(True)
             self.bridge_page.profile_combo.setEnabled(True)
@@ -593,7 +610,9 @@ class MainWindow(QMainWindow):
 
     def _manage_run_files(self, run_id, action):
         if self._session_busy() or self.run_prepare.is_busy or self.run_files.is_busy or self.run_controller.activation_pending:
-            QMessageBox.warning(self, "Partie occupée", "Fermez DeSmuME et arrêtez Lua, puis attendez la fin de la préparation avant cette action.")
+            QMessageBox.warning(self, "Partie occupée", "Fermez melonDS et arrêtez le suivi, puis attendez la fin de la préparation avant cette action."
+                if self.bridge_page.emulator_kind == "melonds" else
+                "Fermez DeSmuME et arrêtez Lua, puis attendez la fin de la préparation avant cette action.")
             return
         try:
             from app.services.run_isolation_service import RunIsolationService

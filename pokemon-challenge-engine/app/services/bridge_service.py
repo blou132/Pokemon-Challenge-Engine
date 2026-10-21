@@ -120,10 +120,12 @@ class BridgeService:
         error = message.error
         if message.event == "bridge_error":
             status = "error"
-            error = error or "Le script Lua a signalé une erreur."
+            error = error or ("La passerelle melonDS a signalé une erreur." if message.emulator == "melonds"
+                              else "Le script Lua a signalé une erreur.")
         elif message.event == "emulator_closing":
             status = "disconnected"
-            error = error or "Le script Lua ou l'émulateur a été fermé."
+            error = error or ("La passerelle ou melonDS a été fermé." if message.emulator == "melonds"
+                              else "Le script Lua ou l'émulateur a été fermé.")
         self._state = BridgeState(
             status=status, expected_game=self._state.expected_game, game_id=message.game_id,
             game_code=message.game_code, game_region=message.game_region, rom_revision=message.rom_revision,
@@ -223,6 +225,7 @@ class BridgeService:
         if last_activity is not None and now - last_activity >= self.timeout_seconds:
             self._state = replace(
                 self._state, status="disconnected", party_size=None, party=None, observation=None, observations=(),
-                last_error="Aucun message Lua récent : connexion perdue ou script arrêté.",
+                last_error=("Aucune donnée récente de melonDS : connexion perdue ou jeu arrêté."
+                            if self.native_reader is not None else "Aucun message Lua récent : connexion perdue ou script arrêté."),
             )
         return self._state

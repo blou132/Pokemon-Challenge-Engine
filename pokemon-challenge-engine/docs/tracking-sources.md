@@ -94,8 +94,8 @@ Les recherches ont également consulté :
 - [La décompilation `pokemodding/pokeblack`, commit `84e6b56639ec5dbc9861da6c5f02b02bd2bac9f0`](https://github.com/pokemodding/pokeblack/tree/84e6b56639ec5dbc9861da6c5f02b02bd2bac9f0), qui cible Noir anglais ; ses symboles ne sont pas une carte mémoire de Blanc FR.
 - [Le tracker de JoshuaMootoo, commit `ed8e873b816af1e760279fa7171b6f64b0a55c7b`](https://github.com/JoshuaMootoo/Pkmn-Nuzlocke-Tracker-Emulator-Tool/blob/ed8e873b816af1e760279fa7171b6f64b0a55c7b/nuzlocke.lua), dont les adresses annoncées pour B2W2 US ne fournissent pas de justification transférable à Blanc FR. Aucune n'a été reprise.
 
-Il manque donc encore une source vérifiable spécifique au profil FR pour l'état
-actif, le type sauvage/dresseur, la classification de rencontre, les statistiques
+Il manque donc encore un lecteur qualifié sur le profil FR pour l'état actif,
+le type sauvage/dresseur, la classification de rencontre, les statistiques
 du sauvage actif, son identité de combat et les codes de résultat. Les profils
 livrés indiquent `battle: null` et la liste explicite des champs indisponibles.
 Le lecteur ne conclut jamais « pas de combat » à partir de cette absence : tous
@@ -109,6 +109,29 @@ de ces transitions portent sur les événements synthétiques du protocole, pas 
 des adresses RAM inventées. Aucun gain d'équipe ni disparition de combat n'est
 converti en capture supposée ; une capture envoyée en boîte nécessitera également
 une preuve fiable.
+
+Complément de recherche du 21 octobre 2026 : le
+[bloc WHITE_FR de Piomale](https://github.com/Piomale/NDS-Ironmon-Tracker-French/blob/80889ae418dcff0df4d0a6db6e241abc96a425b7/ironmon_tracker/constants/MemoryAddresses.lua)
+et ses lecteurs de combat sont des candidats déjà isolés dans le sondage local
+`runtime/v05-battle-probe`. Ils n'établissent pas une action objet, sa réussite ou
+la cause d'un soin. En particulier,
+[scanForHealingItems](https://github.com/Piomale/NDS-Ironmon-Tracker-French/blob/80889ae418dcff0df4d0a6db6e241abc96a425b7/ironmon_tracker/Program.lua#L300-L341)
+lit un inventaire et gère le retard de mise à jour du sac de combat ; une variation
+de cet inventaire ne suffit pas à qualifier une action interdite.
+
+La décompilation B2W2 apporte deux pistes plus précises, sans adresse FR validée :
+[BattleAction](https://github.com/fuddlesworth/pokebw2/blob/9a3236bc8169d61fa6493046eceea9089961a71b/include/battle/btl_action.h)
+décrit une action objet, et son
+[constructeur](https://github.com/fuddlesworth/pokebw2/blob/9a3236bc8169d61fa6493046eceea9089961a71b/src/ov167/battle_action.c#L35-L42)
+encode le genre 2, l'objet, la cible et un paramètre. Cela décrit une commande,
+sans établir son exécution, son résultat ni le client joueur. Pour No Healing et
+No Pokémon Center,
+[s0104_PokePartyRecoverAll](https://github.com/fuddlesworth/pokebw2/blob/9a3236bc8169d61fa6493046eceea9089961a71b/src/ov012/scrcmd_pokemon.c#L72-L76)
+appelle un soin générique d'équipe : le contexte du script doit encore distinguer
+un service de Centre, un autre soin et une séquence imposée. Ces sources ciblent
+les builds B2W2 du [README amont](https://github.com/fuddlesworth/pokebw2/blob/9a3236bc8169d61fa6493046eceea9089961a71b/README.md),
+pas une carte mémoire française. Aucune de ces pistes n'active de violation dans
+PCE et aucun nouveau champ RAM n'est ajouté par cet audit.
 
 ## Tests et validation réelle
 

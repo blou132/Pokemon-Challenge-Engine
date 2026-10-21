@@ -13,10 +13,10 @@ from test_rule_observation import member, mono, observe
 from test_run_randomizer_isolation import randomizer, transformation, environment, create, tree
 
 
-def setup(tmp_path, monkeypatch, *, categories=("types", "evolutions"), rules=()):
+def setup(tmp_path, monkeypatch, *, categories=("types", "evolutions"), rules=(), params=None):
     manager = RunManager(tmp_path / "runs")
     challenge = Challenge("white", "custom", ["randomizer", *rules], {},
-        {"enforcement": "soft", "rule_parameters": {"level_cap": {"max_level": 20}},
+        {"enforcement": "soft", "rule_parameters": {"level_cap": {"max_level": 20}} | (params or {}),
          "rom_transformation": {"kind": "zx", "categories": list(categories), "balanced": False}}, mono(), 512)
     run = manager.create("Derived", "white", challenge=challenge, rom_fingerprint="a" * 64)
     data = {"source": "verified-derived-rom", "game_id": "white", "rom_sha256": run.rom_fingerprint,

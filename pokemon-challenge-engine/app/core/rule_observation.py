@@ -228,6 +228,44 @@ def _pokemon_checks(run, pokemon, scope, data, *, timestamp=None):
                          "Individu déclaré mort dans PCE, encore présent dans cette observation. Utilisation en combat inconnue.", pokemon, timestamp)
 
 
+def _observed_designation_continuity(run, designation, current, data):
+    """Resolve a form learned after designation using only subsequent evidence.
+
+    The declaration is immutable. An earlier form observation must not fill in
+    its unknown form, and weak/duplicate observations cannot bridge an evolution.
+    """
+    previous = designation["payload"]["pokemon"]
+    key = designation["payload"]["pokemon_key"]
+    after_designation = False
+    for event in run.history:
+        if event.get("event_id") == designation.get("event_id"):
+            after_designation = True
+            continue
+        if not after_designation or event.get("type") != "party_changed" or event.get("source") != "automatic":
+            continue
+        party = event.get("payload", {}).get("party")
+        if not isinstance(party, list) or len(party) > 6 or any(not isinstance(item, dict) for item in party):
+            return None
+        matching = [item for item in party if pokemon_identity(item, run.generation) == key]
+        if not matching:
+            continue
+        if len(matching) != 1:
+            return None
+        observed = matching[0]
+        try:
+            _pokemon(observed, observed=True, generation=run.generation)
+        except ValueError:
+            return None
+        if observed.get("identity_confidence") != "strong" or observed.get("identity_ambiguous"):
+            return None
+        if previous["species_id"] != observed["species_id"] and data.evolution(
+                previous["species_id"], observed["species_id"], previous.get("form"), observed.get("form")) is not True:
+            return None
+        previous = observed
+    return True if after_designation and (previous["species_id"], previous.get("form")) == (
+        current["species_id"], current.get("form")) else None
+
+
 def _designation_checks(run, data):
     rules = [rule for rule in run.active_rules if rule in {"solo_run", "starter_only"}]
     event = latest_designation(run)
@@ -272,6 +310,8 @@ def _designation_checks(run, data):
         changed = selected["species_id"] != pokemon["species_id"]
         relation = data.evolution(selected["species_id"], pokemon["species_id"],
                                   selected.get("form"), pokemon.get("form")) if changed else True
+        if relation is None:
+            relation = _observed_designation_continuity(run, event, pokemon, data)
         if relation is not True:
             yield from checks("unknown", "Continuité depuis la désignation non vérifiable : changement d'espèce ou graphe individuel inconnu.", pokemon)
             return
@@ -316,6 +356,8 @@ Neither a team addition nor a disappearance is interpreted as a capture.
             proven_identity = (not pokemon.get("identity_ambiguous") and pokemon.get("identity_confidence") == "strong"
                                and pokemon_identity(pokemon, run.generation) == key)
             for previous, current in zip(history, history[1:]):
+                if previous.get("species_id") == current.get("species_id"):
+                    continue  # A form observation alone is never an evolution.
                 relation = data.evolution(previous.get("species_id"), current.get("species_id"),
                                           previous.get("form"), current.get("form"))
                 proven = proven_identity and relation is True
@@ -348,8 +390,12 @@ Neither a team addition nor a disappearance is interpreted as a capture.
                 checks[rule].append(_check(rule, "review", "manual",
                     f"{counts[zone]} captures déclarées dans {zone[1]} pour une limite de {limit}. Vérifier les clauses et les déclarations.", pokemon, entry.get("date")))
         species = pokemon.get("species_id")
-        if "species_clause" in checks and species is not None and species in species_seen:
-            checks["species_clause"].append(_check("species_clause", "review", "manual", "Espèce déjà présente dans les captures déclarées. Vérifier la Species Clause.", pokemon, entry.get("date")))
+        if "species_clause" in checks:
+            if species is None:
+                checks["species_clause"].append(_check("species_clause", "unknown", "manual",
+                    "Espèce non renseignée dans cette capture déclarée. Un nom ou surnom ne permet pas de vérifier la Species Clause.", pokemon, entry.get("date")))
+            elif species in species_seen:
+                checks["species_clause"].append(_check("species_clause", "review", "manual", "Espèce déjà présente dans les captures déclarées. Vérifier la Species Clause.", pokemon, entry.get("date")))
         species_seen.add(species)
     if include_history:
         seen = set()

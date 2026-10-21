@@ -25,6 +25,14 @@ la fiche. Le moteur ne réécrit ni les règles, ni les observations anciennes, 
 sauvegardes Pokémon. Le schéma Run reste compatible avec la V0.4.1. Il n'existe
 pas encore d'acquittement séparé des alertes ni de journal automatique des captures.
 
+Les nouvelles observations conservent aussi les changements de forme dans
+`species_history`, sans compléter rétroactivement une ancienne entrée. Une forme
+inconnue puis lue à 0 avant une évolution transformée permet ainsi de vérifier
+le changement d'espèce ultérieur. Un changement de forme seul ne constitue jamais
+une évolution. Une capture déclarée avec seulement un nom ou surnom reste
+explicitement inconnue pour Species Clause ; elle compte toujours pour les
+limites de zone si sa zone est renseignée.
+
 ## Couverture des quinze règles
 
 | Règle | Contrôle livré | Limite explicite |
@@ -66,6 +74,13 @@ ni violation de combat. Un autre individu de la même espèce ne remplace pas le
 choix. Un clone détecté, une identité faible ou un changement d'espèce sans graphe
 individuel vérifié suspend la comparaison. Le départ de l'équipe ne prouve ni la
 perte du Pokémon ni son utilisation ailleurs.
+
+Si la forme était inconnue lors de la désignation, les observations fiables
+postérieures peuvent établir une chaîne jusqu'à l'individu actuel : par exemple,
+même espèce ensuite observée en forme 0, puis évolution documentée. Seules les
+observations après cette déclaration sont utilisées. Un maillon faible, dupliqué,
+inexploitable ou sans graphe vérifié conserve le résultat inconnu. La déclaration
+initiale et les anciennes entrées ne sont pas réécrites.
 
 Correction et retrait ajoutent chacun un événement manuel dans l'historique.
 Ils ne modifient pas le snapshot des règles et ne s'appliquent pas rétroactivement

@@ -426,7 +426,10 @@ class RunTrackingService:
                 if known is None:
                     known = {"first_seen_at": self._now(), "species_history": []}
                 history = known["species_history"]
-                if not history or history[-1]["species_id"] != pokemon["species_id"]:
+                # A newly read/base form can establish the next evolution's
+                # provenance. Preserve the old observation instead of updating it.
+                if (not history or history[-1]["species_id"] != pokemon["species_id"]
+                        or history[-1].get("form") != pokemon.get("form")):
                     history.append({"species_id": pokemon["species_id"], "form": pokemon.get("form"), "timestamp": self._now()})
                 known.update(deepcopy(pokemon), last_seen_at=self._now())
                 run.known_pokemon[key] = known

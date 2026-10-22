@@ -3,8 +3,8 @@
 Application Windows en français pour préparer des challenges **Pokémon Noir**,
 **Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, gérer ses parties et
 enregistrer des modèles de challenge réutilisables,
-lancer DeSmuME standalone et consulter
-les données transmises par une passerelle Lua locale en lecture seule.
+lancer melonDS avec la passerelle PCE en lecture seule, ou conserver DeSmuME
+et sa passerelle Lua pour les parties existantes.
 
 **Les ROM et sauvegardes sources restent intactes.** La passerelle n'écrit pas
 dans la mémoire du jeu. Les contrôles d'équipe signalent les écarts dans PCE ;
@@ -27,7 +27,8 @@ Pour une partie Randomizer, ouvrir **Nouvelle partie → Challenge personnalisé
 activer Randomizer, choisir ses catégories et la seed, puis vérifier les outils
 locaux dans ce même éditeur. Il faut un **JDK 11+** et le `PokeRandoZX.jar` de la
 [release officielle ZX 4.6.1](https://github.com/Ajarmar/universal-pokemon-randomizer-zx/releases/tag/v4.6.1).
-Les outils ne sont pas téléchargés automatiquement. La création demande
+La distribution Windows inclut un JDK redistribuable et ZX vérifiés ; la version
+Python peut aussi utiliser les outils locaux. Les outils ne sont pas téléchargés automatiquement. La création demande
 confirmation ; la préparation produit ensuite une ROM dédiée. L'import d'une
 ancienne sauvegarde est refusé pour cette nouvelle ROM. Un ancien modèle
 Randomizer sans paramètres explicites ne déclenche aucune transformation.
@@ -47,6 +48,25 @@ l'utilisation d'un Pokémon en combat. Chaque correction reste dans l'historique
 Dans cette même fiche, **Consulter les évolutions de la ROM dérivée** présente les
 conditions enregistrées par les nouveaux exports Randomizer. Les anciens rapports
 signalent les conditions absentes ; aucun niveau n'est inventé depuis une cible.
+
+## melonDS et distribution Windows — V0.5.0 en validation
+
+Le [composant melonDS PCE](docs/melonds-bridge.md) fournit le suivi sans Lua,
+sans RetroBat obligatoire et sans écriture RAM. Les anciennes parties DeSmuME
+restent disponibles ; leur [copie vers melonDS](docs/melonds-migration.md)
+préserve l'environnement précédent et convertit une copie de la sauvegarde batterie.
+Les save states des deux émulateurs ne sont pas interchangeables.
+
+Sur Blanc FR rev0, la migration, la lecture réelle de l'équipe, la sauvegarde
+dans le jeu, la fermeture et la reprise sur la Route 1 ont été exécutées.
+Cela ne valide pas automatiquement les autres jeux ni les événements de combat.
+Le [rapport d'intégration](docs/v0.5-melonds-validation.md) distingue ces preuves
+et les fonctions qui restent indisponibles.
+
+La [distribution Windows](docs/windows-distribution.md) utilise PyInstaller
+`onedir`, des données persistantes et un import contrôlé des anciennes installations.
+Elle affiche **V0.5.0 · en validation**. Lire ses notices et conserver l'annexe de
+sources melonDS avec l'archive principale lors d'une redistribution.
 
 ## Mes parties — V0.4.1
 

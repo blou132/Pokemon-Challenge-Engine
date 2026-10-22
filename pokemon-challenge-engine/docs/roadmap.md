@@ -5,6 +5,15 @@ Chaque lecture mémoire devra être vérifiée pour le jeu, la région et la ré
 
 ## Situation actuelle
 
+L'intégration courante se poursuit sur `feat/melonds-integration` :
+Randomizer configurable, starters Monotype calculés sur la ROM dérivée,
+passerelle native melonDS et distribution Windows `onedir`. L'application est
+identifiée **0.5.0 en validation**. La migration et la sauvegarde/reprise réelles
+sur Blanc FR rev0 sont vérifiées ; les preuves et limites sont détaillées dans
+le [rapport d'intégration](v0.5-melonds-validation.md).
+Aucun taux shiny personnalisé ni contrôle de combat sans source fiable n'est
+annoncé comme disponible. Les étapes ci-dessous conservent leur historique.
+
 La V0.4.1 est finalisée sur `feat/v0.4.1-run-flow-autolua` au commit
 `7a823ca58b5898d3231408ebece4deb01a5dbbdd`. La branche
 `feat/v0.5-challenge-observation` implémente maintenant les
@@ -30,7 +39,7 @@ restent consignés séparément dans le rapport de vérification.
 Le parcours réel Jouer avec autoload, le passage A/B et la restauration INI ont
 réussi sur copies isolées de Blanc. Les résultats et limites sont détaillés dans
 le [rapport de vérification](verification.md).
-Application de base `0.4.1`, scripts Lua `0.5.0`, protocole `2` avec compatibilité des anciens
+Application actuelle `0.5.0` en validation, scripts Lua `0.5.0`, protocole `2` avec compatibilité des anciens
 messages v1/v2, progression historique schéma `2` et nouveau Run schéma `1`.
 La V0.4 ajoute les parties indépendantes, leur bibliothèque, les sessions durables,
 l'autosave, l'identité PID/OT, les familles et la mort permanente virtuelle.

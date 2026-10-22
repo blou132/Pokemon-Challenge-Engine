@@ -135,3 +135,11 @@ notice ICU située dans `share/icu/78.3/LICENSE`) doivent également être prés
 dans cette annexe. Le manifeste `pce-bridge.json` ne référence que les fichiers
 immuables utiles à l'exécution ; `component-manifest.json` couvre aussi l'archive
 des sources modifiées de melonDS.
+
+## Essais de jeu après le build natif
+
+Les essais des 21–22 octobre ont ensuite vérifié l'équipe et la migration /
+sauvegarde / reprise sur Blanc FR0, ainsi qu'une équipe réelle sur Noir 2 FR0.
+Le [rapport d'intégration](v0.5-melonds-validation.md) détaille les preuves et
+les échecs rencontrés, notamment le correctif TOML indispensable au vrai démarrage.
+Noir et Blanc 2 conservent un statut synthétique pour cette passerelle.

@@ -1,5 +1,9 @@
 # Vérification V0.5 en développement et historique
 
+Les essais d’intégration melonDS et Windows des 20–22 octobre sont suivis dans
+le [rapport V0.5 melonDS](v0.5-melonds-validation.md). Les résultats ci-dessous
+restent des preuves historiques avec leur propre périmètre.
+
 ## Poursuite V0.5 — du 16 au 19 octobre 2026
 
 Branche `feat/v0.5-challenge-observation`, reprise depuis `18ac17e`.

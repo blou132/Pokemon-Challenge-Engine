@@ -186,6 +186,8 @@ class NewRunDialog(QDialog):
         self.emulator_combo.addItem("DeSmuME · Lua", "desmume")
         self.emulator_combo.addItem("melonDS · suivi PCE en lecture seule", "melonds")
         self.emulator_combo.model().item(1).setEnabled(self.melonds_executable is not None)
+        if self.melonds_executable is not None:
+            self.emulator_combo.setCurrentIndex(self.emulator_combo.findData("melonds"))
         self.emulator_combo.setToolTip("melonDS nécessite le composant PCE vérifié fourni avec la distribution Windows.")
         self.source_combo = QComboBox()
         for text, key in (("Partie classique", "classic"), ("Depuis un modèle existant", "profile"),
@@ -378,6 +380,11 @@ class NewRunDialog(QDialog):
             launch = launch or {}
             launch.update(emulator_kind="melonds", emulator_path=str(self.melonds_executable),
                           ini_path="", apply_settings=False, lua_connection="manual")
+        elif launch is not None and launch.get("emulator_kind") == "melonds":
+            # A new DeSmuME adventure must rediscover its own executable/INI.
+            # Keep the stored native profile intact and never reuse its paths.
+            launch.update(emulator_kind="desmume", emulator_path="", ini_path="",
+                          apply_settings=False, lua_connection="ask")
         save_mode = self.save_mode_combo.currentData()
         save = (self.save_edit.text().strip() or None) if save_mode == "import" else None
         if launch is not None:

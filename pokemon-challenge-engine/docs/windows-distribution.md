@@ -83,6 +83,9 @@ Ajouter `--component CHEMIN` à la construction pour inclure un composant déjà
 compilé et vérifié. Il est copié dans `third-party/<name>` près de l'EXE, avec son
 manifeste. Le composant melonDS utilise `name: "melonDS"` ; son chemin est donc
 `resolve_app_paths().installation / "third-party" / "melonDS"`.
+Les nouvelles parties présélectionnent melonDS uniquement si son composant est
+vérifié. DeSmuME reste sélectionnable et reste le défaut sans composant valide.
+Le moteur des parties et profils existants n’est pas modifié.
 
 `component-manifest.json` doit contenir `name`, `version`, `source_url` HTTPS,
 `license_file` et `files` (chemins relatifs POSIX associés à leur SHA256). Les

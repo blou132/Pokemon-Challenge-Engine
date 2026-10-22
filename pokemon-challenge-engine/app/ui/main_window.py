@@ -163,7 +163,7 @@ class MainWindow(QMainWindow):
         self.settings_page.detection_requested.connect(lambda: self.refresh_installation(force=True))
         self.navigate(6)
         self.refresh_home()
-        self.statusBar().showMessage(f"Prêt  ·  {VERSION_LABEL} : préparation et lecture Lua, règles à respecter manuellement")
+        self.statusBar().showMessage(f"Prêt  ·  {VERSION_LABEL} : préparation locale, suivi selon le moteur et la partie")
         if self.config_service.warnings:
             warning_text = "\n".join(self.config_service.warnings)
             QTimer.singleShot(0, lambda: QMessageBox.warning(self, "Configuration à vérifier", warning_text))

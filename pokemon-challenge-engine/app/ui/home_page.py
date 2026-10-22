@@ -61,7 +61,7 @@ class HomePage(QWidget):
         layout.addLayout(stats)
         self.model_count = label("", "subtitle")
         layout.addWidget(self.model_count)
-        layout.addWidget(label(f"{VERSION_LABEL} · Les règles restent à respecter manuellement dans le jeu. La page Connexion DeSmuME affiche les données transmises par Lua.", "badge"))
+        layout.addWidget(label(f"{VERSION_LABEL} · Le suivi et les actions disponibles dépendent du moteur et de la partie. Consultez leur état dans Mode Jeu.", "badge"))
         layout.addStretch()
 
     def set_detection_state(self, report):

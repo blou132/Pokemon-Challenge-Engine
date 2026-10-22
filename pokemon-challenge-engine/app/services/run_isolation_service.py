@@ -325,6 +325,11 @@ class RunIsolationService:
             return MelonDSRunService(self.manager).validate(run)
         root = self.directory(run)
         self._check_location(root)
+        self._validate_files(run)
+
+    def _validate_files(self, run: Run) -> None:
+        """Check owned bytes, including import staging before its final rename."""
+        root = self.directory(run)
         marker = _regular(root / "isolation.json")
         if marker.stat().st_size > 1024 * 1024:
             raise ValueError("Manifeste d'isolation trop volumineux.")

@@ -34,12 +34,25 @@ préférences déjà présentes sont conservées. Une erreur pendant la publicat
 peut laisser les dossiers déjà importés, sans remplacer les originaux. Le message
 d'erreur ne prétend donc pas annuler une publication déjà accomplie.
 
-Les environnements DeSmuME `play` sont relocalisés dans leurs copies : chemins
-ROM/sauvegarde/states/backups, INI et clé de recherche des backups. Les fichiers
-de provenance et l'historique ne sont pas réécrits. Les sources, ROM externes et
-sauvegardes originales ne sont jamais modifiées. Fermer l'ancien PCE et les
-émulateurs avant l'import, puis redémarrer la nouvelle application. Le traitement
-des formats d'environnement ajoutés ensuite doit accompagner leur intégration.
+Les environnements DeSmuME `play` et melonDS `play-melonds` actifs sont
+relocalisés dans leurs copies : chemins ROM/sauvegarde/states/backups,
+INI ou TOML et clé de recherche des backups. Les fichiers de provenance,
+l'historique et un ancien environnement DeSmuME conservé après migration ne sont
+pas réécrits. Les sources, ROM externes et sauvegardes originales ne sont
+jamais modifiées. Fermer l'ancien PCE et les émulateurs avant l'import, puis
+redémarrer la nouvelle application.
+
+**Déplacement d'un dossier portable existant :** les chemins de parties sont
+absolus ; déplacer `user-data` seul ne les répare pas automatiquement.
+Démarrer PCE avec un dossier de données neuf (`--data-dir`), puis utiliser
+**Paramètres → Données et anciennes parties** pour importer le dossier
+déplacé. L'ancien emplacement n'a pas besoin d'exister : son ancrage est déduit
+uniquement des chemins cohérents `runs/<UUID>/play` ou `play-melonds`, puis
+vérifié avec les manifestes, identités et empreintes des fichiers copiés.
+Aucune ROM ni sauvegarde n'est ouverte à son ancien chemin. Un espace non
+reconnu, des chemins mélangés ou externes, une empreinte modifiée ou une
+sauvegarde attendue absente interrompent l'import avant publication. Le dossier
+déplacé reste intact ; une collision dans la destination n'est jamais écrasée.
 
 ## Construction reproductible
 

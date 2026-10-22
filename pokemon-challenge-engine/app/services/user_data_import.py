@@ -17,7 +17,7 @@ from app.models.challenge import Challenge
 from app.models.profile import Profile, validate_profile_id
 from app.services.discovery_safety import file_hash, file_signature, local_path
 from app.services.emulator_settings_service import IniDocument
-from app.services.run_isolation_service import PATHS
+from app.services.run_isolation_service import PATHS, RunIsolationService
 
 
 PREFERENCES = ("config.json", "game-mode.local.json", "controls.local.json", "randomizer.local.json")
@@ -104,44 +104,77 @@ def _copy_tree(source: Path, destination: Path, signatures: dict) -> None:
     signatures[source] = before
 
 
-def _relocate_run(staged: Path, source: Path, destination: Path, identifier: str) -> None:
+def _stored_path(value: object) -> Path:
+    """Read a historical path lexically, never probe the obsolete filesystem."""
+    if not isinstance(value, str) or not value.strip() or "\0" in value:
+        raise ValueError("Un chemin de partie ancien est invalide ; import refusé.")
+    path = Path(value)
+    if not path.is_absolute() or ".." in path.parts:
+        raise ValueError("Un chemin de partie ancien est ambigu ; import refusé.")
+    return path
+
+
+def _relocate_run(staged: Path, destination: Path, identifier: str) -> None:
     manager = RunManager(staged / "runs")
     run = manager.load(identifier)
-    kind = (run.launch_profile or {}).get("emulator_kind", "desmume")
+    options = run.launch_profile or {}
+    kind = options.get("emulator_kind", "desmume")
     name = "play-melonds" if kind == "melonds" else "play"
-    original_play = source / "runs" / identifier / name
     final_play = destination / "runs" / identifier / name
     staged_play = staged / "runs" / identifier / name
     if not staged_play.exists():
         return
-    # Limit relocation to a recognised owned environment. Do not rewrite
-    # provenance, transformation manifests, historic events, or external paths.
-    marker = staged_play / "isolation.json"
-    metadata = json.loads(marker.read_text(encoding="utf-8"))
-    if metadata.get("owner") != "pokemon-challenge-engine-run" or metadata.get("run_id") != identifier:
-        raise ValueError("Un environnement de partie ancien n'est pas reconnu ; import refusé.")
+    if kind not in {"desmume", "melonds"}:
+        raise ValueError("Type d'environnement inconnu ; import refusé.")
+    # A moved store keeps its absolute paths. Infer their old anchor only from
+    # this run's recognised layout, then validate the actual staged files. Never
+    # use old paths as read/copy sources, even when their former drive exists.
+    original_play = _stored_path(options.get("rom_path")).parent.parent
+    if original_play.parts[-3:] != ("runs", identifier, name):
+        raise ValueError("L'ancien chemin ne correspond pas au dossier de cette partie ; import refusé.")
+    service = RunIsolationService(manager)
+    expected = service._paths(run)
+    relative = {key: path.relative_to(staged_play) for key, path in expected.items()}
+    if (any(_stored_path(options.get(key)) != original_play / path for key, path in relative.items())
+            or _stored_path(run.save_path) != original_play / relative["save_path"]):
+        raise ValueError("Les chemins de cette partie mélangent plusieurs espaces ; import refusé.")
     old_save = run.save_path
-    def relocated(value):
-        if not isinstance(value, str) or not Path(value).is_absolute():
-            return value
-        path = local_path(value)
-        return str(final_play / path.relative_to(original_play)) if path.is_relative_to(original_play) else value
-    run.save_path = relocated(run.save_path)
-    if run.launch_profile:
-        for key in ("rom_path", "emulator_path", "ini_path", "save_path", "save_state_directory", "backup_directory"):
-            if key in run.launch_profile:
-                run.launch_profile[key] = relocated(run.launch_profile[key])
-    manager.save(run)
+    # Temporarily rebase only the staged copy, so the existing ownership/hash/
+    # identity validators inspect the copied bytes, not missing historical paths.
+    run.launch_profile.update({key: str(path) for key, path in expected.items()})
+    run.save_path = str(expected["save_path"])
     if kind == "melonds":
-        _relocate_melonds_config(staged_play / "emulator/portable/melonDS.toml", original_play, final_play)
-    ini_path = staged_play / "emulator" / "desmume.ini"
-    if ini_path.exists():
-        document = IniDocument(ini_path.read_bytes())
+        _relocate_melonds_config(expected["ini_path"], original_play, staged_play)
+    else:
+        document = IniDocument(expected["ini_path"].read_bytes())
+        for key, folder in PATHS.items():
+            # Lua may point to a prior session, unlike the owned output folders.
+            if key != "Lua" and _stored_path(document.get_text("PathSettings", key)) != original_play / folder:
+                raise ValueError("La configuration DeSmuME mélange plusieurs espaces ; import refusé.")
+            document.set_text("PathSettings", key, str(staged_play / folder))
+        expected["ini_path"].write_bytes(document.to_bytes())
+    if kind == "melonds":
+        service.validate(run)
+    else:
+        # The temporary prefix must not shorten DeSmuME's supported destination
+        # path length. Only the final location will ever launch the emulator.
+        service._check_location(final_play)
+        service._validate_files(run)
+    if not expected["save_path"].exists() and not service.save_may_be_missing(run):
+        raise ValueError("Une sauvegarde attendue manque dans le dossier déplacé ; import refusé.")
+    # Provenance, inactive emulator environments and historical events stay
+    # byte-for-byte unchanged. Only active destinations and backup lookup change.
+    run.launch_profile.update({key: str(final_play / path) for key, path in relative.items()})
+    run.save_path = str(final_play / relative["save_path"])
+    if kind == "melonds":
+        _relocate_melonds_config(expected["ini_path"], staged_play, final_play)
+    else:
         for key, folder in PATHS.items():
             document.set_text("PathSettings", key, str(final_play / folder))
-        ini_path.write_bytes(document.to_bytes())
+        expected["ini_path"].write_bytes(document.to_bytes())
+    manager.save(run)
     backups = staged_play / "backups" / "pce-backups.json"
-    if backups.exists() and old_save and old_save != run.save_path:
+    if backups.exists() and old_save != run.save_path:
         data = json.loads(backups.read_text(encoding="utf-8"))
         old_key = hashlib.sha256(os.path.normcase(old_save).encode("utf-8")).hexdigest()
         new_key = hashlib.sha256(os.path.normcase(run.save_path).encode("utf-8")).hexdigest()
@@ -154,7 +187,14 @@ def _relocate_run(staged: Path, source: Path, destination: Path, identifier: str
 def _relocate_melonds_config(path: Path, original: Path, destination: Path) -> None:
     """Change only owned output paths; retain all keyboard/rendering preferences."""
     from app.services.melonds_runtime import validate_config
-    config = validate_config(path, original)
+    if path.stat().st_size > 1024 * 1024:
+        raise ValueError("Configuration melonDS trop volumineuse.")
+    config = tomllib.loads(path.read_text(encoding="utf-8"))
+    instance = config.get("Instance0", {})
+    if (not isinstance(instance, dict)
+            or _stored_path(instance.get("SaveFilePath")) != original / "saves"
+            or _stored_path(instance.get("SavestatePath")) != original / "states"):
+        raise ValueError("La configuration melonDS mélange plusieurs espaces ; import refusé.")
     values = {"SaveFilePath": str(destination / "saves"), "SavestatePath": str(destination / "states")}
     text = path.read_text(encoding="utf-8")
     section, seen, lines = None, set(), []
@@ -192,7 +232,7 @@ def execute_import(plan: ImportPlan) -> dict:
         for name in plan.preferences:
             _copy(plan.source / name, staging / name, signatures)
         for identifier in plan.runs:
-            _relocate_run(staging, plan.source, plan.destination, identifier)
+            _relocate_run(staging, plan.destination, identifier)
         if any(file_signature(path) != before for path, before in signatures.items()):
             raise ValueError("Les anciennes données ont changé pendant l'import ; aucune partie publiée.")
         # Windows rename refuses an existing destination. Use the run lock so

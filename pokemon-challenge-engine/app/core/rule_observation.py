@@ -163,9 +163,12 @@ def _zone_key(zone):
     if isinstance(zone, str) and zone.strip():
         return ("name", zone.strip())
     if isinstance(zone, dict):
-        for key in ("capture_zone_id", "zone_id"):
-            if isinstance(zone.get(key), str) and zone[key]:
-                return (key, zone[key])
+        # Older run observations used "id"; all three keys describe the same
+        # capture-zone namespace. Map indices and display names do not.
+        ids = [zone[key] for key in ("capture_zone_id", "zone_id", "id") if key in zone]
+        if (ids and all(isinstance(value, str) and value.strip() for value in ids)
+                and len(set(ids)) == 1):
+            return ("capture_zone_id", ids[0])
     return None
 
 

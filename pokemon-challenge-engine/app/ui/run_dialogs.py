@@ -60,7 +60,7 @@ def display_duration(seconds):
 
 def zone_name(zone):
     if isinstance(zone, dict):
-        return str(zone.get("name") or zone.get("zone_name") or zone.get("zone_id") or zone.get("id") or "Non renseignée")
+        return str(zone.get("name") or zone.get("zone_name") or zone.get("capture_zone_id") or zone.get("zone_id") or zone.get("id") or "Non renseignée")
     return str(zone) if zone else "Non renseignée"
 
 
@@ -472,7 +472,9 @@ class ManualRunEventDialog(QDialog):
             self.pokemon_combo.addItem(f"{pokemon_name(pokemon)} · {suffix} · individu {number}", key)
         self.pokemon_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.pokemon_combo.lineEdit().setPlaceholderText("Sélectionnez un individu connu ou saisissez un nom")
-        self.zone_edit = QLineEdit("" if run.current_zone is None else zone_name(run.current_zone))
+        self._initial_zone = deepcopy(run.current_zone)
+        self._initial_zone_text = "" if self._initial_zone is None else zone_name(self._initial_zone)
+        self.zone_edit = QLineEdit(self._initial_zone_text)
         self.date_edit = QDateTimeEdit(QDateTime.currentDateTime())
         self.date_edit.setCalendarPopup(True)
         self.date_edit.setDisplayFormat("dd/MM/yyyy HH:mm")
@@ -497,7 +499,15 @@ class ManualRunEventDialog(QDialog):
     def payload(self):
         if self.action == "add_note":
             return {"text": self.note_edit.toPlainText().strip()}
-        values = {"zone": self.zone_edit.text().strip() or None,
+        zone = self.zone_edit.text().strip()
+        if self.action == "manual_capture":
+            if isinstance(self._initial_zone, dict) and zone == self._initial_zone_text.strip():
+                zone = deepcopy(self._initial_zone)
+            # Empty text explicitly means unknown; None would inherit the
+            # latest zone, possibly changed since this declaration was opened.
+        else:
+            zone = zone or None
+        values = {"zone": zone,
                   "date": self.date_edit.dateTime().toPython().astimezone().isoformat(),
                   "note": self.note_edit.toPlainText().strip()}
         index = self.pokemon_combo.currentIndex()

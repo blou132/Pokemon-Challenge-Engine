@@ -33,6 +33,17 @@ une évolution. Une capture déclarée avec seulement un nom ou surnom reste
 explicitement inconnue pour Species Clause ; elle compte toujours pour les
 limites de zone si sa zone est renseignée.
 
+Les identifiants de zone `capture_zone_id`, `zone_id` et l'ancien `id` sont
+comparés dans le même espace, sans réécrire les captures historiques.
+Des identifiants contradictoires ou absents restent inconnus ; un `map_id`
+ou un libellé de dictionnaire ne remplace jamais cet identifiant. Une carte
+observée sans zone de capture connue ne conserve pas la zone précédente.
+Le formulaire de capture conserve l'identifiant prérempli si la zone n'est pas
+modifiée ; un champ vidé signifie explicitement « inconnue ». Les noms saisis
+manuellement restent comparés exactement entre eux, sans rapprochement supposé
+avec les identifiants. Les captures antérieures sans zone ne sont jamais affectées
+rétroactivement à la première zone ensuite observée.
+
 ## Couverture des quinze règles
 
 | Règle | Contrôle livré | Limite explicite |

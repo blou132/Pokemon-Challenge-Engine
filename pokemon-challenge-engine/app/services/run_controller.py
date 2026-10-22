@@ -112,6 +112,10 @@ class _RunWorker(QObject):
                     if observation.capture_zone_id is not None:
                         zone = {"id": observation.capture_zone_id, "name": observation.zone_name,
                                 "map_id": observation.map_id}
+                    elif observation.map_id is not None:
+                        # A known map without a capture-zone mapping must not
+                        # inherit the previous area's capture allowance.
+                        zone = {"map_id": observation.map_id}
                 self.tracker.observe(state.party or [], zone, game_id=state.game_id,
                     game_code=state.game_code, region=state.game_region, revision=state.rom_revision,
                     emulator_running=True, connected=True, valid=state.party is not None)

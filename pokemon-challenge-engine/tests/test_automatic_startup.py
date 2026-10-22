@@ -41,6 +41,9 @@ def until(app, predicate, *, timeout=8):
 
 @pytest.fixture
 def startup(qt_app, catalog, automatic, monkeypatch):
+    # This fixture represents a DeSmuME-only installation. A real optional
+    # melonDS bundle beside the checkout must not change its selected backend.
+    monkeypatch.setattr("app.services.melonds_runtime.find_installation", lambda base: None)
     env = automatic
     # Represent the standard <drive>/RetroBat location without preconfigured
     # paths. The imported fixture bounds drive discovery to this temp directory.

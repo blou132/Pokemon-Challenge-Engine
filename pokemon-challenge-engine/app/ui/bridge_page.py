@@ -47,6 +47,8 @@ class BridgePage(QWidget):
         self._profile_games: dict[str, str] = {}
         self.emulator_kind = "desmume"
         self._label_context = None
+        self._run_context = None
+        self.persistent_game = None
         content = page_layout(self, "Connexion DeSmuME", "Connectez le script Lua pour consulter les données reçues du jeu.")
         self.title_label = content.itemAt(0).widget()
         self.subtitle_label = content.itemAt(1).widget()
@@ -59,10 +61,19 @@ class BridgePage(QWidget):
         profile_form = QFormLayout()
         profile_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         profile_form.addRow("Profil actif", self.profile_combo)
+        self.profile_title = profile_form.labelForField(self.profile_combo)
         connection.addLayout(profile_form)
-        connection.addWidget(label(
+        self.profile_help = label(
             "Choisissez le profil avant la connexion. Sans profil, aucune progression n'est enregistrée. "
-            "Arrêtez la connexion pour changer de profil.", "muted"))
+            "Arrêtez la connexion pour changer de profil.", "muted")
+        connection.addWidget(self.profile_help)
+        self.run_label = label("", "sectionTitle")
+        self.run_label.setAccessibleName("Partie sélectionnée pour le suivi")
+        self.run_help = label("Consultez Mes parties ou le Mode Jeu pour la progression, les règles "
+                              "et l'état de sauvegarde.", "muted")
+        for widget in (self.run_label, self.run_help):
+            connection.addWidget(widget)
+            widget.hide()
         self.game_combo = QComboBox()
         self.game_combo.setAccessibleName("Jeu à connecter")
         for game in catalog.games.values():
@@ -89,7 +100,7 @@ class BridgePage(QWidget):
         recovery.addWidget(self.change_game_button)
         connection.addLayout(recovery)
         self.instructions = label(
-            "1. Choisissez un profil si vous souhaitez suivre un challenge, puis préparez la connexion pour le jeu choisi.\n"
+            "1. Préparez la connexion pour le jeu choisi.\n"
             "2. Dans DeSmuME standalone compatible Lua, ouvrez votre jeu, puis Tools > Lua Scripting > New Lua Script.\n"
             "3. Choisissez le script indiqué ci-dessous, puis cliquez sur Run. Gardez le jeu en cours d'exécution.", "muted")
         self._lua_instructions = self.instructions.text()
@@ -187,6 +198,21 @@ class BridgePage(QWidget):
         value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addRow(title, value)
         return value
+
+    def set_persistent_run(self, run) -> None:
+        """Present the run without binding it to the legacy profile tracker."""
+        context = (run.run_id, run.name, run.game_id) if run is not None else None
+        self.persistent_game = run.game_id if run is not None else None
+        if context == self._run_context:
+            return
+        self._run_context = context
+        active = run is not None
+        self.run_label.setText(f"Partie sélectionnée : {run.name}" if active else "")
+        for widget in (self.run_label, self.run_help):
+            widget.setVisible(active)
+        for widget in (self.profile_combo, self.profile_title, self.profile_help, self.tracking_panel):
+            widget.setVisible(not active)
+        self.update_state(self.controller.state)
 
     def set_config(self, config: AppConfig) -> None:
         self.config = config

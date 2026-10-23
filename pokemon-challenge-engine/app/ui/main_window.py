@@ -503,7 +503,7 @@ class MainWindow(QMainWindow):
 
     def _set_bridge_run(self, run):
         kind = (run.launch_profile or {}).get("emulator_kind", "desmume") if run is not None else "desmume"
-        self.bridge_page.persistent_game = run.game_id if run is not None else None
+        self.bridge_page.set_persistent_run(run)
         self.bridge_page.set_emulator_kind(kind)
         name = "melonDS" if kind == "melonds" else "DeSmuME"
         self.nav_buttons[5].setText(f"↔   Connexion {name}")

@@ -4,7 +4,9 @@ from copy import deepcopy
 
 import pytest
 
+from app.core.rule_observation import evaluate_rules
 from app.models.run import Run
+from test_rule_observation import tracking
 from test_run_tracking import observe, pokemon, setup_run
 
 
@@ -58,8 +60,8 @@ def test_invalid_form_in_serialized_run_is_rejected_without_rewriting(setup_run,
     assert manager.load(run.run_id) == stored
 
 
-def test_form_change_keeps_individual_identity_without_inventing_evolution(setup_run):
-    manager, run, service, _ = setup_run
+def test_form_change_keeps_individual_identity_without_inventing_evolution(tmp_path):
+    manager, run, service = tracking(tmp_path, ["nuzlocke", "permanent_death", "no_evolution"])
     observe(service, [pokemon(species=479) | {"form": 0}])
     key = service.active_run.current_party[0]["pokemon_key"]
     observe(service, [pokemon(species=479) | {"form": 2}])
@@ -68,5 +70,10 @@ def test_form_change_keeps_individual_identity_without_inventing_evolution(setup
     assert stored.current_party[0]["pokemon_key"] == key
     assert stored.current_party[0]["form"] == 2
     assert len(stored.known_pokemon) == 1
-    assert len(stored.known_pokemon[key]["species_history"]) == 1
+    assert [(item["species_id"], item["form"])
+            for item in stored.known_pokemon[key]["species_history"]] == [(479, 0), (479, 2)]
+    assert stored.known_pokemon[key]["identity_confidence"] == "strong"
     assert not stored.deaths
+    no_evolution = next(result for result in evaluate_rules(stored, include_history=True)
+                        if result.rule_id == "no_evolution")
+    assert no_evolution.checks == ()

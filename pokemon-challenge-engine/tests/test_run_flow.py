@@ -177,11 +177,13 @@ def test_create_failure_never_opens_game_mode(qt_app, tmp_path, catalog, monkeyp
 def test_reopening_restores_b_selection_without_new_run_or_automatic_window(qt_app, tmp_path, catalog, monkeypatch):
     monkeypatch.setattr(RunLaunchService, "prepare", preparation)
     first_window = MainWindow(catalog, tmp_path)
-    first = create(first_window.runs, tmp_path, catalog, "A")
-    second = create(first_window.runs, tmp_path, catalog, "B")
-    first_window.resume_run(second.run_id)
-    until(qt_app, lambda: selected(first_window, second.run_id))
-    finish(first_window, qt_app)
+    try:
+        first = create(first_window.runs, tmp_path, catalog, "A")
+        second = create(first_window.runs, tmp_path, catalog, "B")
+        first_window.resume_run(second.run_id)
+        until(qt_app, lambda: selected(first_window, second.run_id))
+    finally:
+        finish(first_window, qt_app)
     reopened = MainWindow(catalog, tmp_path)
     try:
         until(qt_app, lambda: reopened.run_controller.active_run is not None)

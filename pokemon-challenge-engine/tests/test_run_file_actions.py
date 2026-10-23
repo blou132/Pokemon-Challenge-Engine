@@ -296,12 +296,14 @@ def test_change_game_waits_for_owned_emulator_then_lua_before_resuming(files_win
     assert window._switch_target is None and not window._switch_timer.isActive()
 
 
-def test_change_game_timeout_keeps_previous_emulator_and_does_not_resume(files_window, monkeypatch):
+@pytest.mark.parametrize("emulator_name", ["DeSmuME", "melonDS"])
+def test_change_game_timeout_keeps_previous_emulator_and_does_not_resume(files_window, monkeypatch, emulator_name):
     window = files_window
     window._requested_run_id = "black2-target"
     calls = []
     window.game_mode_window = SimpleNamespace(
         service=SimpleNamespace(state=SimpleNamespace(running=True), request_close=lambda: calls.append("close")),
+        page=SimpleNamespace(emulator_name=emulator_name),
         launch_busy=False, refresh_run=lambda: None)
     monkeypatch.setattr(window, "resume_run", calls.append)
     window._begin_switch("black2-target")
@@ -311,6 +313,7 @@ def test_change_game_timeout_keeps_previous_emulator_and_does_not_resume(files_w
     assert window.game_mode_window.service.state.running
     assert window._switch_target is None and not window._switch_timer.isActive()
     assert "interrompu" in window.statusBar().currentMessage()
+    assert emulator_name + " attend" in window.statusBar().currentMessage()
 
 
 def test_outdated_change_game_confirmation_never_closes_current_session(files_window):

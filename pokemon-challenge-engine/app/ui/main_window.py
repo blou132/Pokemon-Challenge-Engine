@@ -596,6 +596,7 @@ class MainWindow(QMainWindow):
         mode = self.game_mode_window
         if mode is not None and mode.persistent_run is not None and mode.persistent_run.run_id == run_id:
             mode.clear_persistent_run()
+        if self.bridge_page.persistent_run_id == run_id:
             self._set_bridge_run(None)
             self.bridge_page.set_config(self.config)
             self.bridge_page.game_combo.setEnabled(True)

@@ -7,8 +7,9 @@ from app.bridge.state import BridgeState
 from app.core.profile_manager import ProfileManager
 from app.core.run_manager import RunManager
 from app.models.challenge import Challenge
+from app.services.config_service import AppConfig
 from app.ui.main_window import MainWindow
-from test_bridge_ui import connection, qt_app
+from test_bridge_ui import connection, qt_app, until
 
 
 def make_profile(tmp_path):
@@ -109,3 +110,53 @@ def test_profile_refresh_keeps_run_context_and_detach_restores_legacy_choices(co
     assert page.profile_combo.itemText(0) == "Aucun profil — diagnostic uniquement"
     page.profile_combo.setCurrentIndex(page.profile_combo.findData(profile.id))
     assert selections == [profile.id]
+
+
+@pytest.mark.parametrize("kind", ["desmume", "melonds"])
+@pytest.mark.parametrize("detach_selected", [True, False])
+def test_detaching_restored_selection_updates_only_its_connection_context(
+        qt_app, catalog, tmp_path, kind, detach_selected):
+    selected = make_run(tmp_path, kind, "Sélection restaurée")
+    other = make_run(tmp_path, kind, "Autre aventure")
+    RunManager(tmp_path / "runs").set_active_id(selected.run_id)
+    window = MainWindow(catalog, tmp_path)
+    try:
+        until(qt_app, lambda: window.run_controller.active_run is not None
+              and not window.run_controller.activation_pending)
+        assert window.run_controller.active_run.run_id == selected.run_id
+        assert window.game_mode_window is None
+        page = window.bridge_page
+        assert page.run_label.text().endswith(selected.name)
+        assert page.persistent_game == selected.game_id
+        assert page.emulator_kind == kind
+        owned_config = AppConfig(desmume_path="owned-emulator.exe")
+        page.set_config(owned_config)
+        window._detach_run(selected.run_id if detach_selected else other.run_id)
+        qt_app.processEvents()
+        if detach_selected:
+            assert window.run_controller.active_run is None
+            assert window.runs.active_id is None
+            assert page.run_label.isHidden() and page.run_help.isHidden()
+            assert page.run_label.text() == ""
+            assert page.persistent_game is None
+            assert not page.profile_combo.isHidden() and not page.profile_help.isHidden()
+            assert not page.profile_title.isHidden() and not page.tracking_panel.isHidden()
+            assert page.game_combo.isEnabled() and page.profile_combo.isEnabled()
+            assert page.emulator_kind == "desmume"
+            assert page.title_label.text() == "Connexion DeSmuME"
+            assert "DeSmuME" in window.nav_buttons[5].text()
+            assert page.prepare_button.text() == "Préparer la connexion"
+            assert page.config is window.config
+        else:
+            assert window.run_controller.active_run.run_id == selected.run_id
+            assert window.runs.active_id == selected.run_id
+            assert not page.run_label.isHidden() and page.run_label.text().endswith(selected.name)
+            assert page.persistent_game == selected.game_id
+            assert page.profile_combo.isHidden() and page.tracking_panel.isHidden()
+            assert not page.game_combo.isEnabled() and not page.profile_combo.isEnabled()
+            assert page.emulator_kind == kind
+            assert page.config is owned_config
+        assert window.game_mode_window is None
+    finally:
+        window.close()
+        qt_app.processEvents()

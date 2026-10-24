@@ -48,6 +48,7 @@ class BridgePage(QWidget):
         self.emulator_kind = "desmume"
         self._label_context = None
         self._run_context = None
+        self.persistent_run_id = None
         self.persistent_game = None
         content = page_layout(self, "Connexion DeSmuME", "Connectez le script Lua pour consulter les données reçues du jeu.")
         self.title_label = content.itemAt(0).widget()
@@ -202,6 +203,7 @@ class BridgePage(QWidget):
     def set_persistent_run(self, run) -> None:
         """Present the run without binding it to the legacy profile tracker."""
         context = (run.run_id, run.name, run.game_id) if run is not None else None
+        self.persistent_run_id = run.run_id if run is not None else None
         self.persistent_game = run.game_id if run is not None else None
         if context == self._run_context:
             return

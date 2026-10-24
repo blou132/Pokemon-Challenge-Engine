@@ -53,12 +53,13 @@ def connection(qt_app, catalog, tmp_path):
 
 
 def disconnect(app, controller, bridge):
-    payload = {"protocol_version": 1, "session_id": bridge.session_id, "sequence": 1, "event": "emulator_closing",
+    payload = {"protocol_version": 2, "session_id": bridge.session_id, "sequence": 1, "event": "emulator_closing",
                "timestamp": int(time()), "emulator": "desmume", "script_version": "0.3.0", "game_id": "white",
-               "game_code": "IRAF", "game_region": "FR", "rom_revision": 0, "capabilities": [],
-               "memory_profile": None, "party_size": None, "party": None, "error": None}
+               "game_code": "IRAF", "game_region": "FR", "rom_revision": 0, "capabilities": ["game_identity"],
+               "memory_profile": None, "party_size": None, "party": None, "error": None, "observation": None}
     (bridge.session_dir / "snapshot-1.json").write_text(json.dumps(payload), encoding="utf-8")
     until(app, lambda: controller.state.status == "disconnected")
+    assert controller.state.last_event == "emulator_closing"
 
 
 def test_reconnect_marks_old_session_stopped_and_prepares_new_script(qt_app, connection):

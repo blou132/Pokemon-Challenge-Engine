@@ -1,4 +1,4 @@
-# Pokemon Challenge Engine — V0.5 en développement
+# Pokemon Challenge Engine — V0.5.0 en validation
 
 Application Windows en français pour préparer des challenges **Pokémon Noir**,
 **Pokémon Blanc**, **Pokémon Noir 2** et **Pokémon Blanc 2**, gérer ses parties et
@@ -65,8 +65,12 @@ et les fonctions qui restent indisponibles.
 
 La [distribution Windows](docs/windows-distribution.md) utilise PyInstaller
 `onedir`, des données persistantes et un import contrôlé des anciennes installations.
-Elle affiche **V0.5.0 · en validation**. Lire ses notices et conserver l'annexe de
-sources melonDS avec l'archive principale lors d'une redistribution.
+Elle affiche **V0.5.0 · en validation**. Extraire le ZIP complet, puis ouvrir
+`Pokemon-Challenge-Engine.exe` par double-clic ; conserver `_internal` et
+`third-party` près de lui. Lire ses notices et conserver l'annexe de sources
+melonDS avec l'archive principale lors d'une redistribution. Les résultats de
+l'EXE extrait et les SHA256 sont dans le [rapport](docs/v0.5-melonds-validation.md).
+La branche courante est `feat/melonds-integration`, sans fusion dans `main`.
 
 ## Mes parties — V0.4.1
 
@@ -90,12 +94,12 @@ sont réinitialisés avec une indication. **Reprendre** sélectionne la même pa
 vérifie son environnement et attend l'activation confirmée avant d'ouvrir le Mode
 Jeu. Une incohérence entre la partie demandée, le contrôleur et la sélection
 persistée affiche une erreur ; aucun compteur n'est repris de l'ancienne partie.
-**Jouer** lance DeSmuME ; le temps commence uniquement avec les messages
-valides du jeu correspondant et le processus lancé par PCE. Si une autre partie
-tourne, **Fermer la session et continuer** demande confirmation, attend la fermeture
-normale de DeSmuME, puis arrête Lua avant la reprise. Enregistrez d'abord dans le
-jeu ; aucune fermeture forcée n'est utilisée. Une fenêtre DeSmuME lancée ailleurs
-n'est pas associée automatiquement à ce chronomètre.
+**Jouer** lance le moteur associé à la partie ; le temps commence uniquement
+avec les messages valides du jeu correspondant et le processus lancé par PCE.
+Si une autre partie tourne, **Fermer la session et continuer** demande confirmation,
+attend sa fermeture normale, puis arrête le suivi avant la reprise. Enregistrez
+d'abord dans le jeu ; aucune fermeture forcée n'est utilisée. Une fenêtre
+lancée ailleurs n'est pas associée automatiquement à ce chronomètre.
 
 L'équipe et les zones documentées sont enregistrées automatiquement. Avec
 Mort permanente active, une transition observée **PV > 0 → 0** d'un
@@ -110,10 +114,11 @@ son ajout manuel est un secours, sa correction reste accessible dans les détail
 La progression se trouve dans `runs/<uuid>/run.json`, hors des caches et exclue de
 Git. L'autosave PCE est atomique ; elle ne force aucune sauvegarde Pokémon.
 Les anciens `profiles/*/progress.json` et historiques sont conservés sans migration
-forcée. Une nouvelle partie prépare ses propres copies de ROM et de DeSmuME dans
-`runs/<uuid>/play/`, avec des dossiers de sauvegardes, save states et backups séparés.
+forcée. Une nouvelle partie prépare ses propres copies de ROM et d'émulateur
+dans `runs/<uuid>/play/` pour DeSmuME ou `runs/<uuid>/play-melonds/` pour melonDS,
+avec des dossiers de sauvegardes, save states et backups séparés.
 La copie de ROM est vérifiée par empreinte ; l'original reste intact.
-**Nouvelle aventure** démarre sans ancien `.dsv` : le jeu créera sa sauvegarde.
+**Nouvelle aventure** démarre sans sauvegarde importée : le jeu créera la sienne.
 **Importer une sauvegarde existante** copie le fichier choisi après confirmation.
 Les anciennes parties conservent leurs références ; **Détails → Sauvegardes →
 Préparer des copies indépendantes** permet une association confirmée, sans écraser
@@ -131,9 +136,9 @@ et forme facultatifs dans les scripts Lua **0.5.0** ; les anciens messages reste
 [Mort permanente](docs/permanent-death.md) · [Autosave](docs/run-autosave.md) ·
 [Sources de l'identité et des évolutions](docs/pokemon-identity-sources.md).
 
-Branche : `feat/v0.4.1-run-flow-autolua`, depuis la V0.4
+Référence historique V0.4.1 : `feat/v0.4.1-run-flow-autolua`, depuis la V0.4
 `237614fe4269f1420e46c86c3de26758500b09f9`, sans fusion dans `main`.
-Le contrôle final du 13 octobre 2026 compte **1 829 tests réussis, aucun échec ni
+Son contrôle final du 13 octobre 2026 compte **1 829 tests réussis, aucun échec ni
 ignoré** : les 1 716 cas précédents et 113 nouveaux. Les résultats sont détaillés
 dans le rapport de vérification.
 Les essais réels du 12 octobre confirment deux parties de Blanc (Classique et
@@ -280,19 +285,24 @@ PV `45/45`). L'identité, les heartbeat et ces valeurs ont été reçus par les
 services et l'interface Qt de production. Le statut `real_sample_verified`
 décrit cet échantillon ; il ne garantit pas toutes les ROM, situations ou équipes.
 
-Pour l'équipe de Noir, Noir 2 et Blanc 2 : **En attente de validation sur la
-machine utilisateur.** Noir 2 ne disposait pas d'une équipe chargée lors de son
-essai de transport. Noir et Blanc 2 n'ont pas été validés en émulateur.
-Voir le [rapport de vérification](docs/verification.md) pour les preuves et les limites exactes.
+Lors de cet essai Lua historique, Noir 2 ne disposait pas d'une équipe chargée.
+Une équipe réelle a depuis été lue avec melonDS, comme détaillé dans le
+[rapport V0.5](docs/v0.5-melonds-validation.md). Pour Noir et Blanc 2 :
+**En attente de validation sur la machine utilisateur.** Les résultats ne sont
+pas transposés d'un jeu, d'une passerelle ou d'une révision à l'autre.
 
-Les versions sont distinctes : application **`0.4.1`**, scripts Lua **`0.5.0`**, challenge
+Les versions sont distinctes : application **`0.5.0`**, scripts Lua **`0.5.0`**, challenge
 **`0.1.0`** conservé, progression historique **schéma `2`**, partie **schéma `1`**,
 protocole **`2`**. Python accepte les anciens scripts `0.4.0/v2`, `0.3.0/v2` et
 aussi les messages v1 des scripts `0.2.0`, sans observations Nuzlocke.
 Les anciens suivis sont migrés en mémoire à la lecture, puis persistés seulement
 lors d'une sauvegarde ou d'un événement applicable au profil actif.
 
-## Installation sous Windows
+## Développement Python sous Windows
+
+Pour l'EXE sans installation de Python, suivre le
+[guide de distribution Windows](docs/windows-distribution.md).
+Les commandes ci-dessous concernent la version source.
 
 Prérequis : Python **3.12 ou plus récent**, avec le lanceur Windows `py`.
 Configuration vérifiée : Python 3.13, PySide6 6.11.2, pytest 9.1.1.

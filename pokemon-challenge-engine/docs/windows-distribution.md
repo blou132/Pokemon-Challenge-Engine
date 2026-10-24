@@ -7,6 +7,27 @@ l'EXE. L'icône géométrique est celle de l'application ; la version est issue 
 La version numérique courante est `0.5.0` ; l’interface indique explicitement
 « en validation », sans présenter cette étape comme une validation achevée.
 
+## Lancement du paquet préparé
+
+1. Extraire entièrement `Pokemon-Challenge-Engine-0.5.0-windows-x64.zip`
+   dans un dossier disponible hors ligne et inscriptible, hors du dossier
+   temporaire Windows. Ne pas lancer l’EXE directement depuis l’archive.
+2. Ouvrir `Pokemon-Challenge-Engine.exe` par double-clic. Conserver les dossiers
+   `_internal` et `third-party` près de lui ; aucune installation Python ou Java
+   supplémentaire n’est demandée par ce paquet.
+3. Laisser la détection locale terminer. Depuis **Mes parties**, créer une
+   aventure ou utiliser l’import contrôlé ci-dessous pour reprendre des données
+   existantes. Les jeux absents et choix ambigus restent indiqués dans le diagnostic.
+4. Le raccourci Bureau est facultatif : utiliser `Create-Desktop-Shortcut.vbs`.
+   Les erreurs de l’application sont consignées dans `logs` du dossier de données.
+
+Le ZIP préparé et son annexe de sources se trouvent dans
+`runtime/windows-v05-final-02/` à la racine du dépôt. Le
+[rapport V0.5](v0.5-melonds-validation.md#distribution-windows-vérifiée-24-octobre-2026)
+indique les SHA256, le commit utilisé et la portée exacte des essais. L’annexe
+`Pokemon-Challenge-Engine-melonDS-dependency-sources.zip` doit accompagner le ZIP
+principal lors d’une redistribution ; elle n’est pas nécessaire au lancement.
+
 ## Données personnelles
 
 Les ressources `data`, `lua` et `tools/randomizer` sont immuables. L'application
@@ -154,8 +175,27 @@ et accents. Il vérifie la fenêtre Qt, la navigation, les catalogues et ressour
 la configuration, puis la même identité de partie et les trois badges synthétiques
 après redémarrage. Il produit deux captures et des rapports JSON.
 
-Cette vérification n'émule pas un jeu, n'utilise aucune ROM personnelle et ne
-constitue pas un essai sur une installation Windows vierge. Les marqueurs
-portables et migrations DeSmuME sont également couverts par pytest avec fixtures
-synthétiques, sans présentation comme preuve de jeu réel. Les contrôles
-melonDS/jeux et la suite complète relèvent de la validation finale intégrée.
+Ce pilote de contrôle n'émule pas un jeu, n'utilise aucune ROM personnelle
+et ne constitue pas un essai sur une installation Windows vierge. Le paquet 02
+a aussi été lancé deux fois sans argument avec un marqueur portable : `user-data`
+et son journal persistent entre les fermetures normales, sans modifier les
+fichiers distribués. L'activation par VBS, le raccourci Bureau et un déplacement
+après une aventure n'ont pas été vérifiés. Les tests synthétiques d'import et
+les essais de Blanc dans le véritable EXE sont détaillés séparément dans le
+[rapport V0.5](v0.5-melonds-validation.md).
+
+
+## Essais complémentaires après remise
+
+Sur la machine qui utilisera le ZIP, commencer par le double-clic, la détection
+du jeu possédé et la reprise d’une partie importée explicitement. Vérifier le
+nom de l’aventure, ses règles, les espèces, niveaux et PV ; sauvegarder dans le
+menu Pokémon avant de fermer le jeu, puis reprendre la même partie.
+
+Pour compléter la validation Randomizer, les évolutions déclenchées et les objets
+utilisés dans le jeu restent à essayer sur une aventure indépendante. Les
+contrôles des autres challenges doivent être comparés aux capacités annoncées
+dans **Détails → Règles** : une information indisponible ne doit pas devenir une
+violation supposée. Le taux shiny personnalisé reste désactivé. Étendre les
+essais à d’autres jeux seulement après identification de leur version/révision.
+Les résultats vérifiés sur Blanc ne sont pas une validation universelle.

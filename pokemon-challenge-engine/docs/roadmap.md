@@ -81,7 +81,9 @@ Le passage d'une session à une autre demande une fermeture normale confirmée,
 attend DeSmuME puis Lua et conserve les identités du jeu et de la partie demandée.
 Les essais réels du 12 octobre confirment les fichiers séparés de deux parties
 de Blanc, leur reprise et la suppression de A sans toucher à B. Le lancement de
-Noir 2 après Blanc et son autoload sont vérifiés ; son équipe reste non validée.
+Noir 2 après Blanc et son autoload sont vérifiés ; son équipe n'était pas validée
+lors de cet essai. La [lecture native du 22 octobre](v0.5-melonds-validation.md#lecture-réelle-noir-2-fr-rev0-22-octobre-2026)
+a depuis confirmé une équipe réelle sous melonDS.
 Les sources RetroBat sont identiques avant/après. Consulter les preuves et limites
 du [rapport de vérification](verification.md).
 
@@ -114,11 +116,13 @@ Le transport de production et l'identification de Noir 2 français (`IREF`,
 révision `0`) ont été testés réellement, de même que la déconnexion, la reprise
 dans la même session et l'arrêt demandé par Python. La CLI et l'interface Qt
 ont reçu les messages du vrai DeSmuME.
-Pour Noir, Noir 2 et Blanc 2, la validation de l'équipe réelle, de ses espèces,
-niveaux et PV reste ouverte :
-**En attente de validation sur la machine utilisateur.** Aucun succès de tests
-sur données synthétiques ne clôt cette étape. Le périmètre V0.2 ne doit donc pas
-être présenté comme entièrement validé en jeu.
+À cette étape V0.2, la validation de l'équipe réelle, de ses espèces, niveaux
+et PV restait ouverte pour Noir, Noir 2 et Blanc 2. La lecture native de Noir 2
+a depuis été vérifiée séparément sous melonDS, comme décrit dans le rapport
+d'intégration ; elle ne valide pas le lecteur Lua historique. Pour Noir et
+Blanc 2 : **En attente de validation sur la machine utilisateur.** Aucun succès
+de tests sur données synthétiques ne clôt cette étape. Le périmètre V0.2 ne doit
+donc pas être présenté comme entièrement validé en jeu.
 
 La priorité **Pokémon Blanc français** a produit un échantillon réel comparé le
 **30 septembre 2026** : transport, heartbeat, identité `IRAF / FR / 0`, profil
@@ -145,10 +149,10 @@ dans `main` n'est effectuée**. `main` conserve la V0.1.
 | V0.3.6 | Premier démarrage, installation Lua, ZIP, diagnostic, reconnexion et fiabilité des profils | Tests de régression, interface et essais réels isolés distingués dans le rapport |
 | V0.4 | Parties persistantes, sessions, bibliothèque, identité, familles et mort permanente virtuelle | Tests synthétiques et lectures réelles séparés ; parcours réel K.O./soin et évolution à valider par l'utilisateur |
 | V0.4.1 | Mes parties unifié, création directe, installation automatique, autoload Lua, copies par aventure, suppression contrôlée et changement de session | Régressions de création et passage A/B, originaux intacts, sauvegardes/states distincts ; preuves réelles distinguées pour Blanc et Noir 2 |
-| V0.4.2, différée | Distribution Windows portable PyInstaller onedir | Exécutable réellement lancé sous Windows, persistance et import historique, ZIP sans ROM/BIOS/save personnelle |
+| V0.4.2, objectif intégré à V0.5 | Distribution Windows portable PyInstaller onedir | EXE, persistance, import et reprise de Blanc vérifiés sous Windows dans le [rapport d'intégration](v0.5-melonds-validation.md) ; ZIP sans ROM/BIOS/save personnelle ; Windows vierge encore non vérifié |
 | V0.4.x | Suite des corrections issues des essais utilisateur | K.O./soin, évolutions et autres scénarios réels encore ouverts ; reproductions documentées et non-régression |
-| V0.5, en développement | Quinze règles, Monotype, Shiny Only, Nuzlocke/Hardcore, ROM Randomizer et combinaisons | Contrôles fiables et ROM dédiées reproductibles ; essais réels par jeu séparés des tests synthétiques ; actions non observables et taux shiny non validés explicitement indisponibles |
-| Étapes ultérieures, numérotation à réexaminer après V0.5 | Extension des contrôles de combat, validations complémentaires et distribution | Les anciens objectifs Monotype et Randomizer V0.6–V0.8 sont désormais inclus dans V0.5 ; aucune validation réelle n'est présumée |
+| V0.5, en validation | Quinze règles, Monotype, Shiny Only, Nuzlocke/Hardcore, ROM Randomizer et combinaisons, passerelle melonDS et distribution Windows | Contrôles fiables et ROM dédiées reproductibles ; essais réels par jeu séparés des tests synthétiques ; actions non observables et taux shiny non validés explicitement indisponibles |
+| Étapes ultérieures, numérotation à réexaminer après V0.5 | Extension des contrôles de combat et validations complémentaires des jeux et de la distribution | Les anciens objectifs Monotype et Randomizer V0.6–V0.8 sont désormais inclus dans V0.5 ; aucune validation réelle n'est présumée |
 
 Autres axes : installation par utilisateur, migration des profils,
 clavier et mise à l'échelle élevée, jeux Platine, HeartGold/SoulSilver,
@@ -158,14 +162,15 @@ Une option visible ou un statut `future_strict` ne constitue jamais une fonction
 d'application en jeu. L'interface devra continuer à distinguer l'intention, la lecture
 réelle et la contrainte effectivement mise en œuvre.
 
-La préparation V0.5 commence après finalisation de V0.4.1, sur une branche dédiée,
-par une proposition technique avant les changements majeurs. Elle doit partir de
-Blanc FR révision 0 puis traiter chaque autre profil séparément. Aucune écriture
-RAM n'est autorisée par cette préparation. Un Randomizer reste une recherche tant
-qu'une méthode fiable, une copie dérivée séparée et une autorisation explicite ne
-sont pas réunies. Un strict paramétré ne doit pas être affiché comme appliqué.
+La préparation V0.5 a commencé après finalisation de V0.4.1, sur une branche
+dédiée, par une proposition technique avant les changements majeurs. Les essais
+partent de Blanc FR révision 0 et traitent chaque autre profil séparément.
+Aucune écriture RAM n'est autorisée par cette préparation. Chaque transformation
+Randomizer exige une méthode fiable, une copie dérivée séparée et une autorisation
+explicite. Un strict paramétré ne doit pas être affiché comme appliqué.
 
-Le numéro d'application `0.4.1` ne change pas le format du challenge (`0.1.0`).
+Le numéro d'application `0.5.0`, en validation, ne change pas le format du
+challenge (`0.1.0`).
 Le protocole Lua (`2`), la progression historique (`schema_version: 2`) et les
 parties (`schema_version: 1`) sont versionnés séparément.
 

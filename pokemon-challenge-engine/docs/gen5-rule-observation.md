@@ -155,8 +155,11 @@ et date de modification. Preuve locale exclue de Git :
 Ce test valide le classement **normal** des individus observés, pas une rencontre
 shiny, une forme alternative, une évolution, un K.O., un objet ou une capture.
 Il passe par les services et un harnais Lua de boutons, pas par un parcours souris
-intégral. Noir 2 : équipe toujours non validée réellement. Noir et Blanc 2 : aucun
-nouvel essai réel de ce lot. **En attente de validation sur la machine utilisateur.**
+intégral. Lors de ce lot du 13 octobre, l'équipe de Noir 2 n'était pas encore
+validée réellement. Le [test melonDS du 22 octobre](v0.5-melonds-validation.md#lecture-réelle-noir-2-fr-rev0-22-octobre-2026)
+a depuis confirmé la lecture de Gruikui, niveau 5, 22/22 PV ; il ne valide pas
+tous les contrôles de règles. Noir et Blanc 2 : aucun nouvel essai réel de ce lot.
+**En attente de validation sur la machine utilisateur.**
 
 
 ### Réutilisation des données effectives en mémoire

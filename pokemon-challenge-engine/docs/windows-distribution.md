@@ -22,8 +22,8 @@ La version numérique courante est `0.5.0` ; l’interface indique explicitement
    Les erreurs de l’application sont consignées dans `logs` du dossier de données.
 
 Le ZIP préparé et son annexe de sources se trouvent dans
-`runtime/windows-v05-final-02/` à la racine du dépôt. Le
-[rapport V0.5](v0.5-melonds-validation.md#distribution-windows-vérifiée-24-octobre-2026)
+`runtime/windows-v05-final-03/` à la racine du dépôt. Le
+[rapport V0.5](v0.5-melonds-validation.md#distribution-windows-03-24-octobre-2026)
 indique les SHA256, le commit utilisé et la portée exacte des essais. L’annexe
 `Pokemon-Challenge-Engine-melonDS-dependency-sources.zip` doit accompagner le ZIP
 principal lors d’une redistribution ; elle n’est pas nécessaire au lancement.
@@ -41,14 +41,20 @@ un lien/jonction ou une destination dans `_internal` produit une erreur ; aucun
 repli silencieux vers un dossier vide ne masque les anciennes parties.
 
 `Enable-Portable-Mode.vbs` crée facultativement `pce-portable.json` contenant
-`{"schema_version":1}` près de l'EXE. Le stockage devient `user-data` au même
-emplacement. Les données précédentes restent conservées dans LOCALAPPDATA.
+`{"schema_version":1}` près de l'EXE. Au prochain lancement, le stockage devient
+`user-data` au même
+emplacement. Les données précédentes restent conservées dans LOCALAPPDATA ;
+leur reprise nécessite l’import explicite ci-dessous, sans migration automatique.
 Le marqueur peut aussi être créé avec un éditeur de texte si les scripts VBS
 sont désactivés par Windows. Le dossier portable doit être disponible hors ligne
 et inscriptible. Lors des mises à jour, conserver `user-data` et le marqueur.
 
 L'import dans **Paramètres → Données et anciennes parties** affiche le nombre
-de parties, modèles et préférences avant confirmation. Il copie vers un staging
+de parties, modèles et préférences avant confirmation. Sélectionner le dossier
+de données affiché dans les paramètres de l’ancienne application : pour la
+version Python, il s’agit normalement de `pokemon-challenge-engine/`, qui
+contient `runs` et `profiles`, plutôt que de la racine du dépôt. Il copie vers
+un staging
 local, vérifie les empreintes et la stabilité des sources, puis publie les
 dossiers nouveaux sous le verrou de parties. Toute collision est refusée ; les
 préférences déjà présentes sont conservées. Une erreur pendant la publication
@@ -176,7 +182,7 @@ la configuration, puis la même identité de partie et les trois badges synthét
 après redémarrage. Il produit deux captures et des rapports JSON.
 
 Ce pilote de contrôle n'émule pas un jeu, n'utilise aucune ROM personnelle
-et ne constitue pas un essai sur une installation Windows vierge. Le paquet 02
+et ne constitue pas un essai sur une installation Windows vierge. Le paquet 03
 a aussi été lancé deux fois sans argument avec un marqueur portable : `user-data`
 et son journal persistent entre les fermetures normales, sans modifier les
 fichiers distribués. L'activation par VBS, le raccourci Bureau et un déplacement

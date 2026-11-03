@@ -18,10 +18,12 @@ from app.services.run_isolation_service import _regular
 from app.services.external_process import child_environment, external_dll_search
 
 UPSTREAM_COMMIT = "b86390e4428bf38ce4c1ce0e9ca446d6d25955e8"
-# Native 1.1-pce.1 build, official signed MSYS2 dependencies and corresponding
-# sources, verified 2026-10-20. A self-declared manifest cannot authorize an EXE.
+# Native PCE builds, official signed MSYS2 dependencies and corresponding
+# sources, verified 2026-10-20 / 2026-11-03. A manifest cannot authorize itself.
 VERIFIED_MANIFEST_SHA256 = frozenset({
     "ae761a26559aa9fb4d1eb4552f9a16a9644a115d0f0d6379b9b03262986b2cdf",
+    "c4f080950325e2ff97b8303292c874e5362ed4a8cc8db3395990c05e1c2aac6e",
+    "5b94e60284b6ca0bca24ce5d3d38148367bf91306233929d152e2c08e3b19f73",
 })
 
 
@@ -34,7 +36,7 @@ def verify_installation(executable: Path) -> dict:
         raise ValueError("Distribution melonDS non vérifiée ; utilisez le composant PCE publié.")
     data = json.loads(marker.read_text(encoding="utf-8"), object_pairs_hook=_strict_pairs)
     if (not isinstance(data, dict) or data.get("schema_version") != 1
-            or data.get("bridge_version") != "1.1-pce.1" or data.get("upstream_commit") != UPSTREAM_COMMIT
+            or data.get("bridge_version") not in {"1.1-pce.1", "1.1-pce.2"} or data.get("upstream_commit") != UPSTREAM_COMMIT
             or data.get("executable") != executable.name):
         raise ValueError("Cette version melonDS ne fournit pas le pont PCE vérifié.")
     files = data.get("files")

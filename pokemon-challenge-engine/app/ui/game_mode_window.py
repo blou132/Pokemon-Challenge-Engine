@@ -154,8 +154,12 @@ class GameModeWindow(QMainWindow):
 
     def _refresh_controls(self, executable):
         if self.page.is_melonds:
-            self.page.set_controls({}, "Clavier et manette : Config > Input and hotkeys dans melonDS.")
-            self.page.controls_source.setToolTip("Le mapping melonDS n'est pas lu par PCE.")
+            status = self.service.native_commands.status if self.service.native_commands else None
+            mapping = status.get("keyboard", {}) if status else {}
+            valid = isinstance(mapping, dict) and all(isinstance(key, str) and type(value) is int for key, value in mapping.items())
+            self.page.set_controls({key: QKeySequence(value).toString() for key, value in mapping.items()} if valid else {},
+                                   "Clavier lu dans cette instance melonDS." if mapping and valid else "Clavier et manette : Config > Input and hotkeys dans melonDS.")
+            self.page.controls_source.setToolTip("Les réglages s'ouvrent depuis le panneau melonDS.")
             return
         try:
             snapshot = EmulatorSettingsService(executable).inspect()
@@ -538,8 +542,8 @@ class GameModeWindow(QMainWindow):
             self.hide()
 
     def request_speed(self, value):
-        if self.page.is_melonds:
-            self.page.status_label.setText("Vitesse non pilotée par PCE : utilisez Config > Interface settings > Framerate dans melonDS.")
+        if self.page.is_melonds and not self.service.state.native_controls:
+            self.page.status_label.setText("Commandes indisponibles : lancez cette partie ou utilisez Config > Interface settings dans melonDS.")
             return
         try:
             self.page.set_run_state(self.service.request_speed(value))
@@ -565,6 +569,13 @@ class GameModeWindow(QMainWindow):
             state = self.service.tick()
             self.process_context_changed.emit(state.running, state.game_id)
             self.page.set_run_state(state)
+            for key, shortcut in self._shortcuts.items():
+                if key.startswith("speed_"):
+                    shortcut.setEnabled(not self.page.is_melonds or (state.native_controls and not state.command_pending))
+            if self.page.is_melonds:
+                self._refresh_controls(self.launch_options(state.game_id or self.page.game_combo.currentData())["emulator_path"])
+            if self.settings_dialog:
+                self.native_settings.refresh()
             if self.launch_busy:
                 self.page.launch_button.setEnabled(False)
             if self._persistent_notice:
@@ -647,7 +658,7 @@ class GameModeWindow(QMainWindow):
         if changed or environment_changed:
             for key, shortcut in self._shortcuts.items():
                 if key.startswith("speed_"):
-                    shortcut.setEnabled(not self.page.is_melonds)
+                    shortcut.setEnabled(not self.page.is_melonds or self.service.state.native_controls)
             self._refresh_controls(self.launch_options(run.game_id)["emulator_path"])
         return True
 
@@ -741,7 +752,7 @@ class GameModeWindow(QMainWindow):
                 shortcut = QShortcut(QKeySequence(sequence), self)
                 shortcut.setContext(Qt.ShortcutContext.WindowShortcut)
                 shortcut.activated.connect(actions[key])
-                shortcut.setEnabled(not (self.page.is_melonds and key.startswith("speed_")))
+                shortcut.setEnabled(not (self.page.is_melonds and key.startswith("speed_")) or self.service.state.native_controls)
                 self._shortcuts[key] = shortcut
         self.page.fullscreen_button.setToolTip("Plein écran de l'application" +
             (f" · {values['fullscreen']}" if values.get("fullscreen") else " · raccourci configurable dans Contrôles"))
@@ -770,6 +781,9 @@ class GameModeWindow(QMainWindow):
         self.save_settings.set_running_probe(lambda: self.service.windows.running_executable(
             self.launch_options(self._settings_game or game_id)["emulator_path"]))
         self.save_settings.backup_created.connect(self._record_backup)
+        self.save_settings.native_controls_requested.connect(lambda: self.open_settings("native"))
+        from app.ui.melonds_controls_page import MelonDSControlsPage
+        self.native_settings = MelonDSControlsPage(self.service)
         self.interface_settings = InterfaceInGamePage(self.service.config["interface"])
         self._tab_ids = {}
         for key, text, page in (("launch", "Lancement", self.launch_settings), ("controls", "Contrôles", self.controls_settings),
@@ -811,14 +825,21 @@ class GameModeWindow(QMainWindow):
         self.save_settings.set_emulator_running(self.service.state.running)
         for key in ("controls", "graphics"):
             self.settings_tabs.setTabEnabled(self._tab_ids[key], not melon)
+        if melon and "native" not in self._tab_ids:
+            self._tab_ids["native"] = self.settings_tabs.addTab(self.native_settings, "melonDS")
+        elif not melon and "native" in self._tab_ids:
+            self.settings_tabs.removeTab(self._tab_ids.pop("native"))
         if melon:
             self.launch_settings.setToolTip("Réglez clavier, manette, écrans et graphismes dans Config de la fenêtre melonDS. Ces réglages restent propres à cette partie.")
 
     def open_settings(self, tab="interface"):
         if self.page.is_melonds and tab in {"controls", "controls_reset", "graphics"}:
-            menu = "Video settings" if tab == "graphics" else "Input and hotkeys"
-            self.page.status_label.setText(f"Dans la fenêtre melonDS, ouvrez Config > {menu}.")
-            return
+            if self.service.state.native_controls:
+                tab = "native"
+            else:
+                menu = "Video settings" if tab == "graphics" else "Input and hotkeys"
+                self.page.status_label.setText(f"Dans la fenêtre melonDS, ouvrez Config > {menu}.")
+                return
         if tab == "installation":
             self.installation_requested.emit()
             return

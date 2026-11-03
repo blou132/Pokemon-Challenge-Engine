@@ -1,4 +1,14 @@
-# Réglages DeSmuME — V0.3.5
+# Réglages des émulateurs
+
+Pour melonDS 1.1-pce.2, le panneau **Mode Jeu > Réglages > melonDS** pilote la
+session active : vitesse, disposition des écrans et slots de save states. Il
+ouvre aussi les réglages natifs du clavier, de la manette et des graphismes.
+Les boutons restent indisponibles tant que l'instance de la partie n'a pas
+confirmé ses capacités. Les save states demandent confirmation et respectent
+la politique de la partie depuis PCE. Voir [le contrat natif](melonds-bridge.md#commandes-natives-11-pce2).
+Le clavier et la manette restent reçus par la fenêtre melonDS pendant le jeu.
+
+Les sections suivantes concernent l'adaptateur historique DeSmuME.
 
 PCE importe les commandes clavier et propose des réglages graphiques pour un
 binaire Windows identifié par SHA-256. Une version inconnue ne reçoit aucune

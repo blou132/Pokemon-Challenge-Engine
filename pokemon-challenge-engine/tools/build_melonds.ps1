@@ -19,16 +19,24 @@ $buildPath = Join-Path $sourcePath 'build-pce'
 $previousPath = $env:PATH
 try {
     $env:PATH = $toolchainPath + [IO.Path]::PathSeparator + $env:PATH
+    # Windows PowerShell 5 promotes redirected native stderr (including CMake
+    # deprecation warnings) to errors. Native exit codes decide build success.
+    $ErrorActionPreference = 'Continue'
     & $cmakePath -S $sourcePath -B $buildPath -G Ninja `
         '-DCMAKE_BUILD_TYPE=Release' '-DCMAKE_POLICY_VERSION_MINIMUM=3.5' `
         '-DUSE_QT6=OFF' '-DUSE_VCPKG=OFF' '-DBUILD_STATIC=OFF' `
         '-DENABLE_GDBSTUB=OFF' '-DENABLE_JIT=ON' '-DENABLE_LTO_RELEASE=OFF' `
-        '-DPORTABLE=ON' '-DMELONDS_VERSION_SUFFIX=-pce.1'
-    if ($LASTEXITCODE -ne 0) { throw 'Configuration CMake melonDS en echec.' }
+        '-DPORTABLE=ON' '-DMELONDS_VERSION_SUFFIX=-pce.2'
+    $configureExit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($configureExit -ne 0) { throw 'Configuration CMake melonDS en echec.' }
+    $ErrorActionPreference = 'Continue'
     & $cmakePath --build $buildPath --parallel $Jobs
-    if ($LASTEXITCODE -ne 0) { throw 'Compilation melonDS en echec.' }
+    $buildExit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($buildExit -ne 0) { throw 'Compilation melonDS en echec.' }
     $metadata = [ordered]@{
-        bridge_version = '1.1-pce.1'
+        bridge_version = '1.1-pce.2'
         compiler = (& $compilerPath --version | Select-Object -First 1)
         cmake = (& $cmakePath --version | Select-Object -First 1)
         qt = 'Qt5 dynamic, from the UCRT64 package database'
@@ -38,5 +46,6 @@ try {
         ($metadata | ConvertTo-Json -Depth 4) + [Environment]::NewLine,
         (New-Object System.Text.UTF8Encoding($false)))
 } finally {
+    $ErrorActionPreference = 'Stop'
     $env:PATH = $previousPath
 }

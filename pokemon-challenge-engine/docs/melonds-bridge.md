@@ -1,10 +1,11 @@
-# Passerelle melonDS en lecture seule
+# Passerelle melonDS : lecture et commandes natives
 
 La base est la version officielle stable **1.1**, commit
 `b86390e4428bf38ce4c1ce0e9ca446d6d25955e8`, publiée le 18 novembre 2025.
 Sources : [release officielle](https://github.com/melonDS-emu/melonDS/releases/tag/1.1),
 [annonce](https://melonds.kuribo64.net/comments.php?id=240).
-Le composant modifié est identifié **1.1-pce.1**. Le binaire officiel non modifié
+Le composant modifié actuel est identifié **1.1-pce.2**. Le protocole des
+instantanés conserve son identifiant `1.1-pce.1` pour compatibilité. Le binaire officiel non modifié
 ne contient pas cette passerelle et ne doit pas être présenté comme capable de suivi.
 
 ## Choix technique et limites
@@ -143,3 +144,56 @@ sauvegarde / reprise sur Blanc FR0, ainsi qu'une équipe réelle sur Noir 2 FR0.
 Le [rapport d'intégration](v0.5-melonds-validation.md) détaille les preuves et
 les échecs rencontrés, notamment le correctif TOML indispensable au vrai démarrage.
 Noir et Blanc 2 conservent un statut synthétique pour cette passerelle.
+
+
+## Commandes natives 1.1-pce.2
+
+Le Mode Jeu active ses boutons de vitesse après réception de la capacité native
+et vérification du processus lancé, de la session, du nonce d'instance, du SHA-256
+de la ROM chargée et du dossier de states. L'onglet **melonDS** donne accès aux
+vitesses x1/x2/x4/MAX, à la disposition naturelle/verticale/horizontale/hybride et
+aux slots 1 à 8. Les boutons clavier/manette et graphismes ouvrent les fenêtres
+natives de cette instance ; ils n'émulent pas de clics ou de raccourcis Windows.
+Les mappings Qt des douze boutons sont lus dans la configuration native.
+L'ancien composant pce.1 conserve son suivi et ses menus, sans déclarer ces capacités.
+
+`PCECommands.h` traite un seul fichier atomique `melonds-command.json` à la fois,
+avec PID, session, nonce, SHA-256 de ROM, séquence strictement croissante et date
+limite de cinq secondes. Les commandes expirées ou rejouées ne sont pas exécutées.
+La fenêtre zéro de l'instance zéro traite les actions sur le thread UI, en passant
+par les messages synchronisés d'`EmuThread` pour la sérialisation des states.
+Un changement ou un échec de chargement de cartouche invalide les commandes
+jusqu'à une nouvelle session. Aucun chemin de state n'est fourni par le message.
+Les liens/jonctions et chemins sortant du dossier configuré sont refusés.
+
+`melonds-command-result.json` confirme le résultat retourné par l'API native.
+PCE distingue la commande en attente du réglage appliqué et d'un résultat
+non confirmé. La vitesse est un réglage cible, pas une mesure de FPS ni une
+garantie de multiplicateur sur toutes les machines. Ce réglage de vitesse ne
+modifie que la session courante.
+
+La sauvegarde d'un slot est d'abord sérialisée dans un fichier temporaire du
+même dossier, puis remplacée par `QSaveFile` ; un échec conserve l'ancien slot.
+Le chargement et l'enregistrement sont refusés si Relocate savefile est activé.
+PCE demande confirmation avant remplacement ou chargement et conserve l'historique
+du challenge lorsque le jeu revient en arrière. Les politiques forbidden et
+read_only interdisent ces actions depuis PCE ; outside_battle exige une absence
+de combat confirmée et reste donc refusée sans lecteur fiable. Les menus melonDS
+restent accessibles : ces politiques ne constituent pas un verrouillage du jeu.
+Aucune ROM ni sauvegarde d'origine n'est ciblée par les commandes.
+
+Pour les validations automatisées, `input_pulse` utilise `NDS::SetKeyMask` au
+point d'entrée des boutons natifs, sans accès RAM arbitraire ni dépendance au focus
+Windows. Le masque actif haut comprend A=1, B=2, Select=4, Start=8, droite=16,
+gauche=32, haut=64, bas=128, R=256, L=512, X=1024, Y=2048. Une impulsion dure
+1 à 60 frames exécutées et expire au plus tard après deux secondes monotones.
+Elle conserve les boutons physiques simultanés. L'accusé de succès est émis
+après les frames demandées et une frame de relâchement ; une pause trop longue
+produit un échec, et la reprise reçoit le masque relâché. Cette API n'offre ni
+entrée maintenue sans limite, ni écriture mémoire, ni chemin de fichier arbitraire.
+
+Les tests `test_melonds_commands.py` et `test_melonds_commands_native.py` couvrent
+le transport, les refus, les accusés, les politiques et les entrées bornées.
+Le test natif compile les en-têtes livrés et nécessite `PCE_CXX` pointant vers le
+compilateur local du build melonDS (Qt5 installé dans ce même préfixe). Ces tests
+sans ROM ne remplacent pas les essais de jeu, de save states réels ou de manette.

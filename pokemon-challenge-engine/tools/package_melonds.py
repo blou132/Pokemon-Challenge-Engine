@@ -112,14 +112,14 @@ def package(source: Path, msys: Path, output: Path) -> dict:
     shutil.copy2(source / "LICENSE", output / "LICENSE-melonDS.txt")
     sources = output / "sources"
     sources.mkdir()
-    with tarfile.open(sources / "melonDS-1.1-pce.1.tar.gz", "w:gz", compresslevel=6) as archive:
+    with tarfile.open(sources / "melonDS-1.1-pce.2.tar.gz", "w:gz", compresslevel=6) as archive:
         for path in sorted(source.rglob("*")):
             relative = path.relative_to(source)
             if relative.parts[0] == ".git" or relative.parts[0].startswith("build") or not path.is_file():
                 continue
-            archive.add(path, arcname="melonDS-1.1-pce.1/" + relative.as_posix(), recursive=False)
+            archive.add(path, arcname="melonDS-1.1-pce.2/" + relative.as_posix(), recursive=False)
         for name in ("tools/prepare_melonds_source.py", "tools/build_melonds.ps1", "tools/package_melonds.py",
-                     "native/melonds/PCEBridge.h", "data/memory_profiles.json", "data/tracking_profiles.json",
+                     "native/melonds/PCEBridge.h", "native/melonds/PCECommands.h", "native/melonds/PCEWindowCommands.h", "native/melonds/PCEInputPulse.h", "data/memory_profiles.json", "data/tracking_profiles.json",
                      "docs/melonds-bridge.md"):
             archive.add(PROJECT / name, arcname="pce-build/" + name, recursive=False)
     (output / "dependency-sources.json").write_text(json.dumps(packages, indent=2) + "\n", encoding="utf-8")
@@ -127,8 +127,8 @@ def package(source: Path, msys: Path, output: Path) -> dict:
     shutil.copy2(source / "pce-build.json", output / "pce-build.json")
     (output / "qt.conf").write_text("[Paths]\nPlugins = .\n", encoding="utf-8")
     (output / "BUILD-NOTICE.txt").write_text(
-        "melonDS 1.1-pce.1; upstream commit " + COMMIT + "\n"
-        "PCE modification: bounded read-only frame snapshots; GDB disabled.\n"
+        "melonDS 1.1-pce.2; upstream commit " + COMMIT + "\n"
+        "PCE modification: read-only frame snapshots, session-scoped native commands; GDB disabled.\n"
         "GPL-3.0-or-later. Corresponding modified emulator source is in sources/.\n"
         "DLLs are dynamically linked and may be replaced with compatible rebuilt versions.\n"
         "dependency-sources.json lists the exact MSYS2 source packages and license identifiers.\n"
@@ -139,10 +139,10 @@ def package(source: Path, msys: Path, output: Path) -> dict:
     # Per-run isolation copies this smaller set. Corresponding source archives
     # remain in the component's distribution manifest, not in every user run.
     runtime_files = {name: digest for name, digest in binaries.items() if not name.startswith("sources/")}
-    bridge = {"schema_version": 1, "bridge_version": "1.1-pce.1", "upstream_commit": COMMIT,
+    bridge = {"schema_version": 1, "bridge_version": "1.1-pce.2", "upstream_commit": COMMIT,
               "executable": "melonDS.exe", "files": runtime_files}
     (output / "pce-bridge.json").write_text(json.dumps(bridge, indent=2) + "\n", encoding="utf-8")
-    component = {"name": "melonDS", "version": "1.1-pce.1",
+    component = {"name": "melonDS", "version": "1.1-pce.2",
                  "source_url": "https://github.com/melonDS-emu/melonDS/releases/tag/1.1",
                  "license_file": "LICENSE-melonDS.txt", "files": binaries | {"pce-bridge.json": sha256(output / "pce-bridge.json")}}
     (output / "component-manifest.json").write_text(json.dumps(component, indent=2) + "\n", encoding="utf-8")

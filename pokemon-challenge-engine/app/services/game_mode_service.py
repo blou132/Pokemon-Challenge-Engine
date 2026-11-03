@@ -20,6 +20,8 @@ class RunState:
     elapsed_seconds: int = 0
     requested_speed: str = "x1"
     confirmed_speed: str | None = None
+    native_controls: bool = False
+    command_pending: bool = False
     message: str = "DeSmuME reste dans une fenêtre séparée."
     window_title: str | None = None
     pid: int | None = None
@@ -43,6 +45,8 @@ class GameModeService:
         self._pending_launch_backup = False
         self.backup_observer = None
         self.bridge_environment = None
+        self.native_commands = None
+        self._native_launch_speed_pending = False
         self.state = RunState(message="\n".join(self.store.warnings) or RunState().message)
 
     def reload_preferences(self):
@@ -133,7 +137,7 @@ class GameModeService:
         if game_id not in GAME_IDS:
             raise ValueError("Jeu de lancement inconnu.")
         if self.process is not None and self.process.poll() is None:
-            raise ValueError("Une session DeSmuME est déjà suivie ; fermez-la avant un autre lancement.")
+            raise ValueError("Une session d'émulateur est déjà suivie ; fermez-la avant un autre lancement.")
         # A caller can relaunch between process exit and the next UI timer tick.
         # Finalise the old session (including its own close backup) first.
         if self.process is not None and self.state.running:
@@ -153,7 +157,7 @@ class GameModeService:
             if profile.challenge.game_id != game_id:
                 raise ValueError("Le profil challenge et le jeu de lancement sont incompatibles.")
         if self.windows.running_executable(options["emulator_path"]):
-            raise ValueError("Cet exécutable DeSmuME est déjà en cours ; aucun second lancement effectué.")
+            raise ValueError("Cet exécutable d'émulateur est déjà en cours ; aucun second lancement effectué.")
         config = AppConfig(self.legacy_config.retrobat_path, options["emulator_path"],
                            {game_id: options["rom_path"]}, self.legacy_config.save_path)
         if options.get("emulator_kind") == "melonds":
@@ -178,27 +182,101 @@ class GameModeService:
         self.process = process
         self._started = self._last_periodic = self._clock()
         self._run_options = options
+        self.native_commands = None
+        self._native_launch_speed_pending = options.get("emulator_kind") == "melonds"
+        native_notice = ""
+        if options.get("emulator_kind") == "melonds":
+            from app.services.melonds_commands import MelonDSCommands
+            try:
+                self.native_commands = MelonDSCommands(self.bridge_environment, process, options["rom_path"], options["save_state_directory"])
+            except (OSError, ValueError, TypeError) as exc:
+                native_notice = " Commandes indisponibles : " + str(exc)
         self._pending_launch_backup = pending_backup
         self.state = RunState(game_id=game_id, profile_id=profile_id, running=True,
                               requested_speed=options["speed"], pid=process.pid,
-                              message=(("melonDS démarré. Vitesse réglée dans Config > Interface settings > Framerate."
+                              message=(("melonDS démarré. Connexion aux commandes de cette partie en cours."
                                         if options.get("emulator_kind") == "melonds" else
                                         "DeSmuME démarré. Vitesse demandée ; état réel non confirmé.") +
-                                       (" Le premier backup sera créé après la première sauvegarde du jeu." if pending_backup else "")))
+                                       (" Le premier backup sera créé après la première sauvegarde du jeu." if pending_backup else "") + native_notice))
         return process
 
     def request_speed(self, value: str) -> RunState:
         if value not in SPEEDS:
             raise ValueError("Vitesse inconnue.")
         if self._run_options and self._run_options.get("emulator_kind") == "melonds":
-            raise ValueError("Vitesse non pilotée par PCE : utilisez Config > Interface settings > Framerate dans melonDS.")
+            self.request_native("speed", {"value": value})
+            self._native_launch_speed_pending = False
+            self.state = replace(self.state, requested_speed=value, confirmed_speed=None)
+            return self.state
         self.state = replace(self.state, requested_speed=value, confirmed_speed=None,
                              message="État demandé : " + value + ". Utilisez les raccourcis DeSmuME vérifiés ; état réel non confirmé.")
         return self.state
 
+    def request_native(self, command: str, parameters: dict | None = None):
+        if command in {"save_state", "load_state"}:
+            if not isinstance(parameters, dict) or set(parameters) != {"slot"}:
+                raise ValueError("Choisissez un slot de save state.")
+            return self.request_state(command, parameters["slot"])
+        return self._send_native(command, parameters)
+
+    def _send_native(self, command: str, parameters: dict | None = None):
+        if self.native_commands is None or not self.state.running:
+            raise ValueError("Commandes melonDS indisponibles. Lancez cette partie ; sinon utilisez Config > Interface settings dans melonDS.")
+        self.native_commands.request(command, parameters or {})
+        self.state = replace(self.state, command_pending=True, message="Commande envoyée à melonDS ; résultat en attente.")
+        return self.state
+
+    def request_state(self, action: str, slot: int, *, battle_active: bool | None = None):
+        if action not in {"save_state", "load_state"} or self._run_options is None:
+            raise ValueError("Opération de save state inconnue.")
+        policy = self._run_options.get("save_state_policy", "unmanaged")
+        if policy in {"forbidden", "read_only"}:
+            raise ValueError("La politique de cette partie interdit cette opération depuis PCE.")
+        if policy == "outside_battle" and battle_active is not False:
+            raise ValueError("L'absence de combat n'est pas confirmée ; save state refusé depuis PCE.")
+        from app.services.discovery_safety import local_path
+        from app.services.run_isolation_service import _regular
+        root = local_path(self._run_options["save_state_directory"])
+        stem = self._run_options["save_state_stem"]
+        if not stem or Path(stem).name != stem or "/" in stem or "\\" in stem:
+            raise ValueError("Nom de save state invalide.")
+        if type(slot) is not int or not 1 <= slot <= 8:
+            raise ValueError("Choisissez un slot de 1 à 8.")
+        path = local_path(root / f"{stem}.ml{slot}")
+        if path.exists():
+            _regular(path)
+        elif action == "load_state":
+            raise ValueError("Ce slot de save state est vide.")
+        return self._send_native(action, {"slot": slot})
+
+    def _poll_native(self):
+        if self.native_commands is None:
+            return
+        try:
+            result = self.native_commands.poll_result()
+            status = self.native_commands.refresh()
+            updates = dict(native_controls=status is not None, command_pending=self.native_commands.pending is not None)
+            if result:
+                messages = {"save_state": "Save state enregistré par melonDS.", "load_state": "Save state chargé par melonDS.",
+                            "input_settings": "Réglages clavier et manette ouverts dans melonDS.",
+                            "video_settings": "Réglages vidéo ouverts dans melonDS.", "screen_layout": "Disposition des écrans appliquée."}
+                updates["message"] = messages.get(result["command"], "Commande melonDS appliquée.")
+                if result["command"] == "speed":
+                    updates.update(confirmed_speed=result["speed"], message="Réglage de vitesse appliqué : " + result["speed"] + ". Le débit dépend du jeu et de la machine.")
+            self.state = replace(self.state, **updates)
+            if status is not None and self._native_launch_speed_pending and self.native_commands.pending is None:
+                # Apply the adventure's preference exactly once after attachment.
+                # A failed/expired command is reported, never retried silently.
+                self._native_launch_speed_pending = False
+                self.request_speed(self.state.requested_speed)
+        except (OSError, ValueError, TypeError) as exc:
+            self.state = replace(self.state, native_controls=False, command_pending=self.native_commands.pending is not None, message=str(exc))
+
     def tick(self) -> RunState:
         if self.process is None or not self.state.running:
             return self.state
+        if self.process.poll() is None:
+            self._poll_native()
         now = self._clock()
         elapsed = max(0, int(now - self._started))
         options = self._run_options
@@ -235,7 +313,7 @@ class GameModeService:
                     message += " Backup de fermeture créé."
                 except (OSError, ValueError) as exc:
                     message += " Backup non créé : " + str(exc)
-            self.state = replace(self.state, running=False, elapsed_seconds=elapsed, window_title=None,
+            self.state = replace(self.state, running=False, native_controls=False, command_pending=False, elapsed_seconds=elapsed, window_title=None,
                                  confirmed_speed=None, message=message)
             return self.state
         if (options["backup_periodic"] and not self._pending_launch_backup and first_backup_notice is None
@@ -259,7 +337,7 @@ class GameModeService:
 
     def arrange(self, rect: tuple[int, int, int, int]):
         if not self.state.running or self._run_options is None:
-            raise ValueError("Aucune fenêtre DeSmuME lancée par ce Mode Jeu.")
+            raise ValueError("Aucune fenêtre d'émulateur lancée par ce Mode Jeu.")
         return self.windows.arrange(self.state.pid, rect, executable=self._run_options["emulator_path"])
 
     def stop_tracking(self) -> RunState:
@@ -267,8 +345,10 @@ class GameModeService:
         self.tick()
         self.process = None
         self._pending_launch_backup = False
-        self.state = replace(self.state, running=False, confirmed_speed=None,
-                             message="Suivi arrêté. DeSmuME n'a pas été fermé ; les backups automatiques sont arrêtés.")
+        self.native_commands = None
+        self._native_launch_speed_pending = False
+        self.state = replace(self.state, running=False, native_controls=False, command_pending=False, confirmed_speed=None,
+                             message="Suivi arrêté. L'émulateur n'a pas été fermé ; les backups automatiques sont arrêtés.")
         return self.state
 
     def request_close(self):
@@ -277,5 +357,5 @@ class GameModeService:
             self.tick()
             return
         if self._run_options is None or self.state.pid != self.process.pid:
-            raise ValueError("La session DeSmuME ne peut pas être identifiée. Fermez sa fenêtre manuellement.")
+            raise ValueError("La session d'émulateur ne peut pas être identifiée. Fermez sa fenêtre manuellement.")
         self.windows.request_close(self.process.pid, executable=self._run_options["emulator_path"])

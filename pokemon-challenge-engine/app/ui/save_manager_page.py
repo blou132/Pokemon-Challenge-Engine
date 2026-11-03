@@ -33,6 +33,7 @@ class SaveManagerPage(QWidget):
     settings_changed = Signal(str, object)
     game_changed = Signal(str)
     backup_created = Signal(object)
+    native_controls_requested = Signal()
 
     def __init__(self, service: SaveManagerService, games: Iterable[Game], parent: QWidget | None = None,
                  *, running_probe: Callable[[], bool] | None = None) -> None:
@@ -127,6 +128,10 @@ class SaveManagerPage(QWidget):
         states_layout.addWidget(self.states_policy_note)
         self.states_table = self._table(("Slot", "Présence", "Date", "Taille"), rows=10)
         states_layout.addWidget(self.states_table)
+        self.native_controls_button = QPushButton("Piloter les save states melonDS…")
+        self.native_controls_button.clicked.connect(self.native_controls_requested)
+        self.native_controls_button.hide()
+        states_layout.addWidget(self.native_controls_button)
 
         self.status_label = label("", "muted")
         layout.addWidget(self.status_label)
@@ -189,8 +194,9 @@ class SaveManagerPage(QWidget):
         self.states_directory_edit.setAccessibleName(self.states_directory_label.text())
         self.states_stem_note.setText("Nom commun des fichiers .ml0 à .ml9, sans cette extension" if melon else
                                       "Nom commun des fichiers .ds0 à .ds9, sans cette extension")
-        self.states_policy_note.setText("Inventaire uniquement : PCE ne crée ni ne charge de save state et ne bloque pas leur utilisation. Dans melonDS : File > Save state / Load state."
+        self.states_policy_note.setText("Cet inventaire ne modifie aucun fichier. Le panneau melonDS permet de piloter les slots de la session active. Les menus natifs restent accessibles : File > Save state / Load state."
             if melon else "Politique affichée uniquement : PCE ne bloque pas les save states dans DeSmuME. Aucun chargement, enregistrement ou aperçu n'est effectué ici.")
+        self.native_controls_button.setVisible(melon)
         self.restore_button.setToolTip("Confirmation obligatoire. Fermez melonDS. Une copie de la sauvegarde actuelle sera créée avant remplacement." if melon else
             "Confirmation obligatoire. Fermez toutes les instances de DeSmuME. Une copie de la sauvegarde actuelle sera créée avant remplacement.")
         self._loading = True

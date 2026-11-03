@@ -223,7 +223,15 @@ def execute_import(plan: ImportPlan) -> dict:
         raise ValueError("Les données ont changé depuis l'aperçu ; recommencez l'import.")
     plan.destination.mkdir(parents=True, exist_ok=True)
     signatures = {}
-    with tempfile.TemporaryDirectory(prefix=".pce-import-", dir=plan.destination) as temporary:
+    # Staging adds an extra directory to otherwise valid emulator paths. Use
+    # the Win32 Unicode namespace only for those temporary filesystem accesses;
+    # final run/config paths remain ordinary paths accepted by the emulator.
+    # This works without changing the machine's LongPathsEnabled policy.
+    staging_parent = str(plan.destination)
+    if os.name == "nt" and not staging_parent.startswith("\\\\?\\"):
+        staging_parent = ("\\\\?\\UNC\\" + staging_parent[2:] if staging_parent.startswith("\\\\")
+                          else "\\\\?\\" + staging_parent)
+    with tempfile.TemporaryDirectory(prefix=".pce-import-", dir=staging_parent) as temporary:
         staging = Path(temporary)
         for category, identifiers in (("runs", plan.runs), ("profiles", plan.profiles)):
             (staging / category).mkdir()

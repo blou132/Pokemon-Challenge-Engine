@@ -58,7 +58,8 @@ def test_compact_menu_preserves_existing_commands(page, tmp_path, command):
     assert spy.at(0) == [command]
 
 
-def test_actions_are_disabled_until_a_run_is_bound_and_after_unbinding(page, tmp_path):
+@pytest.mark.parametrize("rules", [(), ("no_items",)])
+def test_actions_are_disabled_until_a_run_is_bound_and_after_unbinding(page, tmp_path, rules):
     spy = QSignalSpy(page.run_action_requested)
     assert page.run_bar.isHidden()
     assert not page.manual_actions_button.isEnabled()
@@ -67,10 +68,11 @@ def test_actions_are_disabled_until_a_run_is_bound_and_after_unbinding(page, tmp
         action.trigger()
     assert spy.count() == 0
 
-    page.set_persistent_run(create_run(RunManager(tmp_path / "runs")))
+    page.set_persistent_run(create_run(RunManager(tmp_path / "runs"), rules))
     assert not page.run_bar.isHidden()
     assert page.manual_actions_button.isEnabled()
-    assert all(action.isEnabled() for action in page.manual_actions.values())
+    for name, action in page.manual_actions.items():
+        assert action.isEnabled() == (bool(rules) if name == "record_rule_event" else True)
 
     page.set_persistent_run(None)
     assert page.run_bar.isHidden()

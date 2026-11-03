@@ -365,7 +365,13 @@ def test_ini_text_values_handle_empty_and_literal_semicolon(source):
 
 def test_loader_path_length_cannot_silently_exceed_desmume_buffer(environment):
     service, exe, ini, rom, script, _ = environment
-    long_rom = rom.parent / (("R" * 180) + ".nds")
+    # Reach the loader's MAX_PATH limit without requiring the ROM fixture
+    # itself to exceed Windows' ordinary path limit on this machine.
+    loader_directory = service.loader_root / script.parent.name
+    stem_length = 260 - len(str(loader_directory)) - 1 - len(".lua")
+    assert 0 < stem_length <= 251
+    long_rom = rom.parent / (("R" * stem_length) + ".nds")
+    assert len(str(long_rom)) < 260
     long_rom.write_bytes(b"filename fixture")
     before = ini.read_bytes()
     service.record_consent(exe, True)

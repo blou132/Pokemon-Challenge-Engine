@@ -42,8 +42,18 @@ int main(int argc, char** argv) {
     assert(read("melonds-command-result.json")["sequence"].toInt() == 2);
     mailbox.poll(status, pending);
     assert(read("melonds-command-result.json")["sequence"].toInt() == 3);
+    // A transient output failure must not lose an acknowledgement or replay
+    // the native action. A directory reliably simulates a blocked replacement.
+    assert(QFile::remove(path("melonds-command-result.json")));
+    assert(QDir().mkdir(path("melonds-command-result.json")));
+    request["sequence"] = 4; send(request); assert(calls == 2);
+    mailbox.poll(status, execute); assert(calls == 2);
+    assert(QDir().rmdir(path("melonds-command-result.json")));
+    mailbox.poll(status, execute); assert(calls == 2);
+    assert(read("melonds-command-result.json")["sequence"].toInt() == 4);
+    assert(read("melonds-command-result.json")["ok"].toBool());
     QFile stop(path("stop")); assert(stop.open(QIODevice::WriteOnly)); stop.close();
-    request["sequence"] = 4; send(request); assert(calls == 1);
+    request["sequence"] = 5; send(request); assert(calls == 2);
 
     PCEInputPulse pulse;
     pulse.begin(1, 2, 100); // A for two executed frames

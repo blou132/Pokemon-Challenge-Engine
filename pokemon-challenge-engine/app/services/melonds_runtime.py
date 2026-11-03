@@ -22,8 +22,7 @@ UPSTREAM_COMMIT = "b86390e4428bf38ce4c1ce0e9ca446d6d25955e8"
 # sources, verified 2026-10-20 / 2026-11-03. A manifest cannot authorize itself.
 VERIFIED_MANIFEST_SHA256 = frozenset({
     "ae761a26559aa9fb4d1eb4552f9a16a9644a115d0f0d6379b9b03262986b2cdf",
-    "c4f080950325e2ff97b8303292c874e5362ed4a8cc8db3395990c05e1c2aac6e",
-    "5b94e60284b6ca0bca24ce5d3d38148367bf91306233929d152e2c08e3b19f73",
+    "eb1b83aacadd11d79fe760f1477fd784ac36172a2e81adec6dca04148beb9ff9",
 })
 
 

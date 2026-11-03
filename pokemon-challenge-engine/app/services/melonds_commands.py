@@ -48,9 +48,18 @@ class MelonDSCommands:
         path = local_path(self.directory / name)
         if not path.exists():
             return None
-        _regular(path)
-        with path.open("rb") as handle:
-            data = handle.read(8193)
+        # Windows may deny opening a file during the native atomic replacement.
+        # Retry only this bounded read; no command is resent or re-executed.
+        for attempt in range(3):
+            try:
+                _regular(path)
+                with path.open("rb") as handle:
+                    data = handle.read(8193)
+                break
+            except PermissionError:
+                if attempt == 2:
+                    raise
+                time.sleep(0.005)
         if len(data) > 8192:
             raise ValueError("Réponse melonDS trop volumineuse.")
         document = json.loads(data, object_pairs_hook=_strict_pairs)

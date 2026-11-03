@@ -51,6 +51,10 @@ def patch_commands(source: Path, project: Path = PROJECT) -> None:
         path.write_bytes(original.replace(old, new))
 
     replace("Window.h", "    void toggleFullscreen();", "    void toggleFullscreen();\n    void startPCECommands();")
+    replace("Window.cpp", "void MainWindow::closeEvent(QCloseEvent* event)\n{",
+            "void MainWindow::closeEvent(QCloseEvent* event)\n{\n"
+            "    // Stop PCE callbacks before deleteWindow can destroy EmuThread.\n"
+            '    if (auto* timer = findChild<QTimer*>(QStringLiteral("pceSessionCommands"), Qt::FindDirectChildrenOnly)) { timer->stop(); timer->disconnect(this); }\n')
     replace("Window.cpp", "    updateMPInterface(MPInterface::GetType());\n}",
             "    updateMPInterface(MPInterface::GetType());\n    startPCECommands();\n}")
     with (target / "Window.cpp").open("ab") as handle:

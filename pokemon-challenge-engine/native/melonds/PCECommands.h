@@ -56,6 +56,7 @@ class Mailbox {
     const QString instance = QUuid::createUuid().toString(QUuid::Id128);
     qint64 lastSequence = 0;
     QJsonObject pendingRequest;
+    QJsonObject pendingResult;
 public:
     bool enabled() const {
         return PlainPath(directory) && QFileInfo(directory).isDir()
@@ -71,6 +72,12 @@ public:
         status["pid"] = static_cast<double>(QCoreApplication::applicationPid());
         status["timestamp_ms"] = static_cast<double>(QDateTime::currentMSecsSinceEpoch());
         Write(path("melonds-controls.json"), status);
+        // Windows can transiently deny atomic replacement while a client reads
+        // the previous reply. Retry delivery, never the already executed action.
+        if (!pendingResult.isEmpty()) {
+            if (!Write(path("melonds-command-result.json"), pendingResult)) return;
+            pendingResult = QJsonObject();
+        }
         auto request = pendingRequest;
         const bool continuing = !request.isEmpty();
         if (!continuing) {
@@ -105,7 +112,9 @@ public:
         result["sequence"] = sequence;
         result["command"] = request["command"];
         result["timestamp_ms"] = static_cast<double>(QDateTime::currentMSecsSinceEpoch());
-        Write(path("melonds-command-result.json"), result);
+        pendingResult = result;
+        if (Write(path("melonds-command-result.json"), pendingResult))
+            pendingResult = QJsonObject();
     }
 };
 }

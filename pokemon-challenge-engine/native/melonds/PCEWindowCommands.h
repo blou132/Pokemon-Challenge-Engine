@@ -9,11 +9,14 @@ void MainWindow::startPCECommands() {
     auto mailbox = std::make_shared<PCECommands::Mailbox>();
     if (!mailbox->enabled()) return;
     auto timer = new QTimer(this);
+    timer->setObjectName(QStringLiteral("pceSessionCommands"));
     // Pin the first active cartridge. Changing cartridge requires a new PCE session.
     struct Identity { const melonDS::NDSCart::CartCommon* cart = nullptr; QString hash; std::string name; unsigned long long generation = 0; QString states; bool pulseStarted = false; };
     auto identity = std::make_shared<Identity>();
     connect(timer, &QTimer::timeout, this, [this, mailbox, identity]() {
-        if (!mailbox->enabled() || !emuThread->emuIsActive()) return;
+        // closeEvent clears the instance after deleting its EmuThread. Never
+        // dereference the cached thread while a closed window awaits deletion.
+        if (!emuInstance || !emuThread || !mailbox->enabled() || !emuThread->emuIsActive()) return;
         auto* nds = emuInstance->getNDS();
         auto* cart = nds ? nds->GetNDSCart() : nullptr;
         if (!cart || nds->ConsoleType != 0) return;

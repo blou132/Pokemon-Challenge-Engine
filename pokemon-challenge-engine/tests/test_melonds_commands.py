@@ -1,5 +1,6 @@
 """Command transport regressions. Synthetic files/process, no game or user save."""
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -53,6 +54,58 @@ def test_speed_is_pending_until_matching_native_result(commands):
     second = commands.request("speed", {"value": "x4"})
     assert second["sequence"] == 2
     assert commands.poll_result() is None  # Old ACK is not accepted for the next command.
+
+
+def test_transient_native_replacement_lock_is_read_again(commands, monkeypatch):
+    original_open = Path.open
+    attempts = []
+
+    def briefly_locked(path, *args, **kwargs):
+        if path.name == "melonds-controls.json":
+            attempts.append(path)
+            if len(attempts) < 3:
+                raise PermissionError("native atomic replacement in progress")
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", briefly_locked)
+    assert commands.refresh()["available"] is True
+    assert len(attempts) == 3
+    assert commands.sequence == 0
+
+
+def test_persistent_native_read_lock_remains_bounded(commands, monkeypatch):
+    attempts = []
+
+    def locked(path, *args, **kwargs):
+        attempts.append(path)
+        raise PermissionError("locked")
+
+    monkeypatch.setattr(Path, "open", locked)
+    with pytest.raises(PermissionError):
+        commands.refresh()
+    assert len(attempts) == 3
+    assert commands.sequence == 0
+
+
+def test_retrying_acknowledgement_read_never_resends_action(commands, monkeypatch):
+    request = commands.request("speed", {"value": "x2"})
+    acknowledge(commands)
+    original_open = Path.open
+    attempts = []
+
+    def briefly_locked(path, *args, **kwargs):
+        if path.name == "melonds-command-result.json":
+            attempts.append(path)
+            if len(attempts) == 1:
+                raise PermissionError("native replacement in progress")
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", briefly_locked)
+    assert commands.poll_result()["speed"] == "x2"
+    assert len(attempts) == 2
+    assert commands.pending is None
+    assert commands.sequence == request["sequence"] == 1
+    assert json.loads((commands.directory / "melonds-command.json").read_text()) == request
 
 
 @pytest.mark.parametrize("change", [dict(pid=43), dict(session_id="c" * 32), dict(rom_sha256="0" * 64),

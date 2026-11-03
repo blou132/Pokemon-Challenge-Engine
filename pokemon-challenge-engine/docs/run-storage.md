@@ -183,3 +183,39 @@ progression 2 et du protocole de passerelle 2.
 
 Voir [run-autosave.md](run-autosave.md) pour le temps et la récupération, et
 [permanent-death.md](permanent-death.md) pour les conditions de détection.
+
+## Déclarations d'actions et de rencontres
+
+Le schéma Run 1 conserve les déclarations dans `history`, type `manual_rule_event`,
+source obligatoirement `manual`. Le payload comprend `kind`, `note`, `zone` et
+`corrects_event_id`. Les catégories sont `battle_bag_item`, `battle_healing_item`,
+`field_healing_item`, `healing_move` et `pokemon_center`. Le lieu est un contexte
+de déclaration, jamais une preuve de soin.
+
+Les catégories `unauthorized_battler`, `non_shiny_battler` et `pokemon_evolved`
+conservent les déclarations explicites d'usage en combat et d'évolution.
+`wild_encounter` exige en plus `details`, objet à trois clés : `species_id`
+(entier de 1 à 649), `encounter_kind` et `outcome`. Les types pris en charge sont
+`wild_standard`, `wild_special`, `static`, `gift`, `egg`, `scripted`. Les résultats
+sont `captured`, `fainted`, `player_fled`, `escaped`, `unknown`, `duplicate_ignored`.
+Ce dernier exige Species Clause et une rencontre sauvage ordinaire. Aucun
+résultat n'est déduit d'un changement d'équipe ou de PV.
+
+Une correction référence une déclaration encore active de la même partie. Elle
+ajoute un événement avec une raison, sans modifier l'original. `kind: null` retire
+l'écart déclaré ; une autre catégorie le remplace. Une cible étrangère, déjà
+corrigée, future ou absente est refusée. La lecture du fichier vérifie à nouveau
+cette chaîne et refuse toute source automatique. Les anciens fichiers sans ces
+événements restent lisibles sans migration ni changement de règles.
+
+La fiche Règles et le menu Actions manuelles du Mode Jeu utilisent le worker
+propriétaire de la partie et son écriture atomique. L'historique conserve toutes
+les corrections ; les alertes affichent uniquement les déclarations encore actives.
+
+Les corrections gardent la position de la déclaration initiale pour rejouer
+les droits de rencontre. Les captures issues des déclarations actives sont
+calculées à la lecture et réunies aux anciennes entrées `captures` ; elles ne
+sont pas recopiées dans une seconde collection persistante. Cela permet de
+rétracter ou corriger une capture sans laisser de compteur périmé. Les anciennes
+captures sans emplacement dans l'historique ne prouvent pas une capture
+antérieure pour une relance. Les anciens fichiers restent lisibles sans migration.

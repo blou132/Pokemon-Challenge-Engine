@@ -1,11 +1,12 @@
 """Shared presentation of checks; all decisions belong to the domain engine."""
 from app.core.rule_observation import evaluate_rules
+from app.core.rule_engine import combination_notes
 from app.core.shiny import shiny_status
 from app.ui.widgets.nuzlocke import species_name
 
 
 CAPABILITY_LABELS = {"automatic": "Suivi automatique", "partial": "Suivi partiel",
-                     "unavailable": "Non disponible", "configured": "Configuré"}
+                     "unavailable": "Non disponible", "configured": "Configuré", "manual": "Vérification manuelle"}
 STATE_LABELS = {"compliant": "Conforme", "violation": "Non conforme", "unknown": "Non vérifiable", "review": "À vérifier"}
 SCOPE_LABELS = {"party": "Équipe", "known": "Dernière observation connue", "history": "Historique", "manual": "Déclaration manuelle", "rom": "ROM de cette partie"}
 
@@ -19,6 +20,7 @@ def rule_observation_text(run, catalog, *, detailed=False, transformation=None):
     if not run.active_rules:
         return "Partie classique · aucun contrôle de challenge."
     sections = ["Contrôles des dernières observations enregistrées.\nLa présence dans l'équipe ne prouve pas l'utilisation en combat."]
+    sections.extend(combination_notes(run.active_rules))
     for evaluation in evaluate_rules(run, include_history=detailed, transformation=transformation):
         rule = catalog.rules.get(evaluation.rule_id)
         title = rule.name if rule else evaluation.rule_id
@@ -40,7 +42,7 @@ def rule_observation_text(run, catalog, *, detailed=False, transformation=None):
             if item.timestamp and detailed:
                 context += " · " + item.timestamp
             lines.append(f"{context} · {name}{item.message}")
-        if not detailed and evaluation.capability.level in {"partial", "unavailable", "configured"}:
+        if not detailed and evaluation.capability.level in {"partial", "unavailable", "configured", "manual"}:
             lines.append(evaluation.capability.explanation)
         sections.append("\n".join(lines))
     return "\n\n".join(sections)

@@ -14,9 +14,15 @@ def test_transitive_requirements(rule_engine):
 
 
 def test_conflicts_only_declared_one_way_are_detected(rule_engine):
-    errors = rule_engine.validate(["solo_run", "nuzlocke", "permanent_death"], "black")
+    engine = RuleEngine([Rule("a", "A", "A", 1, "Test", conflicts_with=("b",), supported_games=("black",)),
+                         Rule("b", "B", "B", 1, "Test", supported_games=("black",))])
+    errors = engine.validate(["a", "b"], "black")
     assert len(errors) == 1
     assert "incompatible" in errors[0]
+
+
+def test_capture_and_combat_restrictions_can_be_combined(rule_engine):
+    assert not rule_engine.validate(list(rule_engine.rules), "black")
 
 
 def test_valid_selection(rule_engine):

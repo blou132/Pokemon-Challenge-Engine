@@ -16,6 +16,9 @@ from app.models.run import RUN_STATUSES, Run, history_event, utc_now, validate_t
 from app.services.run_transformation_provider import RunTransformationProvider
 
 
+_UNSPECIFIED_ZONE = object()
+
+
 def set_inactive_run_status(manager: RunManager, run_id: str, status: str) -> Run:
     """Administrative edit without activating or switching the tracked playthrough.
 
@@ -504,6 +507,27 @@ class RunTrackingService:
         entry = {"note_id": str(uuid4()), "text": self._text(text, empty=False), "timestamp": self._now()}
         self._require().notes.append(entry)
         self._event("note_added", "manual", entry)
+        self.flush(force=True)
+        return self.active_run
+
+    def record_rule_event(self, kind: str | None, note: str = "", *,
+                          corrects_event_id: str | None = None, confirmed: bool = False,
+                          details: dict | None = None, zone=_UNSPECIFIED_ZONE) -> Run:
+        from app.core.manual_rule_event import EVENT_TYPE, active_declarations, validate_declaration
+        if confirmed is not True:
+            raise ValueError("Confirmez explicitement cette déclaration manuelle.")
+        run = self._require()
+        active = active_declarations(run.history)
+        if zone is _UNSPECIFIED_ZONE:
+            previous = active.get(corrects_event_id)
+            zone = previous["payload"]["zone"] if previous else run.current_zone
+        payload = {"kind": kind, "note": self._text(note), "corrects_event_id": corrects_event_id,
+                   "zone": deepcopy(zone)}
+        if details is not None:
+            payload["details"] = deepcopy(details)
+        validate_json_data(payload)
+        validate_declaration(payload, run.active_rules, active)
+        self._event(EVENT_TYPE, "manual", payload)
         self.flush(force=True)
         return self.active_run
 

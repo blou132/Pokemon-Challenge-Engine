@@ -17,7 +17,7 @@ EVENT_TYPES = frozenset({
     "run_created", "run_started", "run_resumed", "session_started", "session_ended",
     "zone_changed", "party_changed", "pokemon_fainted", "pokemon_marked_dead",
     "manual_capture", "manual_badge", "manual_death", "note_added", "status_changed",
-    "backup_created", "death_corrected", "allowed_pokemon_changed",
+    "backup_created", "death_corrected", "allowed_pokemon_changed", "manual_rule_event",
 })
 
 
@@ -213,6 +213,7 @@ class Run:
         event_ids, previous = set(), None
         designation_id = None
         designation_key = None
+        declarations = {}
         for event in data["history"]:
             if set(event) != {"event_id", "timestamp", "type", "source", "payload"}:
                 raise ValueError("Événement de partie incomplet.")
@@ -227,6 +228,16 @@ class Run:
                 raise ValueError("L'historique de partie doit rester chronologique.")
             previous = current
             event_ids.add(event["event_id"])
+            if event["type"] == "manual_rule_event":
+                from app.core.manual_rule_event import validate_declaration
+                if event["source"] != "manual":
+                    raise ValueError("Une déclaration d'action doit rester explicitement manuelle.")
+                validate_declaration(event["payload"], snapshot["active_rules"], declarations)
+                target = event["payload"]["corrects_event_id"]
+                if target is not None:
+                    declarations.pop(target)
+                if event["payload"]["kind"] is not None:
+                    declarations[event["event_id"]] = event
             if event["type"] == "allowed_pokemon_changed":
                 from app.core.allowed_pokemon import designation_purpose
                 payload = event["payload"]

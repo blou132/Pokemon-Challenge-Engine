@@ -150,3 +150,33 @@ normalement. La procédure complète de suivi restera bloquée au stade de la
 rencontre tant que les lectures de combat décrites ci-dessus seront absentes.
 
 **En attente de validation sur la machine utilisateur.**
+
+## Complément de recherche du 27 octobre 2026
+
+La source primaire [pokebw2, commit
+`6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c`](https://github.com/fuddlesworth/pokebw2/tree/6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c)
+documente désormais explicitement la différence entre le contexte et le résultat
+final. Son [README](https://github.com/fuddlesworth/pokebw2/blob/6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c/README.md)
+cible les dumps anglais USA/Europe de Noir 2 et Blanc 2 ; cette provenance ne
+qualifie pas automatiquement les versions françaises.
+
+- [`include/battle/btl_result.h`](https://github.com/fuddlesworth/pokebw2/blob/6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c/include/battle/btl_result.h) définit défaite, victoire, égalité, fuite du joueur, fuite adverse, capture et état non défini. La valeur intermédiaire 6 n'est pas renommée par hypothèse.
+- [`include/battle/btl_setup.h`](https://github.com/fuddlesworth/pokebw2/blob/6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c/include/battle/btl_setup.h) et [`include/battle/btl_main.h`](https://github.com/fuddlesworth/pokebw2/blob/6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c/include/battle/btl_main.h) séparent les équipes, le type/style, l'instance de combat et son résultat.
+- [`src/ov167/btl_main.c`](https://github.com/fuddlesworth/pokebw2/blob/6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c/src/ov167/btl_main.c), `BtlMain_ProcInit` et `BtlMain_ProcMain`, montrent l'initialisation au résultat non défini puis la détermination du résultat en fin de boucle ; la lecture d'une structure ancienne ne peut remplacer ce cycle de vie.
+- [`src/ov012/event_battle.c`](https://github.com/fuddlesworth/pokebw2/blob/6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c/src/ov012/event_battle.c) distingue les événements sauvages, dresseurs et démonstration de capture, puis libère le contexte. Un résultat de capture sans provenance de l'événement pourrait donc aussi provenir d'une démonstration.
+- [`include/system/game_system.h`](https://github.com/fuddlesworth/pokebw2/blob/6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c/include/system/game_system.h) et [`src/system/game_system.c`](https://github.com/fuddlesworth/pokebw2/blob/6bb07c6c953a7d49b3b5b863bf8ea427157f9b9c/src/system/game_system.c) donnent la racine `g_GameSystem` et l'événement courant. Leurs adresses françaises et les gardes de durée de vie restent à établir séparément.
+
+Le fork français [NDS-Ironmon-Tracker-French au commit
+`80889ae418dcff0df4d0a6db6e241abc96a425b7`](https://github.com/Piomale/NDS-Ironmon-Tracker-French/tree/80889ae418dcff0df4d0a6db6e241abc96a425b7)
+fournit des candidats Blanc FR de présence de combat, mais pas une provenance
+complète des captures, fuites, objets ou causes de soins. Ces candidats restent
+hors des profils produits. Le lecteur n'a donc reçu **aucune adresse de combat
+non vérifiée**, et aucun statut de validation réelle n'a été relevé pour les
+quatre jeux.
+
+Correction effectivement livrée : l'ancien moteur de rencontre déduisait
+`fainted` d'un instantané adverse à zéro PV. Cette déduction a été supprimée,
+y compris pour la première observation et les journaux entre rafraîchissements.
+Les résultats explicites restent pris en charge et dédupliqués ; sans résultat,
+la fin de combat reste `battle_ended_unknown`. Les déclarations d'objets/soins
+sont une voie manuelle distincte dans la partie PCE, jamais un événement natif.

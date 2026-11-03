@@ -5,6 +5,25 @@ from collections.abc import Iterable
 from app.models.rule import Rule
 
 
+def combination_notes(selected: Iterable[str]) -> list[str]:
+    """Conjunction semantics; compatibility never grants an implicit exception."""
+    ids = set(selected)
+    notes = []
+    if {"nuzlocke", "shiny_only"} <= ids:
+        notes.append("Nuzlocke + Shiny Only : seule la première rencontre admissible de la zone peut être capturée ; elle doit aussi être shiny pour combattre. Aucun droit de relance shiny ni exception implicite.")
+    if {"nuzlocke", "catch_limit"} <= ids:
+        notes.append("Nuzlocke + Catch Limit : les deux limites s'appliquent ; un plafond supérieur à un ne permet pas une deuxième rencontre Nuzlocke.")
+    if "solo_run" in ids and ids.intersection({"nuzlocke", "catch_limit"}):
+        notes.append("Solo Run + règles de capture : les captures restent possibles selon leurs limites ; seul l'individu désigné peut combattre.")
+    if {"starter_only", "shiny_only"} <= ids:
+        notes.append("Starter Only + Shiny Only : le starter désigné doit être shiny ; aucun remplacement ni exemption du starter n'est accordé.")
+    if "monotype" in ids and ids.intersection({"shiny_only", "unevolved", "starter_only"}):
+        notes.append("Monotype combiné : chaque Pokémon autorisé doit aussi respecter les autres restrictions actives ; aucune exception de type n'est ajoutée.")
+    if "randomizer" in ids and ids.intersection({"monotype", "no_evolution", "unevolved"}):
+        notes.append("Randomizer combiné : les contrôles utilisent les types et évolutions extraits de la ROM dérivée vérifiée ; sans ces données, le résultat reste inconnu.")
+    return notes
+
+
 class RuleEngine:
     def __init__(self, rules: Iterable[Rule]):
         items = list(rules)

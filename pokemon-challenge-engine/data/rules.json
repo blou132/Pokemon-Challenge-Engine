@@ -8,9 +8,7 @@
     "requires": [
       "permanent_death"
     ],
-    "conflicts_with": [
-      "shiny_only"
-    ],
+    "conflicts_with": [],
     "supported_games": [
       "black",
       "white",
@@ -124,7 +122,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
@@ -143,7 +141,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
@@ -162,7 +160,7 @@
     ],
     "supports_strict_mode": false,
     "supports_soft_mode": true,
-    "implementation_status": "ui_only",
+    "implementation_status": "partial",
     "parameters": {}
   },
   {
@@ -191,10 +189,7 @@
     "difficulty": 4,
     "category": "Équipe",
     "requires": [],
-    "conflicts_with": [
-      "nuzlocke",
-      "catch_limit"
-    ],
+    "conflicts_with": [],
     "supported_games": [
       "black",
       "white",
@@ -213,10 +208,7 @@
     "difficulty": 5,
     "category": "Capture",
     "requires": [],
-    "conflicts_with": [
-      "nuzlocke",
-      "starter_only"
-    ],
+    "conflicts_with": [],
     "supported_games": [
       "black",
       "white",
@@ -250,15 +242,11 @@
   {
     "id": "catch_limit",
     "name": "Catch Limit",
-    "description": "Limitez le nombre de captures autorisées par zone. Réglage manuel; incompatible ici avec la première rencontre Nuzlocke.",
+    "description": "Limitez le nombre de captures déclarées par zone. Combiné à Nuzlocke, le droit de première rencontre reste obligatoire ; les limites ne se remplacent pas.",
     "difficulty": 3,
     "category": "Capture",
     "requires": [],
-    "conflicts_with": [
-      "nuzlocke",
-      "solo_run",
-      "starter_only"
-    ],
+    "conflicts_with": [],
     "supported_games": [
       "black",
       "white",
@@ -287,10 +275,7 @@
     "requires": [
       "solo_run"
     ],
-    "conflicts_with": [
-      "shiny_only",
-      "catch_limit"
-    ],
+    "conflicts_with": [],
     "supported_games": [
       "black",
       "white",

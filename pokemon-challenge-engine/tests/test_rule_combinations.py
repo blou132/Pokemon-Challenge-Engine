@@ -5,11 +5,38 @@ from copy import deepcopy
 import pytest
 
 from app.core.allowed_pokemon import latest_designation
+from app.core.challenge_engine import ChallengeEngine
+from app.core.rule_engine import combination_notes
 from app.core.rule_observation import CAPABILITIES, evaluate_rules
 from app.services.run_tracking_service import RunTrackingService
 from test_allowed_pokemon import designate
 from test_randomizer_rule_observation import setup, edge, checks
 from test_rule_observation import member, observe, results, tracking
+
+
+@pytest.mark.parametrize("game_id", ["black", "white", "black2", "white2"])
+@pytest.mark.parametrize("rules", [
+    ["randomizer", "nuzlocke"], ["randomizer", "monotype"], ["randomizer", "shiny_only"],
+    ["nuzlocke", "no_items", "level_cap"], ["monotype", "shiny_only"],
+    ["randomizer", "monotype", "nuzlocke"], ["nuzlocke", "shiny_only", "catch_limit", "solo_run"],
+    list(CAPABILITIES),
+])
+def test_requested_combinations_preserve_each_setting_and_dependency(catalog, game_id, rules):
+    engine = ChallengeEngine(catalog)
+    params = {rule: value for rule, value in {"level_cap": {"max_level": 27}, "catch_limit": {"per_zone": 3}}.items() if rule in rules}
+    challenge = engine.generate(game_id, "custom", {rule: "required" for rule in rules}, len(rules), 512,
+                                settings={"rule_parameters": params})
+    assert not engine.validate(challenge)
+    assert set(rules) <= set(challenge.active_rules)
+    assert challenge.settings["rule_parameters"] == params
+    if "nuzlocke" in rules:
+        assert "permanent_death" in challenge.active_rules
+    if "starter_only" in rules:
+        assert "solo_run" in challenge.active_rules
+    if "monotype" in rules:
+        assert challenge.monotype is not None
+    if {"nuzlocke", "shiny_only"} <= set(rules):
+        assert any("Aucun droit de relance shiny" in note for note in combination_notes(rules))
 
 
 @pytest.mark.parametrize("initial_form", [None, 1])
@@ -132,7 +159,7 @@ def test_all_fifteen_rules_remain_independent_with_effective_types_and_evolution
         assert len(actual[rule].checks) == count
         assert all(item.scope == "manual" and item.state == "review" for item in actual[rule].checks)
     for rule in ("no_items", "no_healing", "no_pokemon_center"):
-        assert actual[rule].capability.level == "unavailable"
+        assert actual[rule].capability.level == "manual"
         assert not actual[rule].checks
     for rule in ("solo_run", "starter_only"):
         assert any(item.state == "review" for item in actual[rule].checks)

@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from app.core.allowed_pokemon import designation_purpose, eligible_individuals, latest_designation
 from app.core.gen5_species import is_unevolved, species_types
 from app.core.monotype import matches_type
+from app.core.manual_rule_event import ACTIONS, active_declarations, capture_records
+from app.core.run_encounters import encounter_checks
 from app.core.pokemon_identity import documented_evolution, pokemon_identity
 from app.core.shiny import shiny_status
 from app.core.transformation_snapshot import TransformationSnapshot, pokemon_tables
@@ -21,20 +23,20 @@ class RuleCapability:
 
 
 CAPABILITIES = {
-    "nuzlocke": RuleCapability("partial", "Captures déclarées et limite par zone suivies. Première rencontre, fuite et capture vers le PC non observables automatiquement."),
+    "nuzlocke": RuleCapability("partial", "Journal manuel des rencontres, captures, K.O. sauvages et fuites ; première rencontre suivie selon les déclarations. Ces actions ne sont pas observables automatiquement."),
     "permanent_death": RuleCapability("partial", "K.O. suivi si le même individu passe de PV positifs à zéro. Première observation à zéro ou identité ambiguë : confirmation requise. Aucun blocage dans le jeu."),
-    "species_clause": RuleCapability("partial", "Doublons d'espèce dans les captures déclarées. Rencontres et droit de relance non vérifiables automatiquement."),
+    "species_clause": RuleCapability("partial", "Doublons d'espèce dans les captures déclarées ; relances déclarées vérifiées par rapport aux captures antérieures du journal. Aucune détection automatique de rencontre."),
     "level_cap": RuleCapability("automatic", "Niveau observé comparé au plafond configuré. Aucune déduction d'utilisation en combat."),
     "monotype": RuleCapability("automatic", "Types de l'espèce et de la forme comparés à la convention choisie. Effets temporaires de combat non observés."),
-    "no_items": RuleCapability("unavailable", "L'utilisation d'un objet du sac en combat n'est pas lue de façon fiable. Aucun événement n'est déduit des PV."),
-    "no_healing": RuleCapability("unavailable", "Une hausse de PV ne prouve pas la cause du soin. Aucune violation automatique."),
-    "no_pokemon_center": RuleCapability("unavailable", "La présence dans un Centre Pokémon ne prouve pas l'utilisation de son service de soin."),
-    "no_evolution": RuleCapability("partial", "Changement d'espèce compatible avec une évolution documentée pour un individu identifié. Aucun blocage des évolutions dans le jeu."),
-    "solo_run": RuleCapability("partial", "Individu autorisé désigné manuellement dans les règles de la partie ; présence observée, utilisation en combat inconnue. La taille de l'équipe ne prouve pas son usage."),
-    "shiny_only": RuleCapability("partial", "Statut shiny calculé avec PID et identifiants du dresseur d'origine. Présence dans l'équipe vérifiée ; utilisation en combat non observée. Taux d'apparition inchangé."),
+    "no_items": RuleCapability("manual", "Déclarations manuelles des objets du sac en combat, hors Poké Balls et objets tenus. Lecture automatique indisponible ; aucun blocage dans le jeu."),
+    "no_healing": RuleCapability("manual", "Déclarations manuelles des soins volontaires par objet ou capacité. Une hausse de PV ne prouve pas leur cause ; aucune détection automatique ni blocage dans le jeu."),
+    "no_pokemon_center": RuleCapability("manual", "Déclarations manuelles du service de soin. La présence dans un Centre Pokémon ne prouve pas son utilisation ; aucune détection automatique ni blocage dans le jeu."),
+    "no_evolution": RuleCapability("partial", "Changement d'espèce compatible avec une évolution documentée pour un individu identifié ; déclaration manuelle possible. Aucun blocage des évolutions dans le jeu."),
+    "solo_run": RuleCapability("partial", "Individu autorisé désigné manuellement ; présence observée, combat avec un autre individu déclarable manuellement. La taille de l'équipe ne prouve pas son usage en combat."),
+    "shiny_only": RuleCapability("partial", "Statut shiny calculé avec PID et identifiants du dresseur d'origine. Présence vérifiée ; utilisation en combat déclarable manuellement, sans détection automatique. Taux d'apparition inchangé."),
     "randomizer": RuleCapability("configured", "La sélection de cette règle ne prouve pas qu'une transformation a été appliquée à la ROM."),
     "catch_limit": RuleCapability("partial", "Limite comparée aux captures déclarées par zone identifiée. Captures non déclarées et envois au PC non observés."),
-    "starter_only": RuleCapability("partial", "Starter désigné manuellement dans les règles de la partie. Son origine reste déclarative, jamais déduite de l'espèce ou du slot. Présence observée ; utilisation en combat inconnue."),
+    "starter_only": RuleCapability("partial", "Starter désigné manuellement. Origine déclarative, jamais déduite de l'espèce ou du slot. Présence observée ; combat avec un autre individu déclarable manuellement, sans détection automatique."),
     "unevolved": RuleCapability("automatic", "Convention : espèce sans stade évolutif antérieur, y compris celles qui n'évoluent jamais. Pas de déduction sur l'histoire de cet individu."),
 }
 
@@ -353,21 +355,38 @@ Neither a team addition nor a disappearance is interpreted as a capture.
             f"{len(run.current_party)} Pokémon présent(s). Cela ne prouve pas lesquels sont utilisés en combat."))
     for check in _designation_checks(run, data):
         checks[check.rule_id].append(check)
-    counts, species_seen = {}, set()
-    for entry in run.captures or []:
+    for event in active_declarations(run.history).values():
+        action = ACTIONS[event["payload"]["kind"]]
+        if not action.violation:
+            continue
+        for rule in action.rules:
+            if rule in checks:
+                checks[rule].append(_check(rule, "violation", "manual",
+                    "Écart déclaré manuellement : " + action.label + ". Aucune détection automatique.",
+                    timestamp=event["timestamp"]))
+    counts, nuzlocke_counts, species_seen = {}, {}, set()
+    for item in encounter_checks(run, _zone_key, _check):
+        if item.rule_id in checks:
+            checks[item.rule_id].append(item)
+    for entry in capture_records(run):
         pokemon = entry.get("pokemon", {})
         zone = _zone_key(entry.get("zone"))
         if zone is not None:
             counts[zone] = counts.get(zone, 0) + 1
+            if entry.get("encounter_kind", "wild_standard") == "wild_standard":
+                nuzlocke_counts[zone] = nuzlocke_counts.get(zone, 0) + 1
         for rule in ("nuzlocke", "catch_limit"):
             if rule not in checks:
                 continue
+            if rule == "nuzlocke" and entry.get("encounter_kind", "wild_standard") != "wild_standard":
+                continue  # Special encounters have a separate, explicitly manual convention.
+            count = (nuzlocke_counts if rule == "nuzlocke" else counts).get(zone, 0)
             limit = 1 if rule == "nuzlocke" else _parameters(run, rule).get("per_zone")
             if zone is None or type(limit) is not int or not 1 <= limit <= 99:
                 checks[rule].append(_check(rule, "unknown", "manual", "Capture déclarée : zone ou limite non renseignée.", pokemon, entry.get("date")))
-            elif counts[zone] > limit:
+            elif count > limit:
                 checks[rule].append(_check(rule, "review", "manual",
-                    f"{counts[zone]} captures déclarées dans {zone[1]} pour une limite de {limit}. Vérifier les clauses et les déclarations.", pokemon, entry.get("date")))
+                    f"{count} captures déclarées dans {zone[1]} pour une limite de {limit}. Vérifier les clauses et les déclarations.", pokemon, entry.get("date")))
         species = pokemon.get("species_id")
         if "species_clause" in checks:
             if species is None:

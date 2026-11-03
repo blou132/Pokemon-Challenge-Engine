@@ -19,6 +19,8 @@ from app.ui.widgets.rule_observation import rule_observation_text, shiny_label
 from app.ui.widgets.allowed_pokemon import AllowedPokemonDialog
 from app.ui.widgets.derived_evolutions import DerivedEvolutionsDialog
 from app.core.allowed_pokemon import designation_purpose
+from app.core.manual_rule_event import ACTIONS, MANUAL_RULES, ENCOUNTER_KINDS, ENCOUNTER_OUTCOMES, capture_records
+from app.ui.widgets.manual_rule_event import ManualRuleEventDialog
 from app.services.save_manager_service import SaveManagerService
 from app.services.rom_transformation_service import transformation_options
 from app.services.run_transformation_provider import RunTransformationProvider
@@ -41,6 +43,7 @@ EVENT_LABELS = {
     "backup_created": "Backup créé", "death_corrected": "Mort corrigée",
     "pokemon_evolved": "Évolution observée", "death_confirmation_required": "Mort à confirmer",
     "allowed_pokemon_changed": "Désignation individuelle modifiée",
+    "manual_rule_event": "Action déclarée / corrigée manuellement",
 }
 
 
@@ -97,6 +100,9 @@ def badges_text(run):
 
 def prompt_run_action(parent, catalog, run, action):
     """Reusable explicit input for library details and Mode Jeu quick actions."""
+    if action == "record_rule_event":
+        dialog = ManualRuleEventDialog(run, parent)
+        return dialog.payload() if dialog.exec() == QDialog.DialogCode.Accepted else None
     if action == "designate_allowed_pokemon":
         dialog = AllowedPokemonDialog(run, parent)
         return dialog.payload() if dialog.exec() == QDialog.DialogCode.Accepted else None
@@ -686,6 +692,9 @@ class RunDetailsDialog(QDialog):
         self.designation_button = QPushButton("Désigner / corriger l'individu autorisé…")
         self.designation_button.clicked.connect(lambda: self.manual_action("designate_allowed_pokemon"))
         box.addWidget(self.designation_button)
+        self.rule_event_button = QPushButton("Déclarer / corriger une action")
+        self.rule_event_button.clicked.connect(lambda: self.manual_action("record_rule_event"))
+        box.addWidget(self.rule_event_button)
         self.rules_view = QTextBrowser()
         box.addWidget(self.rules_view, 1)
         self.technical_button = QPushButton("Détails techniques du snapshot")
@@ -771,6 +780,7 @@ class RunDetailsDialog(QDialog):
         self.delete_button.setEnabled(True)
         self.isolate_button.setEnabled(True)
         self.melonds_button.setVisible((run.launch_profile or {}).get("emulator_kind", "desmume") == "desmume")
+        self.rule_event_button.setVisible(bool(MANUAL_RULES.intersection(run.active_rules)))
         self.title_label.setText(run.name)
         game = self.catalog.games.get(run.game_id)
         rules = rule_names(run, self.catalog)
@@ -786,7 +796,8 @@ class RunDetailsDialog(QDialog):
         self.notes_view.setPlainText("\n\n".join(notes) or "Aucune note enregistrée.")
         deaths = active_deaths(run)
         badges = badges_text(run)
-        captures = str(len(run.captures)) if run.captures is not None else "Non renseigné"
+        records = capture_records(run)
+        captures = str(len(records)) if run.captures is not None or records else "Non renseigné"
         death_count = str(len(deaths)) if deaths is not None else "Non renseigné"
         self.progress_label.setText(f"Badges : {badges} · MANUEL\nCaptures : {captures} · MANUEL\n"
                                    f"Morts : {death_count}\nZone : {zone_name(run.current_zone)}")
@@ -876,6 +887,16 @@ class RunDetailsDialog(QDialog):
     def _event_details(payload):
         """Human summary intentionally excludes raw PID and trainer identifiers."""
         parts = []
+        if "corrects_event_id" in payload:
+            if payload.get("kind") in ACTIONS:
+                parts.append(ACTIONS[payload["kind"]].label)
+            if payload.get("kind") == "wild_encounter":
+                encounter = payload.get("details", {})
+                parts.extend((species_name(encounter.get("species_id")),
+                              ENCOUNTER_KINDS.get(encounter.get("encounter_kind"), "Type inconnu"),
+                              ENCOUNTER_OUTCOMES.get(encounter.get("outcome"), "Résultat inconnu")))
+            if payload.get("corrects_event_id"):
+                parts.append("Déclaration retirée" if payload.get("kind") is None else "Correction de déclaration")
         if payload.get("purpose") in ("starter", "solo") and "previous_event_id" in payload:
             parts.append("Retrait manuel de la désignation" if payload.get("pokemon_key") is None else
                          "Starter déclaré manuellement" if payload["purpose"] == "starter" else "Individu Solo déclaré manuellement")

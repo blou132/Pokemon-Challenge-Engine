@@ -143,7 +143,7 @@ class _RunWorker(QObject):
             if self.tracker is None or self.tracker.active_run is None or self.tracker.active_run.run_id != run_id:
                 raise ValueError("Reprenez cette partie avant d'y enregistrer une action.")
             allowed = {"manual_capture", "manual_death", "correct_death", "set_badges", "add_note",
-                       "set_status", "record_backup", "update_launch_reference", "adjust_badges", "designate_allowed_pokemon"}
+                       "set_status", "record_backup", "update_launch_reference", "adjust_badges", "designate_allowed_pokemon", "record_rule_event"}
             if name not in allowed or not isinstance(payload, dict):
                 raise ValueError("Action de partie inconnue.")
             getattr(self.tracker, name)(**payload)

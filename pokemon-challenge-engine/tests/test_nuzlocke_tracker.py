@@ -65,10 +65,15 @@ def test_explicit_results_consume_once(result, event):
     validate_progress(profile.progress)
 
 
-def test_zero_hp_is_fainted_and_disappearance_is_never_capture():
+@pytest.mark.parametrize("initial_hp", [0, 12])
+def test_zero_hp_requires_an_explicit_result_and_disappearance_is_never_capture(initial_hp):
     profile = make_profile()
-    feed(profile, battle(), 1)
+    feed(profile, battle(hp=initial_hp), 1)
     feed(profile, battle(hp=0), 2)
+    assert zone(profile)["first_encounter"]["result"] is None
+    assert profile.progress["nuzlocke"]["active_encounter"] is not None
+    assert not any(event["event"] == "wild_fainted" for event in profile.history)
+    feed(profile, battle(hp=0, outcome="fainted"), 3)
     assert zone(profile)["first_encounter"]["result"] == "fainted"
     second = make_profile()
     feed(second, battle(), 1)

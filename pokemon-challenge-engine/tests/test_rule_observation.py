@@ -62,7 +62,7 @@ def test_shiny_formula_not_applied_to_other_generations(generation):
 def test_all_catalog_rules_have_explicit_capability(catalog):
     assert set(CAPABILITIES) == set(catalog.rules)
     for capability in CAPABILITIES.values():
-        assert capability.level in {"automatic", "partial", "unavailable", "configured"}
+        assert capability.level in {"automatic", "partial", "unavailable", "configured", "manual"}
         assert capability.explanation
 
 

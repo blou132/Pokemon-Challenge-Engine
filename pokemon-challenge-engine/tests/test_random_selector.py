@@ -34,8 +34,10 @@ def test_required_dependency_cannot_be_forbidden(rule_engine):
 
 
 def test_conflicting_required_rules(rule_engine):
+    engine = RuleEngine([Rule("a", "A", "A", 1, "Test", conflicts_with=("b",), supported_games=("black",)),
+                         Rule("b", "B", "B", 1, "Test", supported_games=("black",))])
     with pytest.raises(ValueError, match="incompatible"):
-        RandomSelector(rule_engine).max_count("black", {"solo_run": "required", "nuzlocke": "required"})
+        RandomSelector(engine).max_count("black", {"a": "required", "b": "required"})
 
 
 def test_required_count_includes_transitive_dependencies(rule_engine):

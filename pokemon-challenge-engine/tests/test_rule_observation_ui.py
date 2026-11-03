@@ -225,13 +225,14 @@ def test_legacy_unusable_history_does_not_break_rules_tab(qt_app, tmp_path, cata
         close(dialog, qt_app)
 
 
-def test_unsupported_action_rules_remain_unavailable_after_hp_gain(tmp_path, catalog):
+def test_manual_action_rules_never_infer_actions_after_hp_gain(tmp_path, catalog):
     prior, current = pokemon(), pokemon()
     prior["hp"] = 10
     _, run = persisted_run(tmp_path, catalog, rules=("no_items", "no_healing", "no_pokemon_center"),
                             earlier=[prior], party=[current])
     text = rule_observation_text(run, catalog, detailed=True)
-    assert text.count("Non disponible") == 3
+    assert text.count("Vérification manuelle") == 3
+    assert text.count("Déclarations manuelles") == 3
     assert "non conforme" not in text.lower()
     assert "ne prouve pas" in text
 

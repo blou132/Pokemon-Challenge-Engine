@@ -5,6 +5,7 @@ from datetime import datetime
 from PySide6.QtCore import QSignalBlocker, QTimer, Signal
 from PySide6.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget
 
+from app.core.manual_rule_event import capture_records
 from app.ui.run_dialogs import (
     RunDetailsDialog, STATUS_LABELS, active_deaths, badges_text, display_date,
     display_duration, rule_names, zone_name,
@@ -39,7 +40,8 @@ class RunCard(QWidget):
         box.addWidget(self.name_label)
         deaths = active_deaths(run)
         badges = badges_text(run)
-        captures = str(len(run.captures)) if run.captures is not None else "Non renseigné"
+        records = capture_records(run)
+        captures = str(len(records)) if run.captures is not None or records else "Non renseigné"
         mortality = str(len(deaths)) if deaths is not None else "Non renseigné"
         self.stats_label = label(f"Temps : {display_duration(run.total_play_seconds)}   ·   Badges : {badges} (manuel)\n"
                                  f"Captures : {captures} (manuel)   ·   Morts : {mortality}\n"

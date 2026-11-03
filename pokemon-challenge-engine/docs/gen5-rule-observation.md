@@ -48,20 +48,20 @@ rétroactivement à la première zone ensuite observée.
 
 | Règle | Contrôle livré | Limite explicite |
 | --- | --- | --- |
-| Nuzlocke | Déclarations de captures groupées par zone, dépassement à vérifier | Première rencontre, fuite et capture vers le PC non lues automatiquement |
+| Nuzlocke | Journal manuel des rencontres, captures, K.O. sauvages et fuites ; zone consommée par la première rencontre ordinaire déclarée | Première rencontre réelle et résultats non lus automatiquement ; historique non déclaré inconnu |
 | Mort permanente | K.O. avec identité fiable et transition PV positifs → zéro ; cimetière et correction manuelle ; présence d'un mort dans l'équipe signalée | Première observation à zéro/identité ambiguë à confirmer ; utilisation en combat inconnue |
-| Species Clause | Espèces répétées parmi les captures déclarées signalées | Ni rencontre ni droit de relance déduit de l'équipe ; pas de clause de famille implicite |
+| Species Clause | Espèces répétées signalées ; doublon ignoré justifié seulement par une capture antérieure du journal | Aucun droit de relance déduit de l'équipe ; pas de clause de famille implicite |
 | Level Cap | Chaque niveau comparé au plafond figé, écarts historiques conservés | Aucun plafond supposé si l'ancien réglage manque ; aucun blocage du jeu |
 | Monotype | Espèces/formes, trois conventions, équipe et individus connus | Types dynamiques en combat inconnus ; données originales inutilisables si types randomisés sans extraction vérifiée |
-| No Items | Capacité explicitement indisponible | Aucun lecteur fiable de l'action « utiliser un objet du sac en combat » |
-| No Healing | Capacité explicitement indisponible | Une hausse de PV ne suffit pas à identifier un soin interdit |
-| No Pokémon Center | Capacité explicitement indisponible | Une carte de Centre Pokémon ne prouve pas l'utilisation du service |
-| No Evolution | Historique d'espèce d'un individu fiable, chemin évolutif documenté | Clones/identités ambiguës exclus ; pas de blocage ROM ; évolutions modifiées sans données vérifiées inconnues |
-| Solo Run | Désignation manuelle d'un individu fiable ; comparaison de présence ; plusieurs membres signalés | Usage en combat inconnu, aucune violation déduite de la taille de l'équipe |
+| No Items | Déclarations/corrections des objets du sac en combat, hors Poké Balls ; alertes persistantes | Vérification manuelle ; aucun lecteur fiable de l’action ni blocage dans le jeu |
+| No Healing | Déclarations/corrections des objets et capacités de soin volontaires ; alertes persistantes | Vérification manuelle ; une hausse de PV ne prouve pas un soin interdit |
+| No Pokémon Center | Déclarations/corrections du service de soin ; alertes persistantes | Vérification manuelle ; la carte ne prouve pas l’utilisation du service |
+| No Evolution | Historique d'espèce d'un individu fiable, chemin évolutif documenté ; déclaration manuelle d'évolution possible | Clones/identités ambiguës exclus ; pas de blocage ROM ; évolutions modifiées sans données vérifiées inconnues |
+| Solo Run | Désignation manuelle d'un individu fiable ; comparaison de présence ; déclaration de combat avec un autre individu | Usage en combat non observé, aucune violation déduite de la taille de l'équipe |
 | Shiny Only | Critère Gen V PID/OT, présence normale signalée, état inconnu possible | Utilisation en combat inconnue ; taux personnalisé désactivé sans patch validé |
 | Randomizer | Transformation externe sur copie, selon le lot dédié | Une règle sélectionnée seule ne prouve aucune modification ; validation émulateur distincte |
 | Catch Limit | Comptage des captures déclarées par zone et seuil configuré | Zones inconnues jamais fusionnées ; aucune capture déduite d'un ajout dans l'équipe |
-| Starter Only | Starter déclaré manuellement, puis comparaison de présence avec son identité fiable | Origine starter déclarative, jamais prouvée par l'espèce ou la place ; usage en combat inconnu |
+| Starter Only | Starter déclaré manuellement, puis comparaison de présence ; déclaration de combat avec un autre individu | Origine starter déclarative, jamais prouvée par l'espèce ou la place ; usage en combat non observé |
 | Unevolved | Espèce au stade initial selon graphe sourcé, y compris espèces sans évolution | Ne prouve pas l'histoire du Pokémon ; graphe modifié non supposé identique |
 
 La Mort permanente fonctionne désormais également seule. Cela applique la règle
@@ -124,8 +124,11 @@ Monotype lorsque les formes documentées ont des types différents.
 Aucun offset de combat, d'objet, de soin ou de résultat de capture n'a été ajouté
 sans source. Le tampon d'un adversaire ne suffit pas à établir qu'un combat est
 en cours, ni comment il s'est terminé. Les [limites de lecture](tracking-sources.md)
-restent applicables. Les clauses de combinaison non encore définies conservent
-les conflits historiques du catalogue ; aucune ancienne partie n'est réécrite.
+restent applicables. Les combinaisons appliquent les restrictions simultanément :
+un plafond Catch Limit supérieur à un n'annule jamais le droit de première
+rencontre Nuzlocke ; Shiny Only n'accorde aucun droit de relance shiny implicite.
+Les restrictions d'usage en combat Solo Run/Starter Only n'interdisent pas à elles
+seules des captures de compagnons. Aucune ancienne partie n'est réécrite.
 
 ## Vérifications
 
@@ -180,3 +183,68 @@ un Pokémon et quatre règles (Randomizer, Monotype, Shiny Only, Level Cap),
 entre les deux mesures (35 → 39) ; ce sont des mesures locales indicatives,
 pas une mesure de latence de jeu ou du build distribué. La vérification froide
 et les contrôles anti-liens des chemins restent effectués.
+
+## Déclarations d'objets et de soins — 27 octobre 2026
+
+**Règles → Déclarer / corriger une action** et **Mode Jeu → Actions manuelles**
+ouvrent le même formulaire. La sélection distingue un objet du sac en combat, un
+objet de soin en/hors combat, une capacité de soin volontaire et le Centre Pokémon.
+Un objet de soin en combat concerne simultanément No Items et No Healing si ces
+règles sont actives. Les Poké Balls, objets tenus et soins scénarisés ne sont pas
+reclassés comme violations de ces conventions.
+
+L'action est explicitement confirmée par le joueur et affichée comme
+**Vérification manuelle**. L'écart déclaré reste consultable après fermeture et
+reprise. Correction et retrait exigent une raison et conservent l'événement
+original. Aucune déclaration ne modifie la RAM, la ROM, les sauvegardes Pokémon
+ou les paramètres figés de la partie. Une absence de déclaration ne démontre
+jamais une partie conforme. Voir le [format de stockage](run-storage.md).
+
+Le tracker de rencontre ne transforme plus un adversaire à zéro PV en résultat
+`fainted`. Seul un résultat explicitement fourni peut conclure ; un combat terminé
+sans résultat reste inconnu. Cette correction concerne aussi la première lecture
+à zéro PV et les journaux de plusieurs observations entre deux rafraîchissements.
+Le suivi des transitions individuelles d'équipe pour Mort permanente reste séparé.
+
+Vérifications : tests synthétiques de déclaration, combinaisons, reprise,
+correction, rejet de fausse source automatique, et parcours Qt hors écran.
+Ces tests ne constituent pas une validation d'événements natifs en jeu.
+
+## Journal des rencontres et combinaisons — 2 novembre 2026
+
+Le formulaire commun permet aussi de déclarer une rencontre avec son espèce,
+sa zone, son type et son résultat : capturé, adversaire K.O., fuite du joueur,
+fuite de l'adversaire, résultat inconnu ou doublon ignoré. Il permet de déclarer
+un combat avec un autre individu que celui autorisé, un combat avec un Pokémon
+non shiny et une évolution. Ces informations restent **manuelles**, même
+quand elles produisent une alerte non conforme.
+
+La première rencontre sauvage ordinaire du journal consomme la zone, y compris
+si son résultat est inconnu. Une capture ordinaire déclarée ensuite dans la
+même zone produit un écart Nuzlocke. Species Clause autorise une relance déclarée
+uniquement si la même espèce a déjà été capturée à un emplacement antérieur du
+journal ; cette relance ne rouvre pas une zone consommée. Une espèce capturée
+plus tard ne justifie pas rétroactivement un doublon. Une correction conserve
+la place de l'action originale pour cette analyse ; l'historique conserve aussi
+la date réelle et la raison de la correction.
+
+Les rencontres spéciales, cadeaux, statiques, œufs et rencontres scénarisées
+restent à examiner selon la convention du joueur, séparément de la première
+rencontre sauvage ordinaire. Leurs captures comptent pour Catch Limit. Les
+anciennes captures sans type de rencontre restent à vérifier : le moteur ne
+leur invente pas un contexte sauvage. Zones inconnues, identifiants
+contradictoires et historique incomplet ne prouvent jamais un droit disponible.
+
+Une capture déclarée dans ce formulaire figure dans les compteurs de la
+bibliothèque, de la fiche et du Mode Jeu. Ne pas la saisir également avec
+« Ajouter une capture ». Corriger ou retirer la déclaration recalcule ces
+compteurs sans supprimer les événements initiaux ni créer de capture dans la
+RAM ou la sauvegarde du jeu.
+
+Les combinaisons demandées sont testées dans le moteur de préparation pour les
+quatre identifiants Gen V, avec conservation des paramètres et dépendances.
+Les tests de services écrivent et relisent des dossiers de parties temporaires ;
+les tests Qt traversent le formulaire, le worker propriétaire et les compteurs.
+Ce sont des validations de logiciel sur données synthétiques, **pas** des preuves
+de lecture native de captures, fuites, objets ou soins. Les niveaux de suivi
+du tableau restent applicables ; aucune de ces restrictions n'est imposée au jeu.

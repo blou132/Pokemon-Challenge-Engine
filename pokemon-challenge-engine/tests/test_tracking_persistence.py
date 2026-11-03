@@ -114,17 +114,18 @@ def test_map_only_is_explicitly_unavailable_and_does_not_consume(tmp_path):
     assert zone(manager.load(profile.id))["used"] is False
 
 
-def test_chronological_journal_preserves_battle_lost_between_polls(tmp_path):
+@pytest.mark.parametrize("outcome,expected", [("fainted", "fainted"), (None, "battle_ended_unknown")])
+def test_chronological_journal_preserves_only_explicit_battle_results(tmp_path, outcome, expected):
     manager, profile = create(tmp_path)
     service = TrackingService(tmp_path)
     service.select_profile(profile.id)
-    observations = [battle(), battle(hp=0), observation()]
+    observations = [battle(), battle(hp=0, outcome=outcome), observation()]
     journal = tuple({"id": f"session-one:{i}", "session_id": "session-one", "sequence": i,
                      "timestamp": 1000 + i, "observation": asdict(value)}
                     for i, value in enumerate(observations, 1))
     service.consume(state(observation(), 5, observations=journal))
     saved = manager.load(profile.id)
-    assert zone(saved)["first_encounter"]["result"] == "fainted"
+    assert zone(saved)["first_encounter"]["result"] == expected
     original = contents(manager, profile)
     service.consume(state(observation(), 6, observations=journal))
     assert contents(manager, profile) == original

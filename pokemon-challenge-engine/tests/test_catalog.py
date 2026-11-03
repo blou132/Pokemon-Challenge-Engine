@@ -75,7 +75,6 @@ def test_catalog_and_game_from_v01_remain_compatible(data_dir):
     ("presets.json", lambda rows: rows[0].update(required=["missing"]), "inconnue"),
     ("presets.json", lambda rows: rows[0].update(count=1), "inférieur"),
     ("presets.json", lambda rows: rows[0].update(required=["species_clause"], count=1), "dépendances"),
-    ("presets.json", lambda rows: rows[0].update(required=["nuzlocke", "solo_run"], count=3), "incompatibles"),
     ("rules.json", lambda rows: rows[1].update(conflicts_with=["species_clause"]), "incohérente"),
 ])
 def test_invalid_catalog_rejected(data_dir, filename, change, match):

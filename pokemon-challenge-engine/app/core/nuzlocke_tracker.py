@@ -74,8 +74,6 @@ class NuzlockeTracker:
                 finish("battle_ended_unknown")
             elif same_battle and observation.outcome is not None:
                 finish(observation.outcome)
-            elif same_battle and observation.battle_active is True and observation.hp == 0:
-                finish("fainted")
             elif observation.battle_active is False:
                 # An explicit ended battle has an unknown outcome unless positively identified above.
                 finish("battle_ended_unknown")
@@ -126,8 +124,8 @@ class NuzlockeTracker:
         zone["first_encounter"] = deepcopy(encounter)
         tracking["active_encounter"] = encounter
         emit("wild_encounter_started", encounter_id, encounter)
+        # HP is a snapshot, not a battle-result event. A stale or temporary
+        # zero must not consume the attempt or invent a defeated opponent.
         if observation.outcome is not None:
             finish(observation.outcome)
-        elif observation.hp == 0:
-            finish("fainted")
         return events

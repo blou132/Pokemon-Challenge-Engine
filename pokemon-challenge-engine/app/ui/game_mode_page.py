@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from app.bridge.state import BridgeState
 from app.core.catalog import Catalog
 from app.core.rule_observation import level_cap
+from app.core.manual_rule_event import MANUAL_RULES, capture_records
 from app.models.profile import Profile
 from app.services.game_mode_service import RunState
 from app.services.tracking_service import TrackingState
@@ -165,13 +166,14 @@ class GameModePage(QWidget):
         self.active_run_label = label("", "sectionTitle")
         run_row.addWidget(self.active_run_label, 1)
         self.manual_actions_button = QPushButton("Actions manuelles")
-        self.manual_actions_button.setToolTip("Captures, badges et notes ; ajout d'une mort en secours.")
+        self.manual_actions_button.setToolTip("Captures, objets, soins, badges et notes ; ajout d'une mort en secours.")
         self.manual_actions_menu = QMenu(self.manual_actions_button)
         self.manual_actions_menu.setObjectName("manualActions")
         self.manual_actions_menu.setToolTipsVisible(True)
         self.manual_actions = {}
         for text, action in (("Capture · manuel", "manual_capture"),
                              ("Ajouter une mort · secours manuel", "manual_death"),
+                             ("Déclarer / corriger une action", "record_rule_event"),
                              ("Ajouter un badge · manuel", "badge_increment"),
                              ("Retirer un badge · manuel", "badge_decrement"), ("Ajouter une note", "add_note")):
             item = self.manual_actions_menu.addAction(text)
@@ -586,6 +588,8 @@ class GameModePage(QWidget):
         self.manual_actions_button.setEnabled(run is not None)
         for action in self.manual_actions.values():
             action.setEnabled(run is not None)
+        self.manual_actions["record_rule_event"].setEnabled(run is not None and bool(
+            MANUAL_RULES.intersection(run.active_rules)))
         self.death_tracking_label.setVisible(run is not None)
         self.autosave_label.setVisible(run is not None)
         if run is not None:
@@ -655,7 +659,8 @@ class GameModePage(QWidget):
         if pending:
             self.stat_labels["deaths"].setText(self.stat_labels["deaths"].text() + f" · {len(pending)} à confirmer")
             self.stat_labels["deaths"].setToolTip("Une observation à 0 PV demande confirmation dans Mes parties > Détails > Progression.")
-        self.capture_count_label.setText("Captures · Manuel : " + (str(len(run.captures)) if run.captures is not None else "Non renseigné"))
+        records = capture_records(run)
+        self.capture_count_label.setText("Captures · Manuel : " + (str(len(records)) if run.captures is not None or records else "Non renseigné"))
         self.monotype_label.hide()
         self.randomizer_label.hide()
         cap = level_cap(run)

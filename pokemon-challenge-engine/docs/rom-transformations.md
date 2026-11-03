@@ -87,6 +87,89 @@ randomise aussi les autres dresseurs sans thème. Le suivi automatique du starte
 par le rival n'est pas activé. Objets tenus, cadeaux et statiques ne sont pas
 inclus dans les trois catégories d'objets proposées.
 
+### Paramètres supplémentaires (27 octobre 2026)
+
+Les réglages avancés ajoutent les contrôles suivants. Le schéma historique
+reste accepté et sérialisé sans activer implicitement les nouvelles options.
+L'éditeur donne aux options nouvelles des valeurs neutres lorsqu'un ancien
+profil est chargé.
+
+| Paramètre | Comportement appliqué |
+| --- | --- |
+| `starter_similar_strength` | Parmi les starters admissibles, privilégie un total de statistiques à ±10 % du starter source correspondant ; prend les plus proches si cette plage est vide. Trois espèces distinctes restent obligatoires. |
+| `wild_mode` | `random` remplace chaque emplacement ; `area_mapping` conserve une correspondance par table de rencontres ; `global_mapping` conserve une correspondance pour toute la ROM. |
+| `trainer_mode` | Ajoute `distributed` (répartition des espèces) et `main_playthrough` (répartition sur les dresseurs de l'aventure principale), aux modes aléatoire et thèmes existants. |
+| `evolution_mode` | `random` modifie les cibles ; `unchanged` conserve les cibles et requiert la correction des méthodes. Désactiver la catégorie conserve toutes les évolutions. |
+| `evolution_fix_impossible` | Avec la catégorie évolutions activée, ZX remplace les échanges par ses méthodes réalisables ; si les capacités sont randomisées, il adapte aussi les évolutions exigeant une capacité. |
+
+Les tables sauvages incluent routes, grottes, herbes normales/doubles/agitées,
+Surf, pêche et variantes disponibles, avec toutes les saisons. Une table de
+rencontres ZX n'est pas forcément une carte entière : les méthodes et saisons
+peuvent avoir des correspondances différentes en mode `area_mapping`. Le mode
+global est incompatible avec un thème de type par zone ; cette combinaison est
+refusée avant génération. Les restrictions de cible d'évolution ne s'appliquent
+pas au mode qui conserve les cibles. La correction des échanges n'affirme pas
+que chaque objet ou chaque espèce nécessaire sera disponible dans tout challenge.
+
+La sélection de puissance des starters utilise les statistiques de la ROM
+transformée et les totaux des starters sources. Les filtres Monotype et la
+préférence d'évolutions compatibles restent prioritaires. Aucune statistique
+n'est réécrite par ce réglage.
+
+Après sauvegarde, l'adaptateur recharge les ROM et contrôle les correspondances
+sauvages par table/globales, l'absence de cycles d'évolution, la limite à trois
+stades et l'exclusion des anciennes cibles si sélectionnées, la conservation
+des cibles en mode `unchanged`, ainsi que la disparition des méthodes d'échange
+lorsque leur correction est demandée. Les starters relus doivent être exactement
+ceux sélectionnés. Les empreintes des dix catégories continuent de garantir
+que les catégories non sélectionnées n'ont pas changé.
+
+La relecture de Ramassage corrige une particularité de ZX 4.6.1 : son repère
+est constitué des objets originaux, donc disparaît lorsque ces objets sont
+remplacés. L'adaptateur conserve l'offset détecté dans la source validée par CRC,
+le réinjecte dans l'état privé `pickupItemsTableOffset` du lecteur ZX épinglé,
+puis compare chaque objet relu à la table générée. Une table vide est un échec,
+et ne peut plus être présentée comme une catégorie modifiée avec succès. Cette
+adaptation dépend expressément du JAR 4.6.1 dont l'empreinte est vérifiée.
+
+Une matrice reproductible est disponible, avec une ROM originale fournie par
+l'utilisateur et un dossier de sortie neuf :
+
+```powershell
+python -m tools.check_randomizer_options_rom --source "C:\jeux\source.nds" --destination "C:\validations\nouvelle-matrice" --game white --java "C:\jdk\bin\java.exe" --jar "C:\outils\PokeRandoZX.jar"
+```
+
+Chaque cas produit sa dérivée et son manifeste ; `validation.json` récapitule
+les succès et échecs. Les deux cas combinés utilisent exactement les mêmes
+options, seed et source pour comparer les empreintes finales. Cet outil effectue
+une validation structurelle, sans démarrer d'émulateur.
+
+La [matrice du 2 novembre 2026](randomizer-validation-2026-11-02.json)
+réunit **24 transformations réussies** sur les véritables ROM personnelles
+Blanc FR0 et Noir 2 FR0 : neuf cas de réglages/reproductibilité et trois modes
+Monotype seuls par jeu. Les SHA-256 des 24 fichiers finaux et rapports ont été
+recalculés, puis les rapports revalidés contre les options des manifestes.
+Les deux chaînes complètes avec Monotype Feu Pur sont reproductibles octet
+pour octet : Blanc `40f817c8861a7df10408747a4e9f026ec932d00ff49b8c746bc1a059f988992f`,
+Noir 2 `0f5519a9d1e857990d969b8fc7d3afde76f8bbd7492457f264ad063522c635d8`.
+Leurs starters relus sont respectivement `[147, 25, 602]` et `[147, 25, 548]`,
+tous de type effectif Feu seul. Les modes seuls, types d'origine conservés,
+ont également été relus avec leurs filtres légendaires/fabuleux et puissance.
+Les deux premiers essais Souple interrompus pendant une suspension de l'hôte
+ont été rejoués avec succès dans des destinations neuves. Ces interruptions
+et reprises sont distinguées dans le JSON ; aucune sortie échouée n'a été publiée.
+
+La matrice démontre les transformations persistées et leur provenance. Elle
+ne couvre pas les quatre jeux par extrapolation : Noir et Blanc 2 restent sans
+ROM source disponible pour cette validation. Les résultats d'émulation sont
+consignés séparément dans le rapport de livraison.
+
+Deux corrections ont été nécessaires dans les essais réels. La relecture
+de Ramassage ne doit pas dépendre de ses octets originaux une fois randomisés.
+Et ZX extrait NitroFS à côté de son JAR, indépendamment du dossier courant :
+chaque transformation utilise désormais une copie privée du JAR vérifiée par
+empreinte. Des générations simultanées ne partagent plus `tmp_source`.
+
 Pour une **nouvelle configuration Monotype**, l'éditeur propose le remplacement
 réel des trois starters. La case est indépendante de l'activation du Randomizer.
 Le snapshot ajoute `monotype_starters` avec `type_id`, `mode` et
@@ -94,12 +177,19 @@ Le snapshot ajoute `monotype_starters` avec `type_id`, `mode` et
 Strict exige le type primaire, Pur exige exclusivement le type sélectionné.
 La sélection utilise trois espèces de base distinctes, tirées avec un générateur
 déterministe séparé de ZX. Les légendaires/fabuleux sont permis par défaut ;
-les restrictions explicites des starters Randomizer s'appliquent lorsqu'elles
-sont configurées. Les espèces ayant une évolution et dont toutes les évolutions
+l'éditeur Monotype seul permet de les interdire séparément, de privilégier
+la puissance des starters d'origine et de désactiver la préférence d'évolutions.
+Avec Randomizer, les filtres des starters Randomizer s'appliquent ; la préférence
+d'évolutions reste réglable dans la section Monotype. Les espèces ayant une évolution et dont toutes les évolutions
 d'identité exposées restent compatibles sont prioritaires, puis les autres
 espèces compatibles complètent le choix. La création de Munja est exclue de
 ce graphe d'identité. Moins de trois candidats provoque un échec explicite,
 sans publier de ROM.
+
+Ces réglages Monotype seuls sont enregistrés dans le même manifeste et vérifiés
+par le même adaptateur que les réglages Randomizer. Ils ne permettent pas
+d'activer implicitement d'autres catégories. Les profils historiques qui ne
+déclarent pas ces options conservent leurs valeurs et leur provenance.
 
 Lorsque types ou évolutions sont randomisés, la sélection intervient **après**
 leur relecture depuis la ROM intermédiaire. L'API réelle

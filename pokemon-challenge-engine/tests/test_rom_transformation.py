@@ -81,6 +81,23 @@ def test_transform_publishes_new_rom_and_provenance_without_touching_source(tran
     assert case.calls[-1][9] == "512"
 
 
+def test_zx_uses_a_private_verified_jar_to_isolate_nitrofs_work_directories(transformation):
+    seen = []
+
+    def check_private_jar(working, output, report_path):
+        private_jar = Path(transformation.calls[-1][4])
+        assert private_jar != transformation.jar
+        assert private_jar.parent == working.parent == output.parent
+        assert private_jar.read_bytes() == transformation.jar.read_bytes()
+        seen.append(private_jar)
+
+    transformation.changes["action"] = check_private_jar
+    result = transform(transformation)
+    assert seen
+    assert not (result.rom_path.parent / "PokeRandoZX.jar").exists()
+    assert transformation.jar.read_bytes() == b"synthetic-jar"
+
+
 @pytest.mark.parametrize("seed", [-1, 2**63, True, 1.5, "512"])
 def test_invalid_seed_cannot_create_destination(transformation, seed):
     with pytest.raises(ValueError, match="seed"):

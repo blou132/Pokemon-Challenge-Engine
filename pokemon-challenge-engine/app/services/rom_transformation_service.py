@@ -28,7 +28,7 @@ ZX_JAR_SHA256 = "380dc1e6c704a9a4ed8433e8b7892a149390f8912b9107a2a0e7263cfd71c7d
 ZX_RELEASE = "https://github.com/Ajarmar/universal-pokemon-randomizer-zx/releases/tag/v4.6.1"
 LEGACY_CATEGORIES = ("wild", "starters", "trainers", "movesets", "abilities", "field_items", "evolutions", "types")
 CATEGORIES = LEGACY_CATEGORIES + ("shop_items", "pickup_items")
-ADVANCED_DEFAULTS = {
+LEGACY_ADVANCED_DEFAULTS = {
     "starter_legendaries": True, "starter_mythicals": True,
     "wild_legendaries": False, "trainer_legendaries": False,
     "wild_similar_strength": False, "trainer_similar_strength": False, "evolution_similar_strength": False,
@@ -36,6 +36,17 @@ ADVANCED_DEFAULTS = {
     "movesets_same_type": False, "types_follow_evolutions": False,
     "wild_type_themed": False, "trainer_mode": "random",
 }
+ADVANCED_DEFAULTS = {
+    **LEGACY_ADVANCED_DEFAULTS,
+    "starter_similar_strength": False, "wild_mode": "random",
+    "evolution_mode": "random", "evolution_fix_impossible": False,
+}
+ADVANCED_MODES = {
+    "trainer_mode": ("random", "distributed", "main_playthrough", "type_themed", "type_themed_elite4_gyms"),
+    "wild_mode": ("random", "area_mapping", "global_mapping"),
+    "evolution_mode": ("random", "unchanged"),
+}
+STARTER_ADVANCED_KEYS = frozenset({"starter_legendaries", "starter_mythicals", "starter_similar_strength"})
 SUPPORTED_CODES = {"black": "IRBF", "white": "IRAF", "black2": "IREF", "white2": "IRDF"}
 GEN5_TYPES = frozenset({"normal", "fighting", "flying", "poison", "ground", "rock", "bug", "ghost", "steel",
                        "fire", "water", "grass", "electric", "psychic", "ice", "dragon", "dark"})
@@ -60,14 +71,23 @@ class RandomizerOptions:
         if self.balanced and not set(self.categories) & {"wild", "trainers", "evolutions"}:
             raise ValueError("L'équilibrage concerne les rencontres, dresseurs ou évolutions.")
         if self.advanced is not None:
-            if not isinstance(self.advanced, dict) or set(self.advanced) != set(ADVANCED_DEFAULTS):
+            if not isinstance(self.advanced, dict) or set(self.advanced) not in (
+                    set(LEGACY_ADVANCED_DEFAULTS), set(ADVANCED_DEFAULTS)):
                 raise ValueError("Paramètres avancés Randomizer incomplets ou inconnus.")
-            for key in ADVANCED_DEFAULTS:
-                if key != "trainer_mode" and type(self.advanced[key]) is not bool:
+            for key, value in self.advanced.items():
+                if key not in ADVANCED_MODES and type(value) is not bool:
                     raise ValueError("Les paramètres avancés Randomizer doivent être booléens.")
-            if self.advanced["trainer_mode"] not in ("random", "type_themed", "type_themed_elite4_gyms"):
-                raise ValueError("Mode des dresseurs inconnu.")
-            if self.balanced or self.advanced["wild_similar_strength"] and self.advanced["wild_type_themed"]:
+                if key in ADVANCED_MODES and value not in ADVANCED_MODES[key]:
+                    raise ValueError("Mode des dresseurs inconnu." if key == "trainer_mode" else "Mode Randomizer inconnu.")
+            if "wild" in self.categories and self.advanced.get("wild_mode") == "global_mapping" and self.advanced["wild_type_themed"]:
+                raise ValueError("Les thèmes par zone sont incompatibles avec une correspondance sauvage globale.")
+            if "evolutions" in self.categories and self.advanced.get("evolution_mode") == "unchanged":
+                if not self.advanced.get("evolution_fix_impossible"):
+                    raise ValueError("Désactivez les évolutions ou activez la correction des évolutions impossibles.")
+                if any(self.advanced[key] for key in ("evolution_similar_strength", "evolution_same_type",
+                                                    "evolution_three_stages", "evolution_force_change")):
+                    raise ValueError("Les restrictions de cibles nécessitent des évolutions randomisées.")
+            if self.balanced or "wild" in self.categories and self.advanced["wild_similar_strength"] and self.advanced["wild_type_themed"]:
                 raise ValueError("Choisissez des restrictions sauvages compatibles et un équilibrage indépendant.")
         if self.monotype_starters is not None:
             mono = self.monotype_starters
@@ -91,7 +111,8 @@ class RandomizerOptions:
 
     def transformation_order(self):
         custom = self.monotype_starters is not None or "starters" in self.categories and self.advanced is not None and \
-            (not self.advanced["starter_legendaries"] or not self.advanced["starter_mythicals"])
+            (not self.advanced["starter_legendaries"] or not self.advanced["starter_mythicals"] or
+             self.advanced.get("starter_similar_strength", False))
         return ["upr-zx-4.6.1"] + (["pce-starters-v1"] if custom else [])
 
 
@@ -302,6 +323,14 @@ class RomTransformationService:
             adapter = staging / "PceRandomizer.java"
             with _regular(ADAPTER).open("rb") as reader, adapter.open("xb") as writer:
                 shutil.copyfileobj(reader, writer)
+            # ZX puts extracted NitroFS files beside its JAR, independently of
+            # cwd. A private verified JAR prevents two runs (or two app windows)
+            # from sharing/deleting tmp_source and corrupting each other's ROM.
+            private_jar = staging / "PokeRandoZX.jar"
+            with _regular(self.jar_path).open("rb") as reader, private_jar.open("xb") as writer:
+                shutil.copyfileobj(reader, writer)
+            if file_hash(private_jar) != ZX_JAR_SHA256:
+                raise ValueError("Le JAR a changé pendant sa copie privée.")
             output, report_path = staging / "derived.nds", staging / "report.json"
             extra_args = []
             if options.adapter_properties():
@@ -309,12 +338,13 @@ class RomTransformationService:
                 with properties.open("x", encoding="ascii") as handle:
                     handle.write("\n".join(f"{key}={value}" for key, value in sorted(options.adapter_properties().items())) + "\n")
                 extra_args.append(str(properties))
-            self._execute([str(self.java_path), "-Xmx2048M", "-Djava.awt.headless=true", "-cp", str(self.jar_path),
+            self._execute([str(self.java_path), "-Xmx2048M", "-Djava.awt.headless=true", "-cp", str(private_jar),
                            str(adapter), str(working), str(output), str(report_path), str(seed),
                            ",".join(options.to_dict()["categories"]), str(options.balanced).lower(), found[1], *extra_args],
                           cwd=staging, timeout=600)
             if file_signature(source) != source_signature or file_hash(source) != source_hash or \
-                    file_hash(working) != source_hash or file_hash(self.jar_path) != ZX_JAR_SHA256:
+                    file_hash(working) != source_hash or file_hash(self.jar_path) != ZX_JAR_SHA256 or \
+                    file_hash(private_jar) != ZX_JAR_SHA256:
                 raise ValueError("L'entrée ou l'outil a changé pendant la transformation ; résultat non publié.")
             if _read_identity(output) != found:
                 raise ValueError("La ROM dérivée possède une identité inattendue.")
@@ -338,6 +368,7 @@ class RomTransformationService:
             _write_json(staging / "manifest.json", manifest)
             # Remove only our verified working copy; retain derived ROM and provenance.
             _regular(working).unlink()
+            _regular(private_jar).unlink()
             if destination.exists():
                 raise ValueError("Le dossier de destination vient d'être créé ; aucun remplacement effectué.")
             staging.rename(destination)
@@ -365,7 +396,9 @@ def transformation_options(challenge_snapshot: dict) -> RandomizerOptions | None
     active = challenge_snapshot.get("active_rules", [])
     mono = value.get("monotype_starters")
     options = RandomizerOptions(tuple(value["categories"]), value["balanced"], value.get("advanced"), mono)
-    if "randomizer" not in active and (mono is None or set(options.categories) != {"starters"} or options.advanced is not None):
+    if "randomizer" not in active and (mono is None or set(options.categories) != {"starters"} or
+            options.advanced is not None and any(value != ADVANCED_DEFAULTS[key]
+                for key, value in options.advanced.items() if key not in STARTER_ADVANCED_KEYS)):
         raise ValueError("Configuration de transformation ROM invalide ou Randomizer inactif.")
     if mono is not None and ("monotype" not in active or not isinstance(mono, dict) or
             any(mono.get(key) != (challenge_snapshot.get("monotype") or {}).get(key) for key in ("type_id", "mode"))):

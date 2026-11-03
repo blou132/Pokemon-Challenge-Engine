@@ -213,3 +213,122 @@ def test_mutated_advanced_dictionary_is_revalidated_before_tool(transformation):
     with pytest.raises(ValueError, match="Mode des dresseurs"):
         transform(transformation, options=options)
     assert not transformation.calls
+
+
+def test_historical_advanced_schema_roundtrips_without_implicit_options():
+    from app.services.rom_transformation_service import LEGACY_ADVANCED_DEFAULTS
+    legacy = dict(LEGACY_ADVANCED_DEFAULTS)
+    options = RandomizerOptions(advanced=legacy)
+    assert options.to_dict()["advanced"] == legacy
+    assert options.adapter_properties() == {key: str(value).lower() for key, value in legacy.items()}
+    assert "starter_similar_strength" not in options.to_dict()["advanced"]
+
+
+@pytest.mark.parametrize("key,value", [
+    ("wild_mode", "unknown"), ("wild_mode", True), ("evolution_mode", "invalid"),
+    ("starter_similar_strength", 1), ("evolution_fix_impossible", "true"),
+])
+def test_extended_modes_and_flags_reject_invalid_values(key, value):
+    with pytest.raises(ValueError):
+        RandomizerOptions(advanced={**ADVANCED_DEFAULTS, key: value})
+
+
+def test_global_mapping_rejects_zone_themes():
+    with pytest.raises(ValueError, match="globale"):
+        RandomizerOptions(advanced=dict(ADVANCED_DEFAULTS, wild_mode="global_mapping", wild_type_themed=True))
+
+
+def test_preserved_evolution_targets_require_method_correction_and_no_random_target_constraints():
+    with pytest.raises(ValueError, match="impossibles"):
+        RandomizerOptions(("evolutions",), advanced=dict(ADVANCED_DEFAULTS, evolution_mode="unchanged"))
+    advanced = dict(ADVANCED_DEFAULTS, evolution_mode="unchanged", evolution_fix_impossible=True)
+    assert RandomizerOptions(("evolutions",), advanced=advanced).advanced == advanced
+    for key in ("evolution_similar_strength", "evolution_same_type", "evolution_three_stages", "evolution_force_change"):
+        with pytest.raises(ValueError, match="cibles"):
+            RandomizerOptions(("evolutions",), advanced={**advanced, key: True})
+
+
+@pytest.mark.parametrize("wild_mode", ["random", "area_mapping", "global_mapping"])
+@pytest.mark.parametrize("trainer_mode", ["distributed", "main_playthrough"])
+def test_new_randomizer_controls_roundtrip(widget, wild_mode, trainer_mode):
+    advanced = dict(ADVANCED_DEFAULTS, wild_mode=wild_mode, trainer_mode=trainer_mode,
+                    starter_similar_strength=True, evolution_mode="unchanged", evolution_fix_impossible=True)
+    options = RandomizerOptions(CATEGORIES, advanced=advanced)
+    widget.set_options(options)
+    assert widget.options() == options
+    assert options.transformation_order() == ["upr-zx-4.6.1", "pce-starters-v1"]
+    assert options.adapter_properties()["starter_similar_strength"] == "true"
+
+
+def test_legacy_advanced_editor_uses_neutral_defaults_for_new_controls(widget):
+    from app.services.rom_transformation_service import LEGACY_ADVANCED_DEFAULTS
+    widget.set_options(RandomizerOptions(advanced=dict(LEGACY_ADVANCED_DEFAULTS)))
+    assert widget.options().advanced == ADVANCED_DEFAULTS
+
+
+def test_deselected_categories_keep_dormant_options_without_conflicts():
+    advanced = dict(ADVANCED_DEFAULTS, wild_mode="global_mapping", wild_type_themed=True,
+                    wild_similar_strength=True, evolution_mode="unchanged", evolution_force_change=True)
+    options = RandomizerOptions(("starters",), advanced=advanced)
+    assert options.advanced == advanced
+    assert options.transformation_order() == ["upr-zx-4.6.1"]
+
+
+def test_historical_advanced_manifest_keeps_its_provenance(transformation):
+    from app.services.rom_transformation_service import LEGACY_ADVANCED_DEFAULTS, verified_transformation_report
+    options = RandomizerOptions(advanced=dict(LEGACY_ADVANCED_DEFAULTS))
+    data = report(categories=options.categories)
+    data.update(schema_version=2, adapter_options=options.adapter_properties())
+    transformation.changes["report"] = data
+    result = transform(transformation, options=options)
+    configuration = {"seed": 512, "active_rules": ["randomizer"],
+                     "settings": {"rom_transformation": {"kind": "zx", **options.to_dict()}}}
+    reread = verified_transformation_report(result.rom_path.parent, result.rom_path, game_id="white",
+                                            rom_sha256=result.manifest["output_sha256"], configuration=configuration)
+    assert reread == data
+    assert result.manifest["options"]["advanced"] == LEGACY_ADVANCED_DEFAULTS
+
+
+def test_monotype_only_starter_options_roundtrip_without_enabling_randomizer(page):
+    page.state_controls["randomizer"].setCurrentIndex(2)
+    page.state_controls["monotype"].setCurrentIndex(0)
+    page.monotype_starter_checks["starter_legendaries"].setChecked(False)
+    page.monotype_starter_checks["starter_mythicals"].setChecked(False)
+    page.monotype_starter_checks["starter_similar_strength"].setChecked(True)
+    page.monotype_prefer_evolutions_check.setChecked(False)
+    page.generate()
+    assert page.challenge is not None
+    assert "randomizer" not in page.challenge.active_rules
+    expected = transformation_options(page.challenge.to_dict())
+    assert expected.categories == ("starters",)
+    assert not expected.advanced["starter_legendaries"]
+    assert not expected.advanced["starter_mythicals"]
+    assert expected.advanced["starter_similar_strength"]
+    assert not expected.monotype_starters["prefer_evolutions"]
+    page.load_challenge(page.challenge)
+    page.generate()
+    assert transformation_options(page.challenge.to_dict()) == expected
+
+
+def test_monotype_only_cannot_smuggle_other_randomizer_options(catalog):
+    challenge = ChallengeEngine(catalog).generate("white", "custom", {"monotype": "required"}, 0, 123)
+    challenge.monotype.update(type_id="fire", mode="soft")
+    options = RandomizerOptions(("starters",), advanced=dict(ADVANCED_DEFAULTS, wild_legendaries=True),
+                                monotype_starters=monotype())
+    challenge.settings["rom_transformation"] = {"kind": "zx", **options.to_dict()}
+    with pytest.raises(ValueError, match="Randomizer inactif"):
+        transformation_options(challenge.to_dict())
+
+
+def test_monotype_combination_keeps_randomizer_starter_filters_and_evolution_preference(page):
+    page.state_controls["monotype"].setCurrentIndex(0)
+    advanced = dict(ADVANCED_DEFAULTS, starter_legendaries=False, starter_mythicals=False)
+    page.randomizer_widget.set_options(RandomizerOptions(CATEGORIES, advanced=advanced))
+    page.monotype_prefer_evolutions_check.setChecked(False)
+    page.generate()
+    expected = transformation_options(page.challenge.to_dict())
+    assert expected.advanced == advanced
+    assert not expected.monotype_starters["prefer_evolutions"]
+    page.load_challenge(page.challenge)
+    page.generate()
+    assert transformation_options(page.challenge.to_dict()) == expected

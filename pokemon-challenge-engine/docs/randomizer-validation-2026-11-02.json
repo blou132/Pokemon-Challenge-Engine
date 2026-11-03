@@ -1,0 +1,2806 @@
+{
+  "schema_version": 1,
+  "validation_date": "2026-11-02",
+  "kind": "real_ROM_generation_and_reread",
+  "seed": 5122026,
+  "emulator": "not_tested_by_this_matrix",
+  "source_ROMs_distributed": false,
+  "games": {
+    "white": {
+      "source_sha256_verified": "0a7d6e87d9878c2fb903bcca01ecc8f9a186d0eed14ddbc87912ae126faa0bdb",
+      "cases": {
+        "pickup_only": {
+          "status": "passed",
+          "output_sha256_verified": "ce9b63277db3cf618a072da423f556919514a6fc41b0fd2810ffbbdba3c9a8aa",
+          "report_sha256_verified": "b6f775ea8fe6de8427ed5c98de9aa72369ca68332a7d4ba8c0a472cddecfd659",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "pickup_items"
+            ]
+          },
+          "changed_categories": [
+            "pickup_items"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "starter_power": {
+          "status": "passed",
+          "output_sha256_verified": "042a09bcff160bdac8649df9ec960651c7e1910cb196d2bd97c9fb648b6fbe54",
+          "report_sha256_verified": "7a728369acadcefbd13fd7a5106e1d67f4c63bd70449886b488829d3ba65363d",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "starters"
+            ]
+          },
+          "changed_categories": [
+            "starters"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 63,
+              "form": 0,
+              "types": [
+                "psychic"
+              ],
+              "evolutions": [
+                64
+              ],
+              "identity_evolutions": [
+                64
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 64,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 16
+                }
+              ]
+            },
+            {
+              "species_id": 322,
+              "form": 0,
+              "types": [
+                "fire",
+                "ground"
+              ],
+              "evolutions": [
+                323
+              ],
+              "identity_evolutions": [
+                323
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 323,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 33
+                }
+              ]
+            },
+            {
+              "species_id": 309,
+              "form": 0,
+              "types": [
+                "electric"
+              ],
+              "evolutions": [
+                310
+              ],
+              "identity_evolutions": [
+                310
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 310,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 26
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "wild_area": {
+          "status": "passed",
+          "output_sha256_verified": "34548218a8e966966ea2bbf181499b2034747cd16d6ef6c0d2f52051679e992c",
+          "report_sha256_verified": "c18c27fd97a429f85421570b6f7b4bcdbcf3df7b708205994c4759b006c501eb",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "area_mapping",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "wild"
+            ]
+          },
+          "changed_categories": [
+            "wild"
+          ],
+          "unchanged_categories": [
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "wild_global": {
+          "status": "passed",
+          "output_sha256_verified": "61667219c3a7cdd725890e5b36a31e0e8a2a5781554f77cea37861b913913ba3",
+          "report_sha256_verified": "64d466b79e0fbec6554ab4f8e2fccc80c5f8fe4b7df17e3008a7f6842df624c2",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "global_mapping",
+              "wild_similar_strength": true,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "wild"
+            ]
+          },
+          "changed_categories": [
+            "wild"
+          ],
+          "unchanged_categories": [
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "trainers_distributed": {
+          "status": "passed",
+          "output_sha256_verified": "99cb61cdfc6f0995fb7020204593af63aaa1c7ab2727b7c9c3da5a9c0fd320a3",
+          "report_sha256_verified": "31d2800fb015b39cafaf3d473f1726dcd4dfa8f25c9b7f6e2ca89ec434252159",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "distributed",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "trainers"
+            ]
+          },
+          "changed_categories": [
+            "trainers"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "starters",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "trainers_main": {
+          "status": "passed",
+          "output_sha256_verified": "66d90483e7affe42207783957c9d635ecf52469e1b75d671063a7f23487e19d2",
+          "report_sha256_verified": "0741e270f6b78f540eb63b0cacfe606e6450d4b027fbbf16a9d82bb0ad34006e",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "main_playthrough",
+              "trainer_similar_strength": true,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "trainers"
+            ]
+          },
+          "changed_categories": [
+            "trainers"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "starters",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "evolution_methods": {
+          "status": "passed",
+          "output_sha256_verified": "ea3f423a4a424ef0472403c4ffae88649d2969820efddc4e8e4adbe05b6567e4",
+          "report_sha256_verified": "6f56dd2caae4195450b9ea2bbb576943e29c5d67da2dca838b53f4f34d75a7d6",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": true,
+              "evolution_force_change": false,
+              "evolution_mode": "unchanged",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "evolutions"
+            ]
+          },
+          "changed_categories": [
+            "evolutions"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "combined_a": {
+          "status": "passed",
+          "output_sha256_verified": "40f817c8861a7df10408747a4e9f026ec932d00ff49b8c746bc1a059f988992f",
+          "report_sha256_verified": "23a25f7c2d6b6ec39534a93797a76098adfa7aafc45e9e88848105a24e106121",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": true,
+              "evolution_force_change": true,
+              "evolution_mode": "random",
+              "evolution_same_type": true,
+              "evolution_similar_strength": true,
+              "evolution_three_stages": true,
+              "movesets_same_type": true,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "distributed",
+              "trainer_similar_strength": true,
+              "types_follow_evolutions": true,
+              "wild_legendaries": false,
+              "wild_mode": "global_mapping",
+              "wild_similar_strength": true,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "wild",
+              "starters",
+              "trainers",
+              "movesets",
+              "abilities",
+              "field_items",
+              "evolutions",
+              "types",
+              "shop_items",
+              "pickup_items"
+            ],
+            "monotype_starters": {
+              "mode": "pure",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "wild",
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "unchanged_categories": [],
+          "starters": [
+            {
+              "species_id": 147,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                603
+              ],
+              "identity_evolutions": [
+                603
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 603,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 30
+                }
+              ]
+            },
+            {
+              "species_id": 25,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                101
+              ],
+              "identity_evolutions": [
+                101
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 101,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 83
+                }
+              ]
+            },
+            {
+              "species_id": 602,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                627
+              ],
+              "identity_evolutions": [
+                627
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 627,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 39
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "combined_b": {
+          "status": "passed",
+          "output_sha256_verified": "40f817c8861a7df10408747a4e9f026ec932d00ff49b8c746bc1a059f988992f",
+          "report_sha256_verified": "23a25f7c2d6b6ec39534a93797a76098adfa7aafc45e9e88848105a24e106121",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": true,
+              "evolution_force_change": true,
+              "evolution_mode": "random",
+              "evolution_same_type": true,
+              "evolution_similar_strength": true,
+              "evolution_three_stages": true,
+              "movesets_same_type": true,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "distributed",
+              "trainer_similar_strength": true,
+              "types_follow_evolutions": true,
+              "wild_legendaries": false,
+              "wild_mode": "global_mapping",
+              "wild_similar_strength": true,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "wild",
+              "starters",
+              "trainers",
+              "movesets",
+              "abilities",
+              "field_items",
+              "evolutions",
+              "types",
+              "shop_items",
+              "pickup_items"
+            ],
+            "monotype_starters": {
+              "mode": "pure",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "wild",
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "unchanged_categories": [],
+          "starters": [
+            {
+              "species_id": 147,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                603
+              ],
+              "identity_evolutions": [
+                603
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 603,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 30
+                }
+              ]
+            },
+            {
+              "species_id": 25,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                101
+              ],
+              "identity_evolutions": [
+                101
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 101,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 83
+                }
+              ]
+            },
+            {
+              "species_id": 602,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                627
+              ],
+              "identity_evolutions": [
+                627
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 627,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 39
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "monotype_soft": {
+          "status": "passed",
+          "output_sha256_verified": "e0bd23662204c922cf91088c374268e99367ec837ff7c4470078f7b281755299",
+          "report_sha256_verified": "12fab226a726bce7143103a80d4341051441fd0c8255bd4a0a9ab67c9859a6eb",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "starters"
+            ],
+            "monotype_starters": {
+              "mode": "soft",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "starters"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 255,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                256
+              ],
+              "identity_evolutions": [
+                256
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 256,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 16
+                }
+              ]
+            },
+            {
+              "species_id": 322,
+              "form": 0,
+              "types": [
+                "fire",
+                "ground"
+              ],
+              "evolutions": [
+                323
+              ],
+              "identity_evolutions": [
+                323
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 323,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 33
+                }
+              ]
+            },
+            {
+              "species_id": 4,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                5
+              ],
+              "identity_evolutions": [
+                5
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 5,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 16
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "monotype_strict": {
+          "status": "passed",
+          "output_sha256_verified": "5f591563e73d7b850a95fb9890bff3d19b87a21375ff90c37700e43f1d55e553",
+          "report_sha256_verified": "12a4cc872ce87f19f68cd406270624c63985913eeaf9f2ed795bae7917fb18d1",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "starters"
+            ],
+            "monotype_starters": {
+              "mode": "strict",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "starters"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 322,
+              "form": 0,
+              "types": [
+                "fire",
+                "ground"
+              ],
+              "evolutions": [
+                323
+              ],
+              "identity_evolutions": [
+                323
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 323,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 33
+                }
+              ]
+            },
+            {
+              "species_id": 390,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                391
+              ],
+              "identity_evolutions": [
+                391
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 391,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 14
+                }
+              ]
+            },
+            {
+              "species_id": 513,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                514
+              ],
+              "identity_evolutions": [
+                514
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 514,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 82
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "monotype_pure": {
+          "status": "passed",
+          "output_sha256_verified": "c7d879ebd0d647c4926e3acd2ee89fe23af705780f0047ae2d6b03329a5da80d",
+          "report_sha256_verified": "6a679aeac186d47fd7ae45b73b6a3f669abd7a723adb12b6ee2296cc0a2fe885",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "starters"
+            ],
+            "monotype_starters": {
+              "mode": "pure",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "starters"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 37,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                38
+              ],
+              "identity_evolutions": [
+                38
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 38,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 82
+                }
+              ]
+            },
+            {
+              "species_id": 513,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                514
+              ],
+              "identity_evolutions": [
+                514
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 514,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 82
+                }
+              ]
+            },
+            {
+              "species_id": 155,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                156
+              ],
+              "identity_evolutions": [
+                156
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 156,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 14
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        }
+      },
+      "reproducible_combined": true
+    },
+    "black2": {
+      "source_sha256_verified": "693c009dc031e74d01e00385f7156386c457640ebf800e1a04629e1e07aa7d37",
+      "cases": {
+        "pickup_only": {
+          "status": "passed",
+          "output_sha256_verified": "19c3fe3cc4fcaac773d8b60aae02fee59a3c76864ece7c3c39f3086b76097277",
+          "report_sha256_verified": "840ca85aee31de73c2d3a0247a962eb2781bc76a7e6ccd4393e09565fd35e0c2",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "pickup_items"
+            ]
+          },
+          "changed_categories": [
+            "pickup_items"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "starter_power": {
+          "status": "passed",
+          "output_sha256_verified": "15935f0a5227c56297d0f6bf7a0aa89272115ad5591405bc85a6071411c3bf2c",
+          "report_sha256_verified": "67b5464c6a819c52af7938e72140906190860f8fd4ba1166151d5865c2627fe1",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "starters"
+            ]
+          },
+          "changed_categories": [
+            "starters"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 63,
+              "form": 0,
+              "types": [
+                "psychic"
+              ],
+              "evolutions": [
+                64
+              ],
+              "identity_evolutions": [
+                64
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 64,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 16
+                }
+              ]
+            },
+            {
+              "species_id": 322,
+              "form": 0,
+              "types": [
+                "fire",
+                "ground"
+              ],
+              "evolutions": [
+                323
+              ],
+              "identity_evolutions": [
+                323
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 323,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 33
+                }
+              ]
+            },
+            {
+              "species_id": 309,
+              "form": 0,
+              "types": [
+                "electric"
+              ],
+              "evolutions": [
+                310
+              ],
+              "identity_evolutions": [
+                310
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 310,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 26
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "wild_area": {
+          "status": "passed",
+          "output_sha256_verified": "3dd35d1a3a76c68727c9a7ec49ab4db36bbf3eb44f83f8d3667f01d741157847",
+          "report_sha256_verified": "24b68a12043663a259fa635c3332b323f4654498b38964a1e28287248634c5e3",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "area_mapping",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "wild"
+            ]
+          },
+          "changed_categories": [
+            "wild"
+          ],
+          "unchanged_categories": [
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "wild_global": {
+          "status": "passed",
+          "output_sha256_verified": "636179919d1f2f4ab3141f86b0d70a70641b51d21c40afdc8b5c24e82ee0af1e",
+          "report_sha256_verified": "9be413679ef8632d85566aac55f80c79cd0d39c04c24d0d1721ed4dccb28ff68",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "global_mapping",
+              "wild_similar_strength": true,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "wild"
+            ]
+          },
+          "changed_categories": [
+            "wild"
+          ],
+          "unchanged_categories": [
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "trainers_distributed": {
+          "status": "passed",
+          "output_sha256_verified": "9a87dcaa17883a520ba5887be551d0eae0f9a63f4448aa73ffea9ea6854d1abd",
+          "report_sha256_verified": "b08ba06ddcaca6e46cc76d87f11a28cd62615e669a3d7e1d156c3897fc99fed2",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "distributed",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "trainers"
+            ]
+          },
+          "changed_categories": [
+            "trainers"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "starters",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "trainers_main": {
+          "status": "passed",
+          "output_sha256_verified": "c051bcad21a1fc958a469547a39fe20a59c9c95015b57be789cc91aebf7ee6ef",
+          "report_sha256_verified": "2803d134d45f4c488b3d06c586c35cb95dbfbc09712dd4dbe1811ac846f24d8f",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "main_playthrough",
+              "trainer_similar_strength": true,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "trainers"
+            ]
+          },
+          "changed_categories": [
+            "trainers"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "starters",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "evolution_methods": {
+          "status": "passed",
+          "output_sha256_verified": "b00ed4b76c5c62fddc4dbc176e065968d7636bd5aa0fb3334af07d4536fc7a10",
+          "report_sha256_verified": "cfa1eb999141892e08ec7041ccb3008d56c59c794e553f0e8a0b37a5196aa8e2",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": true,
+              "evolution_force_change": false,
+              "evolution_mode": "unchanged",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": true,
+              "starter_mythicals": true,
+              "starter_similar_strength": false,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "evolutions"
+            ]
+          },
+          "changed_categories": [
+            "evolutions"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 495,
+              "form": 0,
+              "types": [
+                "grass"
+              ],
+              "evolutions": [
+                496
+              ],
+              "identity_evolutions": [
+                496
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 496,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 498,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                499
+              ],
+              "identity_evolutions": [
+                499
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 499,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            },
+            {
+              "species_id": 501,
+              "form": 0,
+              "types": [
+                "water"
+              ],
+              "evolutions": [
+                502
+              ],
+              "identity_evolutions": [
+                502
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 502,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 17
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "combined_a": {
+          "status": "passed",
+          "output_sha256_verified": "0f5519a9d1e857990d969b8fc7d3afde76f8bbd7492457f264ad063522c635d8",
+          "report_sha256_verified": "81599adb848997fc0068b8cf8b8a23acb8d1360e1f6b4bb95bcfc58fc34f23c7",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": true,
+              "evolution_force_change": true,
+              "evolution_mode": "random",
+              "evolution_same_type": true,
+              "evolution_similar_strength": true,
+              "evolution_three_stages": true,
+              "movesets_same_type": true,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "distributed",
+              "trainer_similar_strength": true,
+              "types_follow_evolutions": true,
+              "wild_legendaries": false,
+              "wild_mode": "global_mapping",
+              "wild_similar_strength": true,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "wild",
+              "starters",
+              "trainers",
+              "movesets",
+              "abilities",
+              "field_items",
+              "evolutions",
+              "types",
+              "shop_items",
+              "pickup_items"
+            ],
+            "monotype_starters": {
+              "mode": "pure",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "wild",
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "unchanged_categories": [],
+          "starters": [
+            {
+              "species_id": 147,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                241
+              ],
+              "identity_evolutions": [
+                241
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 241,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 30
+                }
+              ]
+            },
+            {
+              "species_id": 25,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                549
+              ],
+              "identity_evolutions": [
+                549
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 549,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 83
+                }
+              ]
+            },
+            {
+              "species_id": 548,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                26
+              ],
+              "identity_evolutions": [
+                26
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 26,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 80
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "combined_b": {
+          "status": "passed",
+          "output_sha256_verified": "0f5519a9d1e857990d969b8fc7d3afde76f8bbd7492457f264ad063522c635d8",
+          "report_sha256_verified": "81599adb848997fc0068b8cf8b8a23acb8d1360e1f6b4bb95bcfc58fc34f23c7",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": true,
+              "evolution_force_change": true,
+              "evolution_mode": "random",
+              "evolution_same_type": true,
+              "evolution_similar_strength": true,
+              "evolution_three_stages": true,
+              "movesets_same_type": true,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "distributed",
+              "trainer_similar_strength": true,
+              "types_follow_evolutions": true,
+              "wild_legendaries": false,
+              "wild_mode": "global_mapping",
+              "wild_similar_strength": true,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "wild",
+              "starters",
+              "trainers",
+              "movesets",
+              "abilities",
+              "field_items",
+              "evolutions",
+              "types",
+              "shop_items",
+              "pickup_items"
+            ],
+            "monotype_starters": {
+              "mode": "pure",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "wild",
+            "starters",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "unchanged_categories": [],
+          "starters": [
+            {
+              "species_id": 147,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                241
+              ],
+              "identity_evolutions": [
+                241
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 241,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 30
+                }
+              ]
+            },
+            {
+              "species_id": 25,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                549
+              ],
+              "identity_evolutions": [
+                549
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 549,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 83
+                }
+              ]
+            },
+            {
+              "species_id": 548,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                26
+              ],
+              "identity_evolutions": [
+                26
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 26,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 80
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "monotype_soft": {
+          "status": "passed",
+          "output_sha256_verified": "89c278bb788386832263a2a14d995638cc5eac2875970ea3a0e8a38f8b0dfa96",
+          "report_sha256_verified": "c356b592ac0824f6f177522eb942b54809bb3c729be0adfcb10a8e36d90c98c5",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "starters"
+            ],
+            "monotype_starters": {
+              "mode": "soft",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "starters"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 255,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                256
+              ],
+              "identity_evolutions": [
+                256
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 256,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 16
+                }
+              ]
+            },
+            {
+              "species_id": 322,
+              "form": 0,
+              "types": [
+                "fire",
+                "ground"
+              ],
+              "evolutions": [
+                323
+              ],
+              "identity_evolutions": [
+                323
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 323,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 33
+                }
+              ]
+            },
+            {
+              "species_id": 4,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                5
+              ],
+              "identity_evolutions": [
+                5
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 5,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 16
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "monotype_strict": {
+          "status": "passed",
+          "output_sha256_verified": "aa20cc7469b0d5f648802e634a2330be520a7b299be5297688ab50f512b7ebef",
+          "report_sha256_verified": "9ba6ff8307008c453e51f1a04e0d58a8896496aeeb9647aa41bf8458db564f50",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "starters"
+            ],
+            "monotype_starters": {
+              "mode": "strict",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "starters"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 322,
+              "form": 0,
+              "types": [
+                "fire",
+                "ground"
+              ],
+              "evolutions": [
+                323
+              ],
+              "identity_evolutions": [
+                323
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 323,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 33
+                }
+              ]
+            },
+            {
+              "species_id": 390,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                391
+              ],
+              "identity_evolutions": [
+                391
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 391,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 14
+                }
+              ]
+            },
+            {
+              "species_id": 513,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                514
+              ],
+              "identity_evolutions": [
+                514
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 514,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 82
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        },
+        "monotype_pure": {
+          "status": "passed",
+          "output_sha256_verified": "8c71a2cf17ec52862202c81d8719989600cb99c0fd5dc65693ee6fd835ca93d6",
+          "report_sha256_verified": "22c228eb316af9c30af48f4712124386e97c14f530dfbc13fe2c73476a165892",
+          "options": {
+            "advanced": {
+              "evolution_fix_impossible": false,
+              "evolution_force_change": false,
+              "evolution_mode": "random",
+              "evolution_same_type": false,
+              "evolution_similar_strength": false,
+              "evolution_three_stages": false,
+              "movesets_same_type": false,
+              "starter_legendaries": false,
+              "starter_mythicals": false,
+              "starter_similar_strength": true,
+              "trainer_legendaries": false,
+              "trainer_mode": "random",
+              "trainer_similar_strength": false,
+              "types_follow_evolutions": false,
+              "wild_legendaries": false,
+              "wild_mode": "random",
+              "wild_similar_strength": false,
+              "wild_type_themed": false
+            },
+            "balanced": false,
+            "categories": [
+              "starters"
+            ],
+            "monotype_starters": {
+              "mode": "pure",
+              "prefer_evolutions": true,
+              "type_id": "fire"
+            }
+          },
+          "changed_categories": [
+            "starters"
+          ],
+          "unchanged_categories": [
+            "wild",
+            "trainers",
+            "movesets",
+            "abilities",
+            "field_items",
+            "evolutions",
+            "types",
+            "shop_items",
+            "pickup_items"
+          ],
+          "starters": [
+            {
+              "species_id": 37,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                38
+              ],
+              "identity_evolutions": [
+                38
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 38,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 82
+                }
+              ]
+            },
+            {
+              "species_id": 513,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                514
+              ],
+              "identity_evolutions": [
+                514
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 514,
+                  "form": 0,
+                  "method": "STONE",
+                  "parameter": 82
+                }
+              ]
+            },
+            {
+              "species_id": 155,
+              "form": 0,
+              "types": [
+                "fire"
+              ],
+              "evolutions": [
+                156
+              ],
+              "identity_evolutions": [
+                156
+              ],
+              "evolution_conditions": [
+                {
+                  "species_id": 156,
+                  "form": 0,
+                  "method": "LEVEL",
+                  "parameter": 14
+                }
+              ]
+            }
+          ],
+          "rom_reloaded_by_ZX": true,
+          "source_unchanged": true
+        }
+      },
+      "reproducible_combined": true
+    }
+  },
+  "interrupted_attempts": {
+    "monotype_soft": {
+      "white": "host/quota suspension then successful retry",
+      "black2": "host/quota suspension then successful retry"
+    },
+    "combined_b_black2": "interrupted original process then successful retry"
+  },
+  "passed_cases": 24
+}

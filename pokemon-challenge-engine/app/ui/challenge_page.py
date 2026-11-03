@@ -16,10 +16,10 @@ from app.core.challenge_engine import ChallengeEngine
 from app.core.monotype import select_type
 from app.core.profile_manager import ProfileManager
 from app.core.random_selector import RandomSelector
-from app.core.rule_engine import RuleEngine
+from app.core.rule_engine import RuleEngine, combination_notes
 from app.models.challenge import Challenge
 from app.services.rom_transformation_service import (
-    RandomizerOptions, RandomizerToolStore, RomTransformationService, transformation_options,
+    ADVANCED_DEFAULTS, RandomizerOptions, RandomizerToolStore, RomTransformationService, transformation_options,
 )
 from app.services.randomizer_tool_discovery_service import RandomizerToolDiscoveryService
 from app.ui.monotype_wheel import MonotypeDialog
@@ -41,6 +41,7 @@ def challenge_summary(challenge: Challenge, catalog: Catalog) -> str:
     for rule_id in challenge.active_rules:
         rule = catalog.rules.get(rule_id)
         lines.append("• " + (rule.name if rule else rule_id))
+    lines.extend(combination_notes(challenge.active_rules))
     if "shiny_only" in challenge.active_rules:
         lines.extend(["", "Shiny Only : contrôle de présence, sans modification des apparitions.",
                       "Taux original conservé · aucun patch appliqué (base Gen V : 1/8192, hors bonus et rencontres spéciales)."])
@@ -228,10 +229,25 @@ class ChallengePage(QWidget):
         extras_box.addWidget(self.monotype_note)
         self.monotype_starters_check = QCheckBox("Remplacer les trois starters dans la ROM dédiée (ZX requis)")
         self.monotype_starters_check.setChecked(True)
-        self.monotype_starters_check.setToolTip("Trois espèces distinctes compatibles, légendaires autorisés, évolutions compatibles privilégiées. "
+        self.monotype_starters_check.setToolTip("Trois espèces distinctes compatibles. "
             "Le choix utilise les types et évolutions effectifs après randomisation et la seed du challenge.")
         self.monotype_starters_check.toggled.connect(self.invalidate)
         extras_box.addWidget(self.monotype_starters_check)
+        self.monotype_prefer_evolutions_check = QCheckBox("Starters Monotype : privilégier les évolutions compatibles")
+        self.monotype_prefer_evolutions_check.setChecked(True)
+        self.monotype_prefer_evolutions_check.toggled.connect(self.invalidate)
+        extras_box.addWidget(self.monotype_prefer_evolutions_check)
+        self.monotype_starter_options = QWidget()
+        mono_starters_layout = QFormLayout(self.monotype_starter_options)
+        mono_starters_layout.setContentsMargins(0, 0, 0, 0)
+        self.monotype_starter_checks = {}
+        for key in ("starter_legendaries", "starter_mythicals", "starter_similar_strength"):
+            check = QCheckBox(ADVANCED_LABELS[key])
+            check.setChecked(ADVANCED_DEFAULTS[key])
+            check.toggled.connect(self.invalidate)
+            self.monotype_starter_checks[key] = check
+            mono_starters_layout.addRow(check)
+        extras_box.addWidget(self.monotype_starter_options)
         self.shiny_rate_group = QWidget()
         shiny_form = QFormLayout(self.shiny_rate_group)
         shiny_form.setContentsMargins(0, 0, 0, 0)
@@ -519,6 +535,10 @@ class ChallengePage(QWidget):
         self.monotype_row.setVisible(monotype_active)
         self.monotype_note.setVisible(monotype_active)
         self.monotype_starters_check.setVisible(monotype_active)
+        mono_starters_active = monotype_active and self.monotype_starters_check.isChecked()
+        self.monotype_prefer_evolutions_check.setVisible(mono_starters_active)
+        self.monotype_starter_options.setVisible(mono_starters_active and
+            not (randomizer_active and self.randomizer_widget.enabled_check.isChecked()))
         self.wheel_button.setEnabled(monotype_active)
         self.shiny_rate_group.setVisible(shiny_active)
         self._update_shiny_rate_support()
@@ -554,10 +574,14 @@ class ChallengePage(QWidget):
             if "monotype" in self.challenge.active_rules and self.monotype_starters_check.isChecked():
                 if configuration is None:
                     configuration = {"kind": "zx", "categories": ["starters"], "balanced": False}
+                    starter_flags = {key: check.isChecked() for key, check in self.monotype_starter_checks.items()}
+                    if any(value != ADVANCED_DEFAULTS[key] for key, value in starter_flags.items()):
+                        configuration["advanced"] = {**ADVANCED_DEFAULTS, **starter_flags}
                 elif "starters" not in configuration["categories"]:
                     configuration["categories"].append("starters")
                 configuration["monotype_starters"] = {"type_id": self.challenge.monotype["type_id"],
-                    "mode": self.challenge.monotype["mode"], "prefer_evolutions": True}
+                    "mode": self.challenge.monotype["mode"],
+                    "prefer_evolutions": self.monotype_prefer_evolutions_check.isChecked()}
             if configuration is not None:
                 self.challenge.settings["rom_transformation"] = configuration
                 errors = self.engine.validate(self.challenge)
@@ -652,6 +676,10 @@ class ChallengePage(QWidget):
         self.monotype_config = dict(challenge.monotype) if challenge.monotype else None
         options = transformation_options(challenge.to_dict())
         self.monotype_starters_check.setChecked(options is not None and options.monotype_starters is not None)
+        self.monotype_prefer_evolutions_check.setChecked(
+            (options.monotype_starters or {}).get("prefer_evolutions", True) if options else True)
+        for key, check in self.monotype_starter_checks.items():
+            check.setChecked((options.advanced or {}).get(key, ADVANCED_DEFAULTS[key]) if options else ADVANCED_DEFAULTS[key])
         self.randomizer_widget.set_options(options or RandomizerOptions(),
             enabled=options is not None or "randomizer" not in challenge.active_rules)
         self.name_edit.setText(name + " · copie" if name else "")

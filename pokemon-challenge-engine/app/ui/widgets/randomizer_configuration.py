@@ -20,6 +20,7 @@ CATEGORY_LABELS = {
 ADVANCED_LABELS = {
     "starter_legendaries": "Starters : autoriser les légendaires",
     "starter_mythicals": "Starters : autoriser les fabuleux",
+    "starter_similar_strength": "Starters : puissance comparable aux starters d'origine",
     "wild_legendaries": "Sauvages : autoriser légendaires et fabuleux",
     "trainer_legendaries": "Dresseurs : autoriser légendaires et fabuleux",
     "wild_similar_strength": "Sauvages : puissance similaire",
@@ -28,11 +29,14 @@ ADVANCED_LABELS = {
     "evolution_same_type": "Évolutions : privilégier le même type",
     "evolution_three_stages": "Évolutions : au plus trois stades",
     "evolution_force_change": "Évolutions : exclure la cible d'origine",
+    "evolution_fix_impossible": "Évolutions : remplacer les échanges impossibles",
     "movesets_same_type": "Capacités : privilégier le type du Pokémon",
     "types_follow_evolutions": "Types : suivre les évolutions",
     "wild_type_themed": "Sauvages : un thème de type par zone",
 }
 CATEGORY_NOTES = {
+    "wild": "Routes, grottes, herbes, Surf, pêche et variantes saisonnières présentes dans les tables ZX.",
+    "evolutions": "Randomisation des cibles sans cycles, ou correction des méthodes en conservant les cibles.",
     "trainers": "Inclut les champions ; aucun mode champions seuls.",
     "movesets": "Capacités apprises par niveau, pas toutes les CT ni les tuteurs.",
     "field_items": "Objets ordinaires et CT au sol compatibles avec ZX, pas tous les objets du jeu.",
@@ -91,15 +95,33 @@ class RandomizerConfiguration(QWidget):
             check.toggled.connect(self._options_changed)
             self.advanced_checks[key] = check
             advanced_grid.addWidget(check, index // 2, index % 2)
-        self.trainer_mode = QComboBox()
-        for title, value in (("Équipes aléatoires", "random"), ("Thèmes de types pour les dresseurs", "type_themed"),
-                             ("Thèmes de types pour champions et Conseil 4", "type_themed_elite4_gyms")):
-            self.trainer_mode.addItem(title, value)
-        self.trainer_mode.currentIndexChanged.connect(self._options_changed)
-        advanced_grid.addWidget(self.trainer_mode, 7, 0, 1, 2)
+        self.advanced_modes = {}
+        mode_choices = {
+            "wild_mode": (("Sauvages : rencontres indépendantes", "random"),
+                          ("Sauvages : correspondance par table de zone", "area_mapping"),
+                          ("Sauvages : correspondance globale", "global_mapping")),
+            "trainer_mode": (("Dresseurs : équipes aléatoires", "random"),
+                             ("Dresseurs : répartir les espèces", "distributed"),
+                             ("Dresseurs : répartition dans l'aventure principale", "main_playthrough"),
+                             ("Dresseurs : thèmes de types", "type_themed"),
+                             ("Dresseurs : thèmes champions et Conseil 4", "type_themed_elite4_gyms")),
+            "evolution_mode": (("Évolutions : randomiser les espèces obtenues", "random"),
+                               ("Évolutions : conserver les espèces, corriger les méthodes", "unchanged")),
+        }
+        mode_row = (len(ADVANCED_LABELS) + 1) // 2
+        for index, (key, choices) in enumerate(mode_choices.items()):
+            combo = QComboBox()
+            for title, value in choices:
+                combo.addItem(title, value)
+            combo.currentIndexChanged.connect(self._options_changed)
+            self.advanced_modes[key] = combo
+            advanced_grid.addWidget(combo, mode_row + index, 0, 1, 2)
+        self.trainer_mode = self.advanced_modes["trainer_mode"]
         advanced_grid.addWidget(label("Les options ne s'appliquent qu'aux catégories cochées. ZX ne sépare pas les fabuleux "
             "des légendaires sauvages/dresseurs et ne propose pas de filtre de type arbitraire. Les rivaux sont inclus "
-            "dans les dresseurs ; leur équipe ne suit pas automatiquement le starter choisi.", "muted"), 8, 0, 1, 2)
+            "dans les dresseurs ; leur équipe ne suit pas automatiquement le starter choisi. Les tables sauvages "
+            "comprennent Surf, pêche, herbes spéciales et saisons. La puissance comparable des starters privilégie "
+            "un total de statistiques à ±10 %, puis le plus proche si nécessaire.", "muted"), mode_row + len(mode_choices), 0, 1, 2)
         grid.addWidget(self.advanced_widget, row + 2, 0, 1, 2)
         presets = QHBoxLayout()
         for title, preset in (("Classique", "classic"), ("Complet", "full"), ("Personnalisé", "custom")):
@@ -203,7 +225,7 @@ class RandomizerConfiguration(QWidget):
         advanced = None
         if self.advanced_check.isChecked():
             advanced = {key: check.isChecked() for key, check in self.advanced_checks.items()}
-            advanced["trainer_mode"] = self.trainer_mode.currentData()
+            advanced.update({key: combo.currentData() for key, combo in self.advanced_modes.items()})
         return RandomizerOptions(tuple(key for key in CATEGORIES if self.category_checks[key].isChecked()),
                                  self.balanced_check.isChecked(), advanced)
 
@@ -220,10 +242,11 @@ class RandomizerConfiguration(QWidget):
         self._loading = True
         try:
             self.advanced_check.setChecked(options.advanced is not None)
-            advanced = options.advanced or ADVANCED_DEFAULTS
+            advanced = {**ADVANCED_DEFAULTS, **(options.advanced or {})}
             for key, check in self.advanced_checks.items():
                 check.setChecked(advanced[key])
-            self.trainer_mode.setCurrentIndex(self.trainer_mode.findData(advanced["trainer_mode"]))
+            for key, combo in self.advanced_modes.items():
+                combo.setCurrentIndex(combo.findData(advanced[key]))
             for key, check in self.category_checks.items():
                 check.setChecked(key in options.categories)
             self.balanced_check.setChecked(options.balanced)

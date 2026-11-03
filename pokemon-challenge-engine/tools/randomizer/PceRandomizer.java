@@ -13,6 +13,7 @@ import com.dabomstew.pkrandom.pokemon.*;
 import com.dabomstew.pkrandom.romhandlers.Gen5RomHandler;
 import com.dabomstew.pkrandom.romhandlers.RomHandler;
 import java.io.*;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.security.MessageDigest;
@@ -55,7 +56,22 @@ public class PceRandomizer {
         return true;
     }
 
+    static int baseStatTotal(Pokemon p) {
+        return p.hp + p.attack + p.defense + p.spatk + p.spdef + p.speed;
+    }
+
+    static List<Integer> starterStrengths(RomHandler rom) {
+        List<Integer> result = new ArrayList<>();
+        for (Pokemon p : rom.getStarters()) result.add(baseStatTotal(p));
+        return result;
+    }
+
     static List<Pokemon> selectStarters(RomHandler rom, Properties options, long seed) {
+        return selectStarters(rom, options, seed, flag(options, "starter_similar_strength", false)
+            ? starterStrengths(rom) : Collections.emptyList());
+    }
+
+    static List<Pokemon> selectStarters(RomHandler rom, Properties options, long seed, List<Integer> originalStrengths) {
         List<Pokemon> preferred = new ArrayList<>(), remaining = new ArrayList<>();
         for (Pokemon p : rom.getPokemon()) {
             if (p == null || p.formeNumber != 0 || p.number > 649 || !matches(p, options)) continue;
@@ -69,9 +85,30 @@ public class PceRandomizer {
         Random random = new Random(seed ^ 0x5043455354415254L);
         Collections.shuffle(preferred, random);
         Collections.shuffle(remaining, random);
-        preferred.addAll(remaining);
-        if (preferred.size() < 3) throw new IllegalArgumentException("Fewer than three distinct eligible Monotype starters");
-        return new ArrayList<>(preferred.subList(0, 3));
+        if (preferred.size() + remaining.size() < 3)
+            throw new IllegalArgumentException("Fewer than three distinct eligible starters");
+        if (!flag(options, "starter_similar_strength", false)) {
+            preferred.addAll(remaining);
+            return new ArrayList<>(preferred.subList(0, 3));
+        }
+        if (originalStrengths.size() != 3) throw new IllegalArgumentException("Expected three original starter strengths");
+        List<Pokemon> selected = new ArrayList<>();
+        for (int reference : originalStrengths) {
+            // Type eligibility and compatible evolution preference remain primary.
+            // Within that pool use +/-10% BST; when empty choose the nearest BST.
+            List<Pokemon> pool = preferred.isEmpty() ? remaining : preferred;
+            int nearest = Integer.MAX_VALUE;
+            for (Pokemon p : pool) nearest = Math.min(nearest, Math.abs(baseStatTotal(p) - reference));
+            int tolerance = Math.max(reference / 10, nearest);
+            for (Pokemon p : pool) {
+                if (Math.abs(baseStatTotal(p) - reference) <= tolerance) {
+                    selected.add(p);
+                    break;
+                }
+            }
+            pool.remove(selected.get(selected.size() - 1));
+        }
+        return selected;
     }
 
     static void verifyRestrictions(RomHandler rom, Set<String> categories, Properties options) {
@@ -91,6 +128,124 @@ public class PceRandomizer {
         if (categories.contains("trainers") && !flag(options, "trainer_legendaries", false))
             for (Trainer trainer : rom.getTrainers()) for (TrainerPokemon p : trainer.pokemon)
                 if (p.pokemon.isLegendary()) throw new IllegalStateException("Reread trainer legendary is forbidden");
+    }
+
+    static void configureModes(Settings settings, Set<String> categories, Properties options) {
+        if (categories.contains("wild")) {
+            String mode = options.getProperty("wild_mode", "random");
+            int index = Arrays.asList("random", "area_mapping", "global_mapping").indexOf(mode);
+            if (index < 0 || mode.equals("global_mapping") && flag(options, "wild_type_themed", false))
+                throw new IllegalArgumentException("Invalid or incompatible wild mode");
+            settings.setWildPokemonMod(choice(4, index + 1));
+        }
+        if (categories.contains("trainers")) {
+            int index = Arrays.asList("random", "distributed", "main_playthrough", "type_themed", "type_themed_elite4_gyms")
+                .indexOf(options.getProperty("trainer_mode", "random"));
+            if (index < 0) throw new IllegalArgumentException("Invalid trainer mode");
+            settings.setTrainersMod(choice(6, index + 1));
+        }
+        if (categories.contains("evolutions")) {
+            String mode = options.getProperty("evolution_mode", "random");
+            boolean fix = flag(options, "evolution_fix_impossible", false);
+            if (!Arrays.asList("random", "unchanged").contains(mode) || mode.equals("unchanged") && !fix)
+                throw new IllegalArgumentException("Unchanged evolution targets require method correction");
+            settings.setEvolutionsMod(choice(3, mode.equals("random") ? 1 : 0));
+            settings.setChangeImpossibleEvolutions(fix);
+        }
+    }
+
+    static List<List<Integer>> encounterSpecies(RomHandler rom) {
+        List<List<Integer>> result = new ArrayList<>();
+        for (EncounterSet area : rom.getEncounters(true)) {
+            List<Integer> species = new ArrayList<>();
+            for (Encounter e : area.encounters) species.add(e.pokemon.number);
+            result.add(species);
+        }
+        return result;
+    }
+
+    static void verifyEncounterMapping(List<List<Integer>> before, List<List<Integer>> after, String mode) {
+        if (before.size() != after.size()) throw new IllegalStateException("Encounter tables changed in number");
+        Map<Integer, Integer> mapping = new HashMap<>();
+        for (int area = 0; area < before.size(); area++) {
+            if (before.get(area).size() != after.get(area).size())
+                throw new IllegalStateException("Encounter slots changed in number");
+            if (mode.equals("area_mapping")) mapping.clear();
+            for (int slot = 0; slot < before.get(area).size(); slot++) {
+                int source = before.get(area).get(slot), target = after.get(area).get(slot);
+                Integer previous = mapping.putIfAbsent(source, target);
+                if (previous != null && previous != target)
+                    throw new IllegalStateException("Reread encounter mapping is inconsistent");
+            }
+        }
+    }
+
+    static Map<Integer, Set<Integer>> evolutionTargets(RomHandler rom) {
+        Map<Integer, Set<Integer>> result = new TreeMap<>();
+        for (Pokemon p : rom.getPokemonInclFormes()) {
+            if (p == null) continue;
+            Set<Integer> targets = new TreeSet<>();
+            for (Evolution e : p.evolutionsFrom) targets.add(e.to.number);
+            result.put(p.number, targets);
+        }
+        return result;
+    }
+
+    static int evolutionDepth(int species, Map<Integer, Set<Integer>> targets, Set<Integer> visiting,
+                              Map<Integer, Integer> depths) {
+        if (depths.containsKey(species)) return depths.get(species);
+        if (!visiting.add(species)) throw new IllegalStateException("Reread evolution cycle");
+        int depth = 1;
+        for (int target : targets.getOrDefault(species, Collections.emptySet()))
+            depth = Math.max(depth, 1 + evolutionDepth(target, targets, visiting, depths));
+        visiting.remove(species);
+        depths.put(species, depth);
+        return depth;
+    }
+
+    static void verifyEvolutions(RomHandler rom, Map<Integer, Set<Integer>> before, Properties options) {
+        Map<Integer, Set<Integer>> after = evolutionTargets(rom);
+        boolean randomized = !options.getProperty("evolution_mode", "random").equals("unchanged");
+        if (!randomized && !before.equals(after))
+            throw new IllegalStateException("Preserved evolution targets changed");
+        Map<Integer, Integer> depths = new HashMap<>();
+        for (int species : after.keySet()) {
+            int depth = evolutionDepth(species, after, new HashSet<>(), depths);
+            if (randomized && flag(options, "evolution_three_stages", false) && depth > 3)
+                throw new IllegalStateException("Reread evolution exceeds three stages");
+            if (randomized && flag(options, "evolution_force_change", false) &&
+                !Collections.disjoint(before.getOrDefault(species, Collections.emptySet()), after.get(species)))
+                throw new IllegalStateException("Reread evolution retained an original target");
+        }
+        if (flag(options, "evolution_fix_impossible", false)) {
+            for (Pokemon p : rom.getPokemonInclFormes()) {
+                if (p == null) continue;
+                for (Evolution e : p.evolutionsFrom)
+                    if (e.type == EvolutionType.TRADE || e.type == EvolutionType.TRADE_ITEM || e.type == EvolutionType.TRADE_SPECIAL)
+                        throw new IllegalStateException("Reread trade evolution was not replaced");
+            }
+        }
+    }
+
+    static void verifyPickupItems(List<PickupItem> expected, List<PickupItem> actual) {
+        if (expected.isEmpty() || expected.size() != actual.size())
+            throw new IllegalStateException("Reread Pickup table is missing or incomplete");
+        for (int i = 0; i < expected.size(); i++)
+            if (expected.get(i).item != actual.get(i).item)
+                throw new IllegalStateException("Reread Pickup item differs from the generated table");
+    }
+
+    static void preparePickupReread(RomHandler original, RomHandler reread) throws ReflectiveOperationException {
+        // ZX 4.6.1 finds this table using its original item bytes. Randomization
+        // overwrites that signature. Reuse only the offset found in the CRC-checked
+        // source, then compare every persisted item with ZX's generated table.
+        // The pinned JAR hash guards this narrow dependency on private ZX state.
+        Field offset = Gen5RomHandler.class.getDeclaredField("pickupItemsTableOffset");
+        offset.setAccessible(true);
+        int originalOffset = offset.getInt(original);
+        if (originalOffset <= 0) throw new IllegalStateException("Original Pickup table was not located");
+        offset.setInt(reread, originalOffset);
+        verifyPickupItems(original.getPickupItems(), reread.getPickupItems());
     }
 
     static boolean[] choice(int count, int selected) {
@@ -224,29 +379,26 @@ public class PceRandomizer {
         if (!Arrays.asList("true", "false").contains(args[5])) throw new IllegalArgumentException("Invalid balance flag");
         boolean balanced = Boolean.parseBoolean(args[5]);
         boolean customStarters = options.containsKey("monotype_type_id") || categories.contains("starters") &&
-            (!flag(options, "starter_legendaries", true) || !flag(options, "starter_mythicals", true));
+            (!flag(options, "starter_legendaries", true) || !flag(options, "starter_mythicals", true) ||
+             flag(options, "starter_similar_strength", false));
         RomHandler rom = load(source);
         if (!rom.isRomValid()) throw new IllegalArgumentException("Source does not match ZX clean-ROM CRCs");
         if (!args[6].equals(rom.getROMCode())) throw new IllegalArgumentException("Unexpected game code");
         Map<String, String> before = fingerprints(rom);
+        List<Integer> originalStrengths = starterStrengths(rom);
+        List<List<Integer>> originalEncounters = encounterSpecies(rom);
+        Map<Integer, Set<Integer>> originalEvolutions = evolutionTargets(rom);
         Settings settings = new Settings();
         settings.setCustomNames(FileFunctions.getCustomNames());
         settings.setRomName(rom.getROMName());
         // Serialized even when EXP normalization is disabled in Settings.
         settings.setSelectedEXPCurve(ExpCurve.MEDIUM_FAST);
         settings.setCustomStarters(rom.getStarters().stream().mapToInt(p -> p.number).toArray());
-        if (categories.contains("wild")) settings.setWildPokemonMod(choice(4, 1));
+        configureModes(settings, categories, options);
         if (categories.contains("starters") && !customStarters) settings.setStartersMod(choice(4, 2));
-        if (categories.contains("trainers")) {
-            String mode = options.getProperty("trainer_mode", "random");
-            int trainerChoice = Arrays.asList("random", "type_themed", "type_themed_elite4_gyms").indexOf(mode);
-            if (trainerChoice < 0) throw new IllegalArgumentException("Invalid trainer mode");
-            settings.setTrainersMod(choice(6, trainerChoice == 0 ? 1 : trainerChoice + 3));
-        }
         if (categories.contains("movesets")) settings.setMovesetsMod(choice(4, flag(options, "movesets_same_type", false) ? 1 : 2));
         if (categories.contains("abilities")) settings.setAbilitiesMod(choice(2, 1));
         if (categories.contains("field_items")) settings.setFieldItemsMod(choice(4, 2));
-        if (categories.contains("evolutions")) settings.setEvolutionsMod(choice(3, 1));
         if (categories.contains("types")) settings.setTypesMod(choice(3, flag(options, "types_follow_evolutions", false) ? 1 : 2));
         if (categories.contains("shop_items")) {
             if (!rom.hasShopRandomization()) throw new IllegalArgumentException("Shops unavailable for this ROM");
@@ -276,14 +428,26 @@ public class PceRandomizer {
         try (PrintStream log = new PrintStream(Files.newOutputStream(output.resolveSibling("randomizer.log"), StandardOpenOption.CREATE_NEW), false, "UTF-8")) {
             check = new Randomizer(settings, rom, ResourceBundle.getBundle("com/dabomstew/pkrandom/newgui/Bundle"), false).randomize(randomized.toString(), log, seed);
         }
+        List<Integer> expectedStarters = new ArrayList<>();
         if (customStarters) {
             RomHandler effective = load(randomized);
-            if (!effective.setStarters(selectStarters(effective, options, seed)) || !effective.saveRomFile(output.toString(), seed))
+            List<Pokemon> selected = selectStarters(effective, options, seed, originalStrengths);
+            for (Pokemon p : selected) expectedStarters.add(p.number);
+            if (!effective.setStarters(selected) || !effective.saveRomFile(output.toString(), seed))
                 throw new IllegalStateException("Could not persist starters");
         }
         RomHandler reread = load(output);
         if (!reread.getROMCode().equals(args[6])) throw new IllegalArgumentException("Derived identity changed");
         verifyRestrictions(reread, categories, options);
+        if (customStarters) {
+            List<Integer> actualStarters = new ArrayList<>();
+            for (Pokemon p : reread.getStarters()) actualStarters.add(p.number);
+            if (!expectedStarters.equals(actualStarters)) throw new IllegalStateException("Selected starters did not persist");
+        }
+        if (categories.contains("wild") && !options.getProperty("wild_mode", "random").equals("random"))
+            verifyEncounterMapping(originalEncounters, encounterSpecies(reread), options.getProperty("wild_mode"));
+        if (categories.contains("evolutions")) verifyEvolutions(reread, originalEvolutions, options);
+        if (categories.contains("pickup_items")) preparePickupReread(rom, reread);
         Map<String, String> after = fingerprints(reread);
         for (String category : CATEGORIES) {
             boolean changed = !before.get(category).equals(after.get(category));

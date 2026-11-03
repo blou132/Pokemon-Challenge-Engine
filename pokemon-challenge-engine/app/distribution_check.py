@@ -69,7 +69,14 @@ def run_check(application, window, paths, report_path: Path) -> None:
         assert species_types(1, "black")
         for name in ("black.lua", "white.lua", "black2.lua", "white2.lua", "common/bridge.lua"):
             assert (paths.resources / "lua" / name).is_file()
-        assert (paths.resources / "tools/randomizer/PceRandomizer.java").is_file()
+        for name in ("PceRandomizer.java", "PceBlzDecode.java", "PceBlzEncode.java"):
+            assert (paths.resources / "tools/randomizer" / name).is_file()
+        from tools.shiny_field_trial import ENCODER, patch_body
+        from tools.shiny_arm9_inspect import DECODER
+        assert ENCODER.is_file() and DECODER.is_file()
+        assert patch_body(1) != patch_body(4096)
+        report["shiny_resources"] = {"imported": True, "java_sources_present": True,
+                                     "scope": "packaged resources only; no ROM patched by this check"}
         if (paths.installation / "third-party/randomizer").is_dir():
             from app.services.rom_transformation_service import RomTransformationService
             tool = RomTransformationService.from_local_config(paths.data)

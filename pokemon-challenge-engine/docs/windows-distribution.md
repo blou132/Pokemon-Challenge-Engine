@@ -7,6 +7,19 @@ l'EXE. L'icône géométrique est celle de l'application ; la version est issue 
 La version numérique courante est `0.5.0` ; l’interface indique explicitement
 « en validation », sans présenter cette étape comme une validation achevée.
 
+Le nouveau lot et son annexe sont produits dans `runtime/windows-v05-20261102/`.
+Le [rapport du 2 novembre](v0.5-delivery-20261102.md) décrit ce lot ; les chemins
+`windows-v05-final-03` ci-dessous désignent la livraison historique conservée.
+Le manifeste du nouveau ZIP inclut le SHA du code, l'état Git et les empreintes
+des entrées de construction. Une modification des sources pendant le build
+interrompt sa publication. Le ZIP contient les guides Markdown et sources PCE.
+
+`packaging/windows/verify_windows_bundle.py --zip ARCHIVE --extract-to DOSSIER_NEUF
+--report RAPPORT.json` vérifie toutes les empreintes, l'inventaire exact, les
+manifestes de composants et l'absence de ROM, sauvegardes et préférences privées
+avant extraction. Les save states `.ml1` et les sauvegardes `.sav.bak` sont
+également exclus. Le répertoire d'extraction et le rapport doivent être nouveaux.
+
 ## Lancement du paquet préparé
 
 1. Extraire entièrement `Pokemon-Challenge-Engine-0.5.0-windows-x64.zip`
@@ -80,6 +93,12 @@ Aucune ROM ni sauvegarde n'est ouverte à son ancien chemin. Un espace non
 reconnu, des chemins mélangés ou externes, une empreinte modifiée ou une
 sauvegarde attendue absente interrompent l'import avant publication. Le dossier
 déplacé reste intact ; une collision dans la destination n'est jamais écrasée.
+
+L'import utilise le préfixe Unicode Windows uniquement dans son dossier temporaire,
+pour éviter que celui-ci ne rende trop long un chemin final encore accepté par
+DeSmuME. Les chemins enregistrés et transmis à l'émulateur restent ordinaires.
+Aucun réglage du registre n'est modifié. Voir la
+[documentation Microsoft des chemins longs](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation).
 
 ## Construction reproductible
 
@@ -202,6 +221,7 @@ Pour compléter la validation Randomizer, les évolutions déclenchées et les o
 utilisés dans le jeu restent à essayer sur une aventure indépendante. Les
 contrôles des autres challenges doivent être comparés aux capacités annoncées
 dans **Détails → Règles** : une information indisponible ne doit pas devenir une
-violation supposée. Le taux shiny personnalisé reste désactivé. Étendre les
+violation supposée. Le patch shiny expérimental est limité à Blanc FR0 reconnu,
+avec herbe normale vérifiée ; les autres catégories ne sont pas validées. Étendre les
 essais à d’autres jeux seulement après identification de leur version/révision.
 Les résultats vérifiés sur Blanc ne sont pas une validation universelle.

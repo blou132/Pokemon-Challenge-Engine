@@ -10,6 +10,12 @@ et sa passerelle Lua pour les parties existantes.
 dans la mémoire du jeu. Les contrôles d'équipe signalent les écarts dans PCE ;
 le suivi manuel est conservé et aucun blocage en combat n'est annoncé.
 
+La livraison des 2–3 novembre ajoute le journal des rencontres et actions avec
+corrections historisées, les paramètres avancés ZX et Monotype, et les commandes
+natives melonDS depuis PCE (vitesse, dispositions, save states et accès aux
+réglages). Le [rapport de livraison](docs/v0.5-delivery-20261102.md) distingue les
+essais en jeu des tests de logiciel et précise les limites restantes.
+
 ![Accueil de l'application — capture V0.1](docs/screenshots/accueil-1920.png)
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)
@@ -18,7 +24,10 @@ La branche V0.5 ajoute les [contrôles de règles](docs/gen5-rule-observation.md
 Shiny Only, Monotype, Level Cap, stades évolutifs, historique et capacités
 explicites pour les quinze règles. **Détails → Règles** et le **Mode Jeu** affichent
 les résultats des observations enregistrées, sans confondre présence et utilisation
-en combat. Le taux shiny personnalisé reste désactivé faute de patch ROM validé.
+en combat. Sur Blanc FR révision 0 reconnu, un patch expérimental propose les
+taux 1/4096, 1/1024, 1/512, 1/128 et 100 % pour le générateur terrain. L'herbe
+normale a été vérifiée en émulation ; les autres catégories ne sont pas validées
+et les verrous antishiny restent actifs. Les autres ROM conservent le taux original.
 Le [Randomizer sur copies](docs/rom-transformations.md) utilise ZX 4.6.1 :
 catégories choisies, seed reproductible et provenance conservée dans la partie.
 La [proposition initiale](docs/v0.5-proposal.md) conserve le contexte de départ.
@@ -69,7 +78,7 @@ Elle affiche **V0.5.0 · en validation**. Extraire le ZIP complet, puis ouvrir
 `Pokemon-Challenge-Engine.exe` par double-clic ; conserver `_internal` et
 `third-party` près de lui. Lire ses notices et conserver l'annexe de sources
 melonDS avec l'archive principale lors d'une redistribution. Les résultats de
-l'EXE extrait et les SHA256 sont dans le [rapport](docs/v0.5-melonds-validation.md).
+l'EXE extrait et les SHA256 sont dans le [rapport de livraison](docs/v0.5-delivery-20261102.md).
 La branche courante est `feat/melonds-integration`, sans fusion dans `main`.
 
 ## Mes parties — V0.4.1
@@ -525,8 +534,9 @@ les sauvegardes, les environnements Python, les caches et les secrets sont exclu
 
 Le catalogue contient 15 règles. Les jeux futurs sont décrits dans les données mais
 restent indisponibles. Une forte augmentation du catalogue nécessitera d'adapter la
-recherche de combinaisons. Les blocages stricts, le vrai Randomizer et
-l'empaquetage PyInstaller ne sont pas implémentés.
+recherche de combinaisons. ZX transforme réellement les copies de ROM et la
+distribution PyInstaller inclut les composants nécessaires. Les restrictions de
+combat sont des alertes PCE, sans blocage dans Pokémon.
 
 Les observations valides alimentent uniquement le profil actif compatible dont
 la règle Nuzlocke est sélectionnée. Les profils livrés peuvent actuellement

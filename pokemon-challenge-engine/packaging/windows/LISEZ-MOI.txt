@@ -68,6 +68,27 @@ Un test Qt et persistance réussi ne prouve pas le fonctionnement d'un jeu.
 Un essai sur ce poste de développement avec environnement isolé ne constitue
 pas un essai sur une installation Windows vierge.
 
+NOUVELLES COMMANDES ET SUIVI
+Depuis le Mode Jeu d'une partie melonDS, ouvrir Paramètres > Commandes melonDS.
+La vitesse (x1, x2, x4, MAX), la disposition et les slots sont confirmés par
+l'émulateur. Clavier/manette et graphismes ouvrent ses dialogues natifs depuis PCE.
+Ces commandes nécessitent le composant pce.2 de cette livraison ; une ancienne
+partie qui conserve pce.1 garde ses commandes natives et sa sauvegarde.
+Ne pas remplacer manuellement les fichiers d'une ancienne aventure.
+
+Dans Détails > Règles ou Actions manuelles du Mode Jeu, déclarer les rencontres,
+captures, fuites, objets, soins ou actions interdites. Une correction conserve
+l'historique. Une capture déclarée comme résultat de rencontre compte déjà :
+ne pas l'ajouter une seconde fois dans le formulaire Capture.
+Le statut des quinze règles est détaillé dans
+application-source/docs/v0.5-delivery-20261102.md.
+La lecture de l'équipe et ses alertes ne bloquent pas les actions dans Pokémon.
+Blanc FR révision 0 reconnu propose un patch shiny expérimental : 1/4096, 1/1024,
+1/512, 1/128 ou 100 % pour le générateur terrain. L'herbe normale a été vérifiée
+en émulation ; les autres catégories ne sont pas validées. Les verrous antishiny
+restent actifs. Les autres ROM conservent le taux original. Le contrôle des PID
+et le taux original restent disponibles pour les quatre jeux.
+
 Licences, notices et sources : THIRD-PARTY-NOTICES.txt, licenses,
 third-party-sources et application-source. Les composants tiers optionnels
 conservent leur licence et manifeste sous third-party.

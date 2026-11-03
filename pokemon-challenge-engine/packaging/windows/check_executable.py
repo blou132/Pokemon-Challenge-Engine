@@ -43,6 +43,8 @@ def check(executable: Path, output: Path):
                "not_tested": ["fresh Windows OS installation", "game/emulator execution", "portable marker end-to-end"]}
     if all(report.get("bundled_randomizer", {}).get("verified") for report in reports):
         summary["tested"].append("bundled Java compiler and official ZX discovered without local configuration")
+    if all(report.get("shiny_resources", {}).get("imported") for report in reports):
+        summary["tested"].append("shiny patch modules and Java encoder/decoder available in the executable")
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, indent=2))
 

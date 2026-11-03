@@ -18,9 +18,33 @@ PROJECT = Path(__file__).resolve().parents[2]
 NAME = "Pokemon-Challenge-Engine"
 
 
+def forbidden_distribution_path(path: Path) -> bool:
+    """Recognize personal data even when a save has a backup suffix."""
+    name = path.name.lower()
+    return (
+        bool(re.search(r"\.(?:nds|gba|gbc?|sav|dsv|dst|rom|srm|duc|ml[0-9]|ds[0-9]|state[0-9]*)(?:\.|$)", name))
+        or path.suffix.lower() == ".bin"
+        or name in {"config.json", "run.json", "progress.json", "setup.local.json",
+                    "melonds.toml", "melonds.ini", "desmume.ini", ".env"}
+        or name.startswith(("bios7", "bios9", "firmware.bin"))
+        or any(part.lower() in {"user-data", "runs", "saves", "savestates", "profiles", "backups"}
+               for part in path.parts)
+    )
+
+
 def digest(path):
     with Path(path).open("rb") as handle:
         return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def source_snapshot():
+    """Track all inputs that may enter the executable or its corresponding sources."""
+    folders = ("app", "data", "lua", "tools", "packaging/windows", "docs")
+    suffixes = {".py", ".json", ".lua", ".java", ".md", ".txt", ".vbs", ".ps1"}
+    files = [PROJECT / "README.md"]
+    files.extend(path for folder in folders for path in (PROJECT / folder).rglob("*")
+                 if path.is_file() and (path.suffix in suffixes or path.name == "COPYING"))
+    return {path.relative_to(PROJECT).as_posix(): digest(path) for path in sorted(files)}
 
 
 def component_files(component: Path) -> tuple[dict, list[Path]]:
@@ -41,7 +65,7 @@ def component_files(component: Path) -> tuple[dict, list[Path]]:
         path = local_path(component / relative)
         if not path.is_file() or not re.fullmatch(r"[a-f0-9]{64}", expected) or digest(path) != expected:
             raise ValueError(f"Component file failed verification: {name}")
-        if path.suffix.lower() in {".nds", ".gba", ".sav", ".dsv", ".dst", ".bin", ".rom"}:
+        if forbidden_distribution_path(relative):
             raise ValueError("ROM, firmware and save files cannot be distributed")
         files.append(path)
     return manifest, files
@@ -52,6 +76,12 @@ def build(output: Path, components: list[Path], qt_sources: Path):
         raise ValueError("Build on Windows using a project-local virtual environment")
     if importlib.metadata.version("pyinstaller") != "6.22.3":
         raise ValueError("Install the pinned packaging/windows/requirements-build.txt first")
+    inputs = source_snapshot()
+    try:
+        source_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=PROJECT, text=True).strip()
+        source_dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=PROJECT, text=True).strip())
+    except (OSError, subprocess.CalledProcessError):
+        source_commit, source_dirty = None, None
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     work = output / "build"
@@ -139,14 +169,17 @@ def build(output: Path, components: list[Path], qt_sources: Path):
                 shutil.copy2(distribution.locate_file(item), target)
     # Ship editable application source and exact build recipe for LGPL relinking.
     for folder, suffixes in (("app", {".py"}), ("data", {".json", ".md"}), ("lua", {".lua", ".md"}),
-                             ("packaging/windows", {".py", ".txt", ".vbs"}), ("tools/randomizer", {".java", ".md"})):
+                             ("packaging/windows", {".py", ".txt", ".vbs"}), ("tools", {".py", ".java", ".md", ".ps1"})):
         for path in sorted((PROJECT / folder).rglob("*")):
             if path.is_file() and (path.suffix in suffixes or path.name == "COPYING"):
                 target = bundle / "application-source" / path.relative_to(PROJECT)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, target)
     (bundle / "application-source/docs").mkdir(exist_ok=True)
-    shutil.copy2(PROJECT / "docs/windows-distribution.md", bundle / "application-source/docs/windows-distribution.md")
+    for document in sorted((PROJECT / "docs").iterdir()):
+        if document.is_file() and document.suffix in {".md", ".json"}:
+            shutil.copy2(document, bundle / "application-source/docs" / document.name)
+    shutil.copy2(PROJECT / "README.md", bundle / "application-source/README.md")
     bundled_components = []
     for component in components:
         component = component.resolve()
@@ -159,14 +192,16 @@ def build(output: Path, components: list[Path], qt_sources: Path):
             shutil.copy2(source, target)
         shutil.copy2(component / "component-manifest.json", target_root / "component-manifest.json")
         bundled_components.append({key: manifest[key] for key in ("name", "version", "source_url", "license_file")})
-    forbidden = {".nds", ".gba", ".sav", ".dsv", ".dst", ".rom"}
-    if any(path.suffix.lower() in forbidden or path.name in {"config.json", "run.json", "progress.json"}
+    if any(forbidden_distribution_path(path.relative_to(bundle))
            for path in bundle.rglob("*") if path.is_file()):
         raise ValueError("Personal game data detected in bundle")
     manifest = {"name": NAME, "version": __version__, "python": sys.version,
+                "source_commit": source_commit, "source_dirty": source_dirty, "source_files": inputs,
                 "build_packages": {name: importlib.metadata.version(name) for name in packages},
                 "components": bundled_components,
                 "files": {path.relative_to(bundle).as_posix(): digest(path) for path in sorted(bundle.rglob("*")) if path.is_file()}}
+    if source_snapshot() != inputs:
+        raise ValueError("Source files changed during the build; use a new output directory after edits finish")
     (bundle / "distribution-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     archive = output / f"{NAME}-{__version__}-windows-x64.zip"
     with zipfile.ZipFile(archive, "x", zipfile.ZIP_DEFLATED, compresslevel=6) as handle:

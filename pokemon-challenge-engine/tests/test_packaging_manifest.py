@@ -58,7 +58,9 @@ def test_component_path_escape_is_rejected(builder, component, name):
         builder.component_files(root)
 
 
-@pytest.mark.parametrize("name", ["game.nds", "GAME.NDS", "save.dsv", "firmware.bin", "state.dst"])
+@pytest.mark.parametrize("name", ["game.nds", "GAME.NDS", "save.dsv", "firmware.bin", "state.dst",
+                                 "state.ml1", "game.sav.bak", "backup.NDS.old", "state.ds0",
+                                 "config.json", "run.json", "melonDS.toml"])
 def test_component_rom_save_and_firmware_are_rejected(builder, component, name):
     root, data = component
     (root / name).write_bytes(b"synthetic restricted file")

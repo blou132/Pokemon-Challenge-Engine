@@ -48,6 +48,10 @@ ADVANCED_MODES = {
 }
 STARTER_ADVANCED_KEYS = frozenset({"starter_legendaries", "starter_mythicals", "starter_similar_strength"})
 SUPPORTED_CODES = {"black": "IRBF", "white": "IRAF", "black2": "IREF", "white2": "IRDF"}
+SHINY_DENOMINATORS = (4096, 1024, 512, 128, 1)
+SHINY_SCOPE = ("Patch expérimental du générateur terrain de Blanc FR révision 0 : herbe normale vérifiée ; "
+               "autres catégories non validées. Starters, cadeaux, statiques et œufs non garantis. "
+               "Les verrous antishiny sont conservés ; le patch peut affecter d'autres chemins partagés.")
 GEN5_TYPES = frozenset({"normal", "fighting", "flying", "poison", "ground", "rock", "bug", "ghost", "steel",
                        "fire", "water", "grass", "electric", "psychic", "ice", "dragon", "dark"})
 OWNER = "pokemon-challenge-engine-rom-transformation"
@@ -60,9 +64,13 @@ class RandomizerOptions:
     balanced: bool = False
     advanced: dict | None = None
     monotype_starters: dict | None = None
+    shiny_denominator: int | None = None
 
     def __post_init__(self):
-        if not isinstance(self.categories, tuple) or not self.categories or \
+        if self.shiny_denominator is not None and (type(self.shiny_denominator) is not int or
+                                                 self.shiny_denominator not in SHINY_DENOMINATORS):
+            raise ValueError("Taux shiny du générateur terrain non pris en charge.")
+        if not isinstance(self.categories, tuple) or not self.categories and self.shiny_denominator is None or \
                 any(not isinstance(item, str) or item not in CATEGORIES for item in self.categories) or \
                 len(set(self.categories)) != len(self.categories):
             raise ValueError("Choisissez au moins une catégorie Randomizer prise en charge, sans doublon.")
@@ -102,6 +110,8 @@ class RandomizerOptions:
             result["advanced"] = dict(self.advanced)
         if self.monotype_starters is not None:
             result["monotype_starters"] = dict(self.monotype_starters)
+        if self.shiny_denominator is not None:
+            result["shiny_denominator"] = self.shiny_denominator
         return result
 
     def adapter_properties(self):
@@ -113,7 +123,8 @@ class RandomizerOptions:
         custom = self.monotype_starters is not None or "starters" in self.categories and self.advanced is not None and \
             (not self.advanced["starter_legendaries"] or not self.advanced["starter_mythicals"] or
              self.advanced.get("starter_similar_strength", False))
-        return ["upr-zx-4.6.1"] + (["pce-starters-v1"] if custom else [])
+        return ["upr-zx-4.6.1"] + (["pce-starters-v1"] if custom else []) + \
+            (["pce-shiny-field-v1"] if self.shiny_denominator is not None else [])
 
 
 @dataclass(frozen=True)
@@ -167,6 +178,8 @@ class RomTransformationService:
 
     @staticmethod
     def shiny_rate_support(game_id: str) -> dict:
+        if game_id == "white":
+            return {"original": True, "custom_denominators": list(SHINY_DENOMINATORS), "reason": SHINY_SCOPE}
         return {"original": game_id in SUPPORTED_CODES, "custom_denominators": [],
                 "reason": "Aucun patch ROM du taux shiny n'est validé pour ce jeu. Taux original conservé ; aucune écriture RAM."}
 
@@ -297,7 +310,10 @@ class RomTransformationService:
         # Snapshot caller-owned dictionaries before validating and running tools.
         options = RandomizerOptions(options.categories, options.balanced,
                                     dict(options.advanced) if options.advanced is not None else None,
-                                    dict(options.monotype_starters) if options.monotype_starters is not None else None)
+                                    dict(options.monotype_starters) if options.monotype_starters is not None else None,
+                                    options.shiny_denominator)
+        if options.shiny_denominator is not None and game_id != "white":
+            raise ValueError("Le patch shiny expérimental est limité à Blanc FR révision 0.")
         source = _regular(Path(source))
         destination = local_path(destination_directory)
         if destination.exists() or not destination.parent.is_dir() or source.is_relative_to(destination):
@@ -348,10 +364,17 @@ class RomTransformationService:
                 raise ValueError("L'entrée ou l'outil a changé pendant la transformation ; résultat non publié.")
             if _read_identity(output) != found:
                 raise ValueError("La ROM dérivée possède une identité inattendue.")
+            report = self._validate_report(report_path, found[1], options)
+            shiny_patch = None
+            if options.shiny_denominator is not None:
+                shiny_patch = self._apply_shiny_patch(output, private_jar, options.shiny_denominator)
+                if _read_identity(output) != found:
+                    raise ValueError("L'identité de la ROM a changé pendant le patch shiny.")
+                if file_signature(source) != source_signature or file_hash(source) != source_hash:
+                    raise ValueError("La source a changé pendant le patch shiny ; résultat non publié.")
             output_hash = file_hash(output)
             if source_hash == output_hash:
                 raise ValueError("La transformation n'a pas modifié la ROM.")
-            report = self._validate_report(report_path, found[1], options)
             manifest = {"schema_version": 1, "owner": OWNER, "created_at": utc_now(), "game_id": game_id,
                         "game_code": found[1], "region": "FR", "revision": 0,
                         "tool": {"name": "Universal Pokemon Randomizer ZX", "version": ZX_VERSION,
@@ -363,8 +386,15 @@ class RomTransformationService:
                         "report_sha256": file_hash(report_path), "settings_string": report.get("settings_string"),
                         "transformation_order": options.transformation_order(),
                         "validation": {"source_unchanged": True, "rom_reloaded_by_tool": True,
-                                       "selected_categories_changed": True, "emulator": "not_tested",
+                                       "selected_categories_changed": bool(options.categories), "emulator": "not_tested",
                                        "lua": "not_tested", "shiny_rate": "original"}}
+            if shiny_patch is not None:
+                _write_json(staging / "shiny-patch.json", shiny_patch)
+                manifest["shiny_patch_sha256"] = file_hash(staging / "shiny-patch.json")
+                manifest["validation"]["shiny_rate"] = "field_generator_experimental"
+                manifest["validation"]["shiny_denominator"] = options.shiny_denominator
+                manifest["validation"]["shiny_scope"] = SHINY_SCOPE
+                manifest["validation"]["rom_reloaded_by_tool_stage"] = "zx_before_field_patch"
             _write_json(staging / "manifest.json", manifest)
             # Remove only our verified working copy; retain derived ROM and provenance.
             _regular(working).unlink()
@@ -383,6 +413,24 @@ class RomTransformationService:
                 pass  # The primary exception must survive a full disk or lost directory.
             raise
 
+    def _apply_shiny_patch(self, output: Path, jar: Path, denominator: int) -> dict:
+        from tools.shiny_field_trial import create_trial
+        patched = output.with_name("shiny-derived.nds")
+        before = file_hash(_regular(output))
+        try:
+            evidence = create_trial(output, patched, self.java_path, jar, denominator)
+        except (OSError, ValueError, subprocess.SubprocessError) as exc:
+            raise ValueError("Patch shiny refusé : signature Blanc FR0 inconnue, allocation incompatible ou erreur de vérification. "
+                             "Aucune ROM n'a été publiée.") from exc
+        if evidence.get("source_sha256") != before or file_hash(output) != before or \
+                evidence.get("output_sha256") != file_hash(_regular(patched)):
+            raise ValueError("Les empreintes du patch shiny ne correspondent pas aux fichiers vérifiés.")
+        evidence.update(patch_id="pce-shiny-field-v1", application="applied", status="applied_experimental", scope=SHINY_SCOPE,
+                        supported_path="normal_grass_verified", other_categories="not_validated")
+        _regular(output).unlink()  # Only this invocation's verified ZX staging output.
+        patched.rename(output)
+        return evidence
+
 
 def transformation_options(challenge_snapshot: dict) -> RandomizerOptions | None:
     """Absent means a historical declaration, never an implicit ROM operation."""
@@ -390,13 +438,17 @@ def transformation_options(challenge_snapshot: dict) -> RandomizerOptions | None
     if value is None:
         return None
     if not isinstance(value, dict) or not {"kind", "categories", "balanced"} <= set(value) or \
-            set(value) - {"kind", "categories", "balanced", "advanced", "monotype_starters"} or value.get("kind") != "zx" or \
+            set(value) - {"kind", "categories", "balanced", "advanced", "monotype_starters", "shiny_denominator"} or value.get("kind") != "zx" or \
             not isinstance(value.get("categories"), list):
         raise ValueError("Configuration de transformation ROM invalide ou Randomizer inactif.")
     active = challenge_snapshot.get("active_rules", [])
     mono = value.get("monotype_starters")
-    options = RandomizerOptions(tuple(value["categories"]), value["balanced"], value.get("advanced"), mono)
-    if "randomizer" not in active and (mono is None or set(options.categories) != {"starters"} or
+    options = RandomizerOptions(tuple(value["categories"]), value["balanced"], value.get("advanced"), mono,
+                                value.get("shiny_denominator"))
+    if options.shiny_denominator is not None and ("shiny_only" not in active or challenge_snapshot.get("game_id") != "white"):
+        raise ValueError("Le patch shiny nécessite Shiny Only actif et Blanc FR révision 0.")
+    if "randomizer" not in active and (set(options.categories) != ({"starters"} if mono else set()) or
+            mono is None and options.shiny_denominator is None or
             options.advanced is not None and any(value != ADVANCED_DEFAULTS[key]
                 for key, value in options.advanced.items() if key not in STARTER_ADVANCED_KEYS)):
         raise ValueError("Configuration de transformation ROM invalide ou Randomizer inactif.")
@@ -467,4 +519,20 @@ def verified_transformation_report(directory: Path, rom: Path, *, game_id: str, 
     report_path = _regular(directory / "report.json")
     if data.get("report_sha256") != file_hash(report_path):
         raise ValueError("Les données effectives de la ROM dérivée ont changé.")
+    if options.shiny_denominator is not None:
+        patch_path = _regular(directory / "shiny-patch.json")
+        if patch_path.stat().st_size > 16384 or data.get("shiny_patch_sha256") != file_hash(patch_path):
+            raise ValueError("La provenance du patch shiny a changé.")
+        patch = json.loads(patch_path.read_text(encoding="utf-8"), object_pairs_hook=_strict_pairs, parse_constant=_invalid_constant)
+        validation = data.get("validation", {})
+        if not isinstance(validation, dict) or validation.get("shiny_rate") != "field_generator_experimental" or \
+                type(validation.get("shiny_denominator")) is not int or validation["shiny_denominator"] != options.shiny_denominator:
+            raise ValueError("L'état de validation du patch shiny est incohérent.")
+        if not isinstance(patch, dict) or patch.get("patch_id") != "pce-shiny-field-v1" or \
+                type(patch.get("selector_denominator")) is not int or \
+                patch.get("selector_denominator") != options.shiny_denominator or patch.get("output_sha256") != rom_sha256 or \
+                patch.get("game_code") != "IRAF" or patch.get("revision") != 0 or patch.get("application") != "applied" or \
+                patch.get("source_unchanged") is not True or patch.get("only_declared_spans_changed") is not True or \
+                patch.get("shiny_lock_preserved") is not True or patch.get("shiny_predicate_changed") is not False:
+            raise ValueError("Le manifeste ne confirme pas le patch shiny demandé.")
     return RomTransformationService._validate_report(report_path, SUPPORTED_CODES[game_id], options)

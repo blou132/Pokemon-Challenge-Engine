@@ -900,7 +900,7 @@ class MainWindow(QMainWindow):
             self.open_game_mode()
             return
         errors = ChallengeEngine(self.catalog).validate(challenge)
-        if not errors and "randomizer" in challenge.active_rules:
+        if not errors and ("randomizer" in challenge.active_rules or "rom_transformation" in challenge.settings):
             # The legacy direct launcher must never silently launch a stock ROM
             # when this challenge requests a derived, isolated adventure.
             self.new_run(challenge=challenge)

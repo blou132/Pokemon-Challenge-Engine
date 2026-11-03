@@ -127,7 +127,7 @@ def test_footer_and_blz_size_checks():
 
 @pytest.mark.parametrize("stdout,stderr,returncode", [(b"x", b"", 0), (b"xx", b"warning", 0), (b"xx", b"", 1)])
 def test_codec_must_return_complete_output_without_warnings(monkeypatch, stdout, stderr, returncode):
-    monkeypatch.setattr(inspect.subprocess, "run", lambda *a, **k: SimpleNamespace(
+    monkeypatch.setattr(inspect, "run_codec", lambda *a, **k: SimpleNamespace(
         stdout=stdout, stderr=stderr, returncode=returncode))
     with pytest.raises(ValueError, match="décompression BLZ"):
         inspect.decode_blz(b"synthetic", "java", "jar", 2)

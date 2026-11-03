@@ -7,17 +7,34 @@ Only metadata is printed. ROM and decompressed ARM9 bytes are never written.
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
 import zlib
 
 from app.services.rom_transformation_service import ZX_JAR_SHA256, ZX_VERSION
+from app.services.external_process import external_dll_search, child_environment
 
 
 MAX_ARM9 = 0xFFFFFF  # Same decompression ceiling as ZX's BLZCoder.
 FR_CODES = frozenset({"IRAF", "IRBF", "IREF", "IRDF"})
 DECODER = Path(__file__).with_name("randomizer") / "PceBlzDecode.java"
+
+
+def run_codec(command, data, timeout):
+    """Binary Java codec subprocess, including frozen Windows DLL isolation."""
+    with external_dll_search():
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=child_environment(), creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+    with process:
+        try:
+            stdout, stderr = process.communicate(data, timeout=timeout)
+        except BaseException:
+            process.kill()
+            process.communicate()
+            raise
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 # Thumb instructions, not a patch: load the high-half mask, split r0/r1 into
 # four halfwords, XOR them, compare with 8, return 1 or 0. The literal is checked
@@ -99,8 +116,7 @@ def find_predicates(arm9, ram_address):
 
 
 def decode_blz(data, java, jar, expected_length):
-    result = subprocess.run([str(java), "-Xmx128m", "-cp", str(jar), str(DECODER)],
-                            input=data, capture_output=True, timeout=60, check=False)
+    result = run_codec([str(java), "-Xmx128m", "-cp", str(jar), str(DECODER)], data, 60)
     # The upstream codec can print warnings or exit(0) on malformed data.
     # Neither a zero exit status nor partial output constitutes success.
     if result.returncode or result.stderr or len(result.stdout) != expected_length:

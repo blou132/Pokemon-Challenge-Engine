@@ -94,3 +94,33 @@ def test_legacy_launch_routes_randomizer_to_dedicated_adventure(catalog, monkeyp
     challenge = Challenge.from_dict(configuration())
     main_window.MainWindow.launch_challenge(view, challenge)
     assert calls == [{"challenge": challenge}]
+
+
+def test_shiny_only_launch_always_prepares_the_dedicated_rom(catalog, monkeypatch):
+    from app.ui import main_window
+    calls = []
+    monkeypatch.setattr(main_window, "LauncherService", lambda *args: pytest.fail("Unpatched source launch"))
+    view = SimpleNamespace(catalog=catalog, run_controller=SimpleNamespace(active_run=None),
+                           game_mode_window=None, new_run=lambda **kwargs: calls.append(kwargs))
+    challenge = Challenge("white", "custom", ["shiny_only"], {"shiny_only": "required"},
+        {"enforcement": "soft", "rule_parameters": {}, "rom_transformation": {
+            "kind": "zx", "categories": [], "balanced": False, "shiny_denominator": 128}}, None, 512)
+    main_window.MainWindow.launch_challenge(view, challenge)
+    assert calls == [{"challenge": challenge}]
+
+
+def test_creation_explains_limited_shiny_scope_before_preparation(dialog, monkeypatch):
+    challenge = Challenge("white", "custom", ["shiny_only"], {"shiny_only": "required"},
+        {"enforcement": "soft", "rule_parameters": {}, "rom_transformation": {
+            "kind": "zx", "categories": [], "balanced": False, "shiny_denominator": 1}}, None, 512)
+    dialog.set_custom_challenge(challenge.to_dict())
+    messages = []
+    def answer(*args):
+        messages.append(args[2])
+        return QMessageBox.StandardButton.Yes
+    monkeypatch.setattr(QMessageBox, "question", answer)
+    dialog.accept()
+    assert dialog.result() == QDialog.DialogCode.Accepted
+    assert len(messages) == 1
+    assert "100 %" in messages[0] and "autres catégories non validées" in messages[0]
+    assert "Catégories randomisées : 0" in messages[0]

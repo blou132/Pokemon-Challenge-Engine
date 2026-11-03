@@ -32,6 +32,8 @@ class RunTransformationProvider:
             raise ValueError("Les données Randomizer ne correspondent pas à l'espace de cette partie.")
         artifacts = [rom, root / "isolation.json", directory / "manifest.json", directory / "report.json",
                      directory / "PceRandomizer.java"]
+        if configured.shiny_denominator is not None:
+            artifacts.append(directory / "shiny-patch.json")
         signatures = tuple(file_signature(_regular(path)) for path in artifacts)
         key = (run.run_id, run.game_id, run.rom_fingerprint, run.seed,
                json.dumps(configured.to_dict(), sort_keys=True), signatures)
@@ -56,6 +58,8 @@ class RunTransformationProvider:
         result = {"game_id": run.game_id, "rom_sha256": run.rom_fingerprint, "categories": configured.to_dict()["categories"],
                   "pokemon": report["pokemon"], "starters": report.get("starters", []),
                   "source": "verified-derived-rom"}
+        if configured.shiny_denominator is not None:
+            result["shiny_denominator"] = configured.shiny_denominator
         # A worker tracks one adventure; bound cache memory when switching runs.
         snapshot = TransformationSnapshot(result)
         self._cache = {key: snapshot}

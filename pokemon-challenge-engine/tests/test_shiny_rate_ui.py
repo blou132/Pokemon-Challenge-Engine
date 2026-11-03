@@ -1,4 +1,4 @@
-"""Unavailable ROM patches cannot be selected or serialized as applied settings."""
+"""Verified limited patches are explicit; unsupported games remain fail-closed."""
 
 import os
 
@@ -10,7 +10,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from app.core.challenge_engine import ChallengeEngine
-from app.services.rom_transformation_service import RomTransformationService
+from app.services.rom_transformation_service import RomTransformationService, transformation_options
 from app.ui.challenge_page import ChallengePage
 
 
@@ -55,13 +55,13 @@ def test_shiny_editor_exposes_original_and_unavailable_rates(page, catalog, game
     assert reason in page.shiny_rate_note.text()
     assert "bonus" in page.shiny_rate_note.text()
     for index in range(1, combo.count()):
-        assert not combo.model().flags(combo.model().index(index, 0)) & Qt.ItemFlag.ItemIsEnabled
+        assert bool(combo.model().flags(combo.model().index(index, 0)) & Qt.ItemFlag.ItemIsEnabled) == (game == "white")
         assert reason in combo.itemData(index, Qt.ItemDataRole.ToolTipRole)
     assert challenge.to_dict() == before
 
 
 def test_unavailable_rate_cannot_be_selected_or_written_to_challenge(page, catalog):
-    page.load_challenge(shiny_challenge(catalog))
+    page.load_challenge(shiny_challenge(catalog, "black"))
     combo = page.shiny_rate_combo
     QTest.keyClick(combo, Qt.Key.Key_End)
     assert combo.currentData() == "original"
@@ -73,6 +73,48 @@ def test_unavailable_rate_cannot_be_selected_or_written_to_challenge(page, catal
     assert page.challenge.settings["rule_parameters"] == {}
     assert "taux" in page.preview.toPlainText().lower()
     assert "aucun patch" in page.preview.toPlainText().lower()
+
+
+@pytest.mark.parametrize("denominator", [4096, 1024, 512, 128, 1])
+def test_white_rate_roundtrips_shiny_only_without_randomizing_species(page, catalog, denominator):
+    page.load_challenge(shiny_challenge(catalog))
+    page.shiny_rate_combo.setCurrentIndex(page.shiny_rate_combo.findData(denominator))
+    assert page.shiny_rate_combo.currentData() == denominator
+    assert not page.randomizer_widget.isHidden()  # Local Java tools remain configurable.
+    page.generate()
+    assert page.challenge is not None, page.feedback.text()
+    options = transformation_options(page.challenge.to_dict())
+    assert options.categories == ()
+    assert options.shiny_denominator == denominator
+    assert "randomizer" not in page.challenge.active_rules
+    text = page.preview.toPlainText()
+    assert "patch terrain demandé" in text
+    assert "autres catégories non validées" in text
+    assert "Taux original conservé" not in text
+    challenge = page.challenge
+    page.load_challenge(challenge)
+    assert page.shiny_rate_combo.currentData() == denominator
+    page.generate()
+    assert transformation_options(page.challenge.to_dict()) == options
+
+
+def test_changing_to_unverified_game_clears_custom_rate(page, catalog):
+    page.load_challenge(shiny_challenge(catalog))
+    page.shiny_rate_combo.setCurrentIndex(page.shiny_rate_combo.findData(1))
+    page.game_combo.setCurrentIndex(page.game_combo.findData("black2"))
+    assert page.shiny_rate_combo.currentData() == "original"
+    page.generate()
+    assert transformation_options(page.challenge.to_dict()) is None
+
+
+def test_returning_to_original_removes_patch_from_snapshot(page, catalog):
+    page.load_challenge(shiny_challenge(catalog))
+    page.shiny_rate_combo.setCurrentIndex(page.shiny_rate_combo.findData(128))
+    page.generate()
+    page.shiny_rate_combo.setCurrentIndex(0)
+    page.generate()
+    assert transformation_options(page.challenge.to_dict()) is None
+    assert "Taux original conservé" in page.preview.toPlainText()
 
 
 def test_shiny_group_follows_active_rule_and_normal_mode(page, catalog):

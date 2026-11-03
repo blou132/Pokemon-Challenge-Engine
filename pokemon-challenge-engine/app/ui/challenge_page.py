@@ -19,7 +19,7 @@ from app.core.random_selector import RandomSelector
 from app.core.rule_engine import RuleEngine, combination_notes
 from app.models.challenge import Challenge
 from app.services.rom_transformation_service import (
-    ADVANCED_DEFAULTS, RandomizerOptions, RandomizerToolStore, RomTransformationService, transformation_options,
+    ADVANCED_DEFAULTS, SHINY_SCOPE, RandomizerOptions, RandomizerToolStore, RomTransformationService, transformation_options,
 )
 from app.services.randomizer_tool_discovery_service import RandomizerToolDiscoveryService
 from app.ui.monotype_wheel import MonotypeDialog
@@ -43,8 +43,13 @@ def challenge_summary(challenge: Challenge, catalog: Catalog) -> str:
         lines.append("• " + (rule.name if rule else rule_id))
     lines.extend(combination_notes(challenge.active_rules))
     if "shiny_only" in challenge.active_rules:
-        lines.extend(["", "Shiny Only : contrôle de présence, sans modification des apparitions.",
-                      "Taux original conservé · aucun patch appliqué (base Gen V : 1/8192, hors bonus et rencontres spéciales)."])
+        shiny_options = transformation_options(challenge.to_dict())
+        if shiny_options is not None and shiny_options.shiny_denominator is not None:
+            rate = "100 %" if shiny_options.shiny_denominator == 1 else f"1/{shiny_options.shiny_denominator}"
+            lines.extend(["", f"Shiny Only : patch terrain demandé à {rate}, appliqué lors de la préparation de la ROM dédiée.", SHINY_SCOPE])
+        else:
+            lines.extend(["", "Shiny Only : contrôle de présence, sans modification des apparitions.",
+                          "Taux original conservé · aucun patch appliqué (base Gen V : 1/8192, hors bonus et rencontres spéciales)."])
     if challenge.monotype and "monotype" in challenge.active_rules:
         config = challenge.monotype
         type_name = next((t["name"] for t in catalog.types if t["id"] == config["type_id"]), config["type_id"])
@@ -55,8 +60,8 @@ def challenge_summary(challenge: Challenge, catalog: Catalog) -> str:
         if options is None:
             lines.extend(["", "Randomizer déclaré uniquement · aucune transformation demandée dans ce modèle historique."])
         else:
-            lines.extend(["", "ROM randomisée dédiée à créer après confirmation · aucune transformation encore appliquée.",
-                          "Catégories : " + ", ".join(CATEGORY_LABELS[key] for key in options.categories),
+            lines.extend(["", "ROM dédiée à créer après confirmation · aucune transformation encore appliquée.",
+                          "Catégories randomisées : " + (", ".join(CATEGORY_LABELS[key] for key in options.categories) or "aucune"),
                           "Puissance similaire : " + ("oui" if options.balanced else "non"),
                           f"Seed de la ROM : {challenge.seed} · nouvelle aventure sans import de sauvegarde."])
             if options.advanced is not None:
@@ -251,7 +256,7 @@ class ChallengePage(QWidget):
         self.shiny_rate_group = QWidget()
         shiny_form = QFormLayout(self.shiny_rate_group)
         shiny_form.setContentsMargins(0, 0, 0, 0)
-        shiny_form.addRow(label("Shiny Only contrôle les Pokémon présents ; ne modifie pas les apparitions.", "muted"))
+        shiny_form.addRow(label("Shiny Only contrôle les Pokémon présents. Le patch terrain reste une option séparée et expérimentale.", "muted"))
         self.shiny_rate_combo = QComboBox()
         self.shiny_rate_combo.addItem("Original · aucun patch (base 1/8192)", "original")
         for denominator in (4096, 1024, 512, 128, 1):
@@ -330,20 +335,29 @@ class ChallengePage(QWidget):
         dialog.deleteLater()
 
     def _restore_original_shiny_rate(self, *_args):
-        # Disabled entries must not become effective settings through restored UI state.
-        with QSignalBlocker(self.shiny_rate_combo):
-            self.shiny_rate_combo.setCurrentIndex(0)
+        support = RomTransformationService.shiny_rate_support(self.game_combo.currentData())
+        if self.shiny_rate_combo.currentData() not in ["original", *support["custom_denominators"]]:
+            with QSignalBlocker(self.shiny_rate_combo):
+                self.shiny_rate_combo.setCurrentIndex(0)
+        self.invalidate()
 
     def _update_shiny_rate_support(self):
         support = RomTransformationService.shiny_rate_support(self.game_combo.currentData())
-        self._restore_original_shiny_rate()
+        if self.shiny_rate_combo.currentData() not in ["original", *support["custom_denominators"]]:
+            with QSignalBlocker(self.shiny_rate_combo):
+                self.shiny_rate_combo.setCurrentIndex(0)
         for index in range(self.shiny_rate_combo.count()):
             item = self.shiny_rate_combo.model().item(index)
-            item.setEnabled(index == 0 and support["original"])
+            enabled = support["original"] if index == 0 else self.shiny_rate_combo.itemData(index) in support["custom_denominators"]
+            item.setEnabled(enabled)
             item.setToolTip(support["reason"])
+            if index:
+                denominator = self.shiny_rate_combo.itemData(index)
+                rate = "100 %" if denominator == 1 else f"1/{denominator}"
+                item.setText(rate + (" · terrain expérimental" if enabled else " · non disponible"))
         self.shiny_rate_note.setText(
             support["reason"] + "\n1/8192 est le taux de base Gen V, hors bonus et rencontres à shiny imposé ou interdit. "
-            "Ces autres taux restent désactivés tant qu'un patch documenté et testé pour le jeu et sa révision n'est pas disponible.")
+            "Un taux personnalisé concerne ce générateur seulement : il ne garantit pas des starters shiny.")
 
     def _build_result(self) -> QWidget:
         """Construire l'aperçu du challenge et ses actions de sauvegarde/lancement."""
@@ -542,7 +556,8 @@ class ChallengePage(QWidget):
         self.wheel_button.setEnabled(monotype_active)
         self.shiny_rate_group.setVisible(shiny_active)
         self._update_shiny_rate_support()
-        self.randomizer_widget.setVisible(randomizer_active or monotype_active and self.monotype_starters_check.isChecked())
+        self.randomizer_widget.setVisible(randomizer_active or monotype_active and self.monotype_starters_check.isChecked() or
+            shiny_active and self.shiny_rate_combo.currentData() != "original")
         self.randomizer_widget.set_randomizer_active(randomizer_active)
         seed_text = self.seed_edit.text().strip()
         seed = int(seed_text) if seed_text.isascii() and seed_text.isdecimal() else None
@@ -582,6 +597,10 @@ class ChallengePage(QWidget):
                 configuration["monotype_starters"] = {"type_id": self.challenge.monotype["type_id"],
                     "mode": self.challenge.monotype["mode"],
                     "prefer_evolutions": self.monotype_prefer_evolutions_check.isChecked()}
+            if "shiny_only" in self.challenge.active_rules and self.shiny_rate_combo.currentData() != "original":
+                if configuration is None:
+                    configuration = {"kind": "zx", "categories": [], "balanced": False}
+                configuration["shiny_denominator"] = self.shiny_rate_combo.currentData()
             if configuration is not None:
                 self.challenge.settings["rom_transformation"] = configuration
                 errors = self.engine.validate(self.challenge)
@@ -675,6 +694,9 @@ class ChallengePage(QWidget):
                 control.setValue(challenge.settings.get("rule_parameters", {}).get(rule_id, {}).get(key, self.catalog.rules[rule_id].parameters[key]["default"]))
         self.monotype_config = dict(challenge.monotype) if challenge.monotype else None
         options = transformation_options(challenge.to_dict())
+        with QSignalBlocker(self.shiny_rate_combo):
+            self.shiny_rate_combo.setCurrentIndex(self.shiny_rate_combo.findData(
+                options.shiny_denominator if options is not None and options.shiny_denominator is not None else "original"))
         self.monotype_starters_check.setChecked(options is not None and options.monotype_starters is not None)
         self.monotype_prefer_evolutions_check.setChecked(
             (options.monotype_starters or {}).get("prefer_evolutions", True) if options else True)

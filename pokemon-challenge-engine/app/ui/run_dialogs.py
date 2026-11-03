@@ -22,7 +22,7 @@ from app.core.allowed_pokemon import designation_purpose
 from app.core.manual_rule_event import ACTIONS, MANUAL_RULES, ENCOUNTER_KINDS, ENCOUNTER_OUTCOMES, capture_records
 from app.ui.widgets.manual_rule_event import ManualRuleEventDialog
 from app.services.save_manager_service import SaveManagerService
-from app.services.rom_transformation_service import transformation_options
+from app.services.rom_transformation_service import SHINY_SCOPE, transformation_options
 from app.services.run_transformation_provider import RunTransformationProvider
 from app.core.challenge_engine import ChallengeEngine
 from app.models.challenge import Challenge
@@ -423,20 +423,26 @@ class NewRunDialog(QDialog):
         selected_profile = next((item for item in self.profiles if item.id == values["profile_id"]), None)
         configuration = (selected_profile.challenge.to_dict() if selected_profile is not None else
                          values["challenge"] if values["source"] == "custom" else None)
-        if configuration is not None and "randomizer" in configuration["active_rules"]:
+        if configuration is not None and ("randomizer" in configuration["active_rules"] or
+                                         configuration.get("settings", {}).get("rom_transformation") is not None):
             try:
                 randomizer = transformation_options(configuration)
                 if randomizer is None:
                     raise ValueError("Configurez les catégories Randomizer dans le challenge avant de créer cette partie.")
                 if values["save_mode"] != "new":
-                    raise ValueError("Le Randomizer nécessite une nouvelle aventure sans ancienne sauvegarde.")
+                    raise ValueError("La transformation nécessite une nouvelle aventure sans ancienne sauvegarde.")
             except ValueError as exc:
                 self.error_label.setText(str(exc))
                 self.error_label.show()
                 return
+            patch_notice = ""
+            if randomizer.shiny_denominator is not None:
+                rate = "100 %" if randomizer.shiny_denominator == 1 else f"1/{randomizer.shiny_denominator}"
+                patch_notice = f"Patch terrain : {rate}. {SHINY_SCOPE}\n\n"
             if QMessageBox.question(self, "Créer une ROM dédiée",
-                    "Créer une ROM randomisée pour cette nouvelle aventure lors de sa préparation ?\n\n"
-                    f"Seed : {configuration['seed']}\nCatégories : {len(randomizer.categories)}\n\n"
+                    "Créer une ROM transformée pour cette nouvelle aventure lors de sa préparation ?\n\n"
+                    f"Seed : {configuration['seed']}\nCatégories randomisées : {len(randomizer.categories)}\n\n"
+                    + patch_notice +
                     "La ROM source restera intacte. Cette aventure utilisera sa propre ROM et ses propres sauvegardes. "
                     "La validation complète en jeu reste nécessaire.",
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,

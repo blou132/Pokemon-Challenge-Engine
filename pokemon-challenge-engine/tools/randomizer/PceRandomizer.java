@@ -373,8 +373,10 @@ public class PceRandomizer {
         if (!Files.isRegularFile(source) || Files.exists(output) || Files.exists(report))
             throw new IllegalArgumentException("Input missing or output already exists");
         long seed = Long.parseLong(args[3]);
-        Set<String> categories = new LinkedHashSet<>(Arrays.asList(args[4].split(",")));
-        if (seed < 0 || categories.isEmpty() || !CATEGORIES.containsAll(categories))
+        // Empty means preparation/reread only, before PCE's separate field patch.
+        Set<String> categories = args[4].isEmpty() ? new LinkedHashSet<>() :
+            new LinkedHashSet<>(Arrays.asList(args[4].split(",")));
+        if (seed < 0 || !CATEGORIES.containsAll(categories))
             throw new IllegalArgumentException("Invalid seed or categories");
         if (!Arrays.asList("true", "false").contains(args[5])) throw new IllegalArgumentException("Invalid balance flag");
         boolean balanced = Boolean.parseBoolean(args[5]);

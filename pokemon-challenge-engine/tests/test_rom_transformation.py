@@ -279,11 +279,14 @@ def test_competing_destination_is_preserved(transformation):
     assert (transformation.destination / "keep.txt").read_text() == "keep"
 
 
-def test_custom_shiny_rates_remain_unavailable():
+def test_custom_shiny_rates_are_scoped_to_white_fr0():
     for game in module.SUPPORTED_CODES:
         support = RomTransformationService.shiny_rate_support(game)
         assert support["original"]
-        assert support["custom_denominators"] == []
+        assert support["custom_denominators"] == (list(module.SHINY_DENOMINATORS) if game == "white" else [])
+        if game == "white":
+            assert "expérimental" in support["reason"]
+            assert "autres catégories non validées" in support["reason"]
 
 
 def test_external_process_timeout_is_bounded_and_hidden(tmp_path, monkeypatch):

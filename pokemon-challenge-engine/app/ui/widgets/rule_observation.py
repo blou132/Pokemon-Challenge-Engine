@@ -1,7 +1,9 @@
 """Shared presentation of checks; all decisions belong to the domain engine."""
+from collections.abc import Mapping
 from app.core.rule_observation import evaluate_rules
 from app.core.rule_engine import combination_notes
 from app.core.shiny import shiny_status
+from app.services.rom_transformation_service import SHINY_SCOPE
 from app.ui.widgets.nuzlocke import species_name
 
 
@@ -21,6 +23,15 @@ def rule_observation_text(run, catalog, *, detailed=False, transformation=None):
         return "Partie classique · aucun contrôle de challenge."
     sections = ["Contrôles des dernières observations enregistrées.\nLa présence dans l'équipe ne prouve pas l'utilisation en combat."]
     sections.extend(combination_notes(run.active_rules))
+    denominator = (run.rules_snapshot.get("settings", {}).get("rom_transformation") or {}).get("shiny_denominator")
+    if denominator is not None:
+        rate = "100 %" if denominator == 1 else f"1/{denominator}"
+        verified = (isinstance(transformation, Mapping) and transformation.get("source") == "verified-derived-rom"
+                    and run.game_id == "white" and run.rom_fingerprint and transformation.get("game_id") == run.game_id
+                    and transformation.get("rom_sha256") == run.rom_fingerprint
+                    and transformation.get("shiny_denominator") == denominator)
+        sections.append((f"Patch terrain appliqué à {rate} : provenance de cette ROM vérifiée. " if verified else
+                         f"Patch terrain demandé à {rate} : application non vérifiée pour cette ROM. ") + SHINY_SCOPE)
     for evaluation in evaluate_rules(run, include_history=detailed, transformation=transformation):
         rule = catalog.rules.get(evaluation.rule_id)
         title = rule.name if rule else evaluation.rule_id

@@ -33,7 +33,7 @@ CAPABILITIES = {
     "no_pokemon_center": RuleCapability("manual", "Déclarations manuelles du service de soin. La présence dans un Centre Pokémon ne prouve pas son utilisation ; aucune détection automatique ni blocage dans le jeu."),
     "no_evolution": RuleCapability("partial", "Changement d'espèce compatible avec une évolution documentée pour un individu identifié ; déclaration manuelle possible. Aucun blocage des évolutions dans le jeu."),
     "solo_run": RuleCapability("partial", "Individu autorisé désigné manuellement ; présence observée, combat avec un autre individu déclarable manuellement. La taille de l'équipe ne prouve pas son usage en combat."),
-    "shiny_only": RuleCapability("partial", "Statut shiny calculé avec PID et identifiants du dresseur d'origine. Présence vérifiée ; utilisation en combat déclarable manuellement, sans détection automatique. Taux d'apparition inchangé."),
+    "shiny_only": RuleCapability("partial", "Statut shiny calculé avec PID et identifiants du dresseur d'origine. Présence vérifiée ; utilisation en combat déclarable manuellement, sans détection automatique. Un éventuel patch du taux est vérifié séparément."),
     "randomizer": RuleCapability("configured", "La sélection de cette règle ne prouve pas qu'une transformation a été appliquée à la ROM."),
     "catch_limit": RuleCapability("partial", "Limite comparée aux captures déclarées par zone identifiée. Captures non déclarées et envois au PC non observés."),
     "starter_only": RuleCapability("partial", "Starter désigné manuellement. Origine déclarative, jamais déduite de l'espèce ou du slot. Présence observée ; combat avec un autre individu déclarable manuellement, sans détection automatique."),

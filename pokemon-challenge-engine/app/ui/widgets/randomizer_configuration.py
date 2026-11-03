@@ -133,7 +133,7 @@ class RandomizerConfiguration(QWidget):
         self.seed_label = label("Seed du challenge : à définir", "muted")
         self.compatibility_label = label("", "muted")
         self.safety_label = label("Nouvelle aventure sans import de sauvegarde. La ROM source reste intacte ; "
-            "la copie dédiée sera créée après confirmation. Taux shiny original conservé.", "muted")
+            "la copie dédiée sera créée après confirmation. Taux shiny original sauf patch explicite Shiny Only.", "muted")
         box.addWidget(self.seed_label)
         box.addWidget(self.compatibility_label)
         box.addWidget(self.safety_label)

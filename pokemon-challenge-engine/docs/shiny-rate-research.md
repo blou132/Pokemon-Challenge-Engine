@@ -1,9 +1,16 @@
 # Taux shiny Gen V : état de la recherche
 
-Recherche documentaire du 15 octobre 2026. **Les taux personnalisés restent
-désactivés pour Noir, Blanc, Noir 2 et Blanc 2 FR révision 0.** Aucun patch de
-génération n'a été validé sur ces versions. Shiny Only observe les Pokémon
-présents ; il ne change pas leur probabilité d'apparition.
+Recherche documentaire initiale du 15 octobre 2026, complétée le 3 novembre.
+**Blanc FR révision 0 dispose maintenant d'un patch terrain expérimental** :
+herbe normale vérifiée, autres catégories non validées. Les cinq réglages sont
+réellement appliqués à la copie dédiée. Le taux original reste sélectionné par
+défaut. Les taux personnalisés restent désactivés pour Noir, Noir 2 et Blanc 2.
+
+Complément des 2–3 novembre : [patch de génération dans l'overlay de terrain Blanc FR0](shiny-field-trial.md).
+Deux rencontres réellement shiny sont confirmées dans melonDS, sur original
+et combinaison Randomizer/Monotype. Les preuves CPU comprennent 46 088 cas de
+branches et 11 522 bornes du RNG natif. Le périmètre et la distinction entre
+preuve arithmétique, observation en jeu et fréquence mesurée figurent dans ce document.
 
 Complément du 20 octobre : [identification ARM9 en lecture seule](shiny-arm9-identification.md),
 avec quatre fichiers locaux analysés et un outil reproductible. Cette étape
@@ -65,7 +72,7 @@ L'option `shinyChance` de
 appartient au traitement des dresseurs. Ce n'est pas une API de taux global
 pour les sauvages, starters et œufs.
 
-## Conditions avant activation
+## Critères définis lors de la recherche initiale
 
 1. Identifier chaque build par code, révision et empreinte ; établir les
    fonctions, appels, préimages et signatures complètes dans ARM9/overlays.
@@ -83,7 +90,7 @@ pour les sauvages, starters et œufs.
    puis après sauvegarde/rechargement sur copies dédiées. Pour un taux
    probabiliste, documenter échantillon et incertitude statistique.
 
-**État des preuves :** sources documentées ci-dessus ; aucun test synthétique
+**État des preuves au 15 octobre (historique) :** sources documentées ci-dessus ; aucun test synthétique
 d'un patch shiny, aucune ROM shiny dérivée et aucune validation réelle de taux
 obtenus par cette recherche. Une couleur affichée ou une rencontre shiny isolée
 ne valide ni la génération ni la probabilité annoncée.

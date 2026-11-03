@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "kind": "synthetic CPU execution of original White FR functions",
+  "source_sha256": "0a7d6e87d9878c2fb903bcca01ecc8f9a186d0eed14ddbc87912ae126faa0bdb",
+  "source_unchanged": true,
+  "exhaustive_selector": true,
+  "rng_stubbed": true,
+  "native_rng_arithmetic": {
+    "rng_stubbed": false,
+    "initial_states_supplied": true,
+    "formula": "high32(next_state) * denominator >> 32",
+    "equal_power_of_two_bucket_widths": true,
+    "results": [
+      {
+        "denominator": 4096,
+        "bucket_boundaries_checked": 8192,
+        "passed": true
+      },
+      {
+        "denominator": 1024,
+        "bucket_boundaries_checked": 2048,
+        "passed": true
+      },
+      {
+        "denominator": 512,
+        "bucket_boundaries_checked": 1024,
+        "passed": true
+      },
+      {
+        "denominator": 128,
+        "bucket_boundaries_checked": 256,
+        "passed": true
+      },
+      {
+        "denominator": 1,
+        "bucket_boundaries_checked": 2,
+        "passed": true
+      }
+    ]
+  },
+  "gameplay_validated": false,
+  "categories_validated": [],
+  "results": [
+    {
+      "denominator": 4096,
+      "cases": 32768,
+      "passed": true,
+      "thumb_sha256": "9bf12aef3e453593d6d95fb816375173a77cf349d524a6dfa81bfa2aff47b2ea"
+    },
+    {
+      "denominator": 1024,
+      "cases": 8192,
+      "passed": true,
+      "thumb_sha256": "c9d8fe0171e5aa6cc2f391204d17955107c55924408afaf329b00f4f82fa02a3"
+    },
+    {
+      "denominator": 512,
+      "cases": 4096,
+      "passed": true,
+      "thumb_sha256": "e4b9857c4620c37143efe2c4514ab44ff63b59e94f81aed0fc0f73d885518f96"
+    },
+    {
+      "denominator": 128,
+      "cases": 1024,
+      "passed": true,
+      "thumb_sha256": "97b63d786e210438d9d83311a4532a11fbeee721e7554824e5d91f8556f4561d"
+    },
+    {
+      "denominator": 1,
+      "cases": 8,
+      "passed": true,
+      "thumb_sha256": "c18a135e71334b37d9aa0e27d423f309b69c307dc22552b4b04053aee672da54"
+    }
+  ],
+  "validation_date": "2026-11-03"
+}

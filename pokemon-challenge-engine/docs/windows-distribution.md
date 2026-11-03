@@ -8,7 +8,7 @@ La version numérique courante est `0.5.0` ; l’interface indique explicitement
 « en validation », sans présenter cette étape comme une validation achevée.
 
 Le nouveau lot et son annexe sont produits dans `runtime/windows-v05-20261102/`.
-Le [rapport du 2 novembre](v0.5-delivery-20261102.md) décrit ce lot ; les chemins
+Le [rapport des 2–3 novembre](v0.5-delivery-20261102.md) décrit ce lot ; les chemins
 `windows-v05-final-03` ci-dessous désignent la livraison historique conservée.
 Le manifeste du nouveau ZIP inclut le SHA du code, l'état Git et les empreintes
 des entrées de construction. Une modification des sources pendant le build
@@ -34,9 +34,9 @@ avant extraction. Les save states `.ml1` et les sauvegardes `.sav.bak` sont
 4. Le raccourci Bureau est facultatif : utiliser `Create-Desktop-Shortcut.vbs`.
    Les erreurs de l’application sont consignées dans `logs` du dossier de données.
 
-Le ZIP préparé et son annexe de sources se trouvent dans
-`runtime/windows-v05-final-03/` à la racine du dépôt. Le
-[rapport V0.5](v0.5-melonds-validation.md#distribution-windows-03-24-octobre-2026)
+Le nouveau ZIP et son annexe de sources se trouvent dans
+`runtime/windows-v05-20261102/` à la racine du dépôt. Le
+[rapport de livraison](v0.5-delivery-20261102.md)
 indique les SHA256, le commit utilisé et la portée exacte des essais. L’annexe
 `Pokemon-Challenge-Engine-melonDS-dependency-sources.zip` doit accompagner le ZIP
 principal lors d’une redistribution ; elle n’est pas nécessaire au lancement.

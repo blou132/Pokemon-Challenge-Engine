@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "validation_date": "2026-11-03",
+  "product_commit": "fbec0fde80c30859ada77335774937dea4f73517",
+  "source_sha256_verified": "0a7d6e87d9878c2fb903bcca01ecc8f9a186d0eed14ddbc87912ae126faa0bdb",
+  "scope": "experimental White FR0 field generator; normal grass verified; other categories not guaranteed",
+  "cases": {
+    "shiny-alone-100": {
+      "status": "passed",
+      "denominator": 1,
+      "output_sha256_verified": "1f447d46a3e2d97ec8efeb9f794ee61e98484b794eef303a70fa4428ad51a7f7",
+      "changed_categories": [],
+      "transformation_order": [
+        "upr-zx-4.6.1",
+        "pce-shiny-field-v1"
+      ],
+      "source_unchanged": true,
+      "patch_proof_sha256_verified": "9b3f2e0336dacab1e93c5a43136c16d9ab02509a20230b56eca1dbdef7a9601d",
+      "only_declared_spans_changed": true,
+      "lock_preserved": true,
+      "predicate_changed": false,
+      "starters": [
+        495,
+        498,
+        501
+      ]
+    },
+    "shiny-alone-4096": {
+      "status": "passed",
+      "denominator": 4096,
+      "output_sha256_verified": "975a6dc2b2353445feb14eaf91820bd8512cb3981d9b7fb7386bac5f202ebe25",
+      "changed_categories": [],
+      "transformation_order": [
+        "upr-zx-4.6.1",
+        "pce-shiny-field-v1"
+      ],
+      "source_unchanged": true,
+      "patch_proof_sha256_verified": "c3fdf88cc022aa01aeae4e39a50e26d0bd1928a3a29902125f13a594ecc1937f",
+      "only_declared_spans_changed": true,
+      "lock_preserved": true,
+      "predicate_changed": false,
+      "starters": [
+        495,
+        498,
+        501
+      ]
+    },
+    "shiny-alone-1024": {
+      "status": "passed",
+      "denominator": 1024,
+      "output_sha256_verified": "98de13ba5fd6eaa2b9b8fa5dcd6ca0656d1b2aba826f5670db9b5e09b0ecebae",
+      "changed_categories": [],
+      "transformation_order": [
+        "upr-zx-4.6.1",
+        "pce-shiny-field-v1"
+      ],
+      "source_unchanged": true,
+      "patch_proof_sha256_verified": "d11daa064bcc86bfa5d5212afa119d763ae5388bfbc44af65b08c77c40fdf9b3",
+      "only_declared_spans_changed": true,
+      "lock_preserved": true,
+      "predicate_changed": false,
+      "starters": [
+        495,
+        498,
+        501
+      ]
+    },
+    "shiny-alone-512": {
+      "status": "passed",
+      "denominator": 512,
+      "output_sha256_verified": "9aecc03dd3bc48e18c79e81d344805c0e5b2ba374a790874cc164be5e13219f7",
+      "changed_categories": [],
+      "transformation_order": [
+        "upr-zx-4.6.1",
+        "pce-shiny-field-v1"
+      ],
+      "source_unchanged": true,
+      "patch_proof_sha256_verified": "df4be57cbc7bf3494150a81f8543818867ca2134dfba99b400fc9aad83387dc6",
+      "only_declared_spans_changed": true,
+      "lock_preserved": true,
+      "predicate_changed": false,
+      "starters": [
+        495,
+        498,
+        501
+      ]
+    },
+    "shiny-alone-128": {
+      "status": "passed",
+      "denominator": 128,
+      "output_sha256_verified": "278b63e76821804c8d1cf7516f66f5d08ec15c3d61a773a9914b0e1eda00b880",
+      "changed_categories": [],
+      "transformation_order": [
+        "upr-zx-4.6.1",
+        "pce-shiny-field-v1"
+      ],
+      "source_unchanged": true,
+      "patch_proof_sha256_verified": "6e207c66161bb19456d1a7f343ab68c6f7e6f32c382471d2df623b71f122a190",
+      "only_declared_spans_changed": true,
+      "lock_preserved": true,
+      "predicate_changed": false,
+      "starters": [
+        495,
+        498,
+        501
+      ]
+    },
+    "combined-retry-100": {
+      "status": "passed",
+      "denominator": 1,
+      "output_sha256_verified": "ec8fae0b1eb6c523f961fbf5d4e3111ca58b03192cd18d53d1e383096d0bc4c5",
+      "changed_categories": [
+        "wild",
+        "starters",
+        "trainers",
+        "movesets",
+        "abilities",
+        "field_items",
+        "evolutions",
+        "types",
+        "shop_items",
+        "pickup_items"
+      ],
+      "transformation_order": [
+        "upr-zx-4.6.1",
+        "pce-starters-v1",
+        "pce-shiny-field-v1"
+      ],
+      "source_unchanged": true,
+      "patch_proof_sha256_verified": "ec21b411b4c8cf305749cf9f51c0e4c7cea78986c197f04fd15fff658013c211",
+      "only_declared_spans_changed": true,
+      "lock_preserved": true,
+      "predicate_changed": false,
+      "starters": [
+        147,
+        25,
+        602
+      ],
+      "identical_to_native_verified_trial": true,
+      "native_evidence": "runtime/native-combined-20261103-white/battle-inspection.json"
+    }
+  },
+  "interrupted_attempts": {
+    "combined-100": "process lost during quota interruption; unpublished staging retained; rerun as combined-retry-100"
+  },
+  "passed_cases": 6
+}

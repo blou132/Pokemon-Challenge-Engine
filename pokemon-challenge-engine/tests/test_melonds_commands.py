@@ -108,6 +108,57 @@ def test_retrying_acknowledgement_read_never_resends_action(commands, monkeypatc
     assert json.loads((commands.directory / "melonds-command.json").read_text()) == request
 
 
+def test_transient_command_publish_lock_keeps_one_sequence(commands, monkeypatch):
+    original_replace = Path.replace
+    attempts = []
+
+    def briefly_locked(path, target):
+        attempts.append(json.loads(path.read_text()))
+        if len(attempts) < 3:
+            raise PermissionError("native reader holds previous command")
+        return original_replace(path, target)
+
+    monkeypatch.setattr(Path, "replace", briefly_locked)
+    request = commands.request("save_state", {"slot": 1})
+    assert attempts == [request] * 3
+    assert commands.sequence == 1 and commands.pending == request
+    assert json.loads((commands.directory / "melonds-command.json").read_text()) == request
+    assert not (commands.directory / "melonds-command.json.tmp").exists()
+
+
+def test_failed_command_publish_keeps_previous_file_and_allows_later_request(commands, monkeypatch):
+    target = commands.directory / "melonds-command.json"
+    target.write_text("previous command")
+    original_replace = Path.replace
+    attempts = []
+
+    def locked(path, destination):
+        attempts.append(path)
+        raise PermissionError("native reader holds previous command")
+
+    monkeypatch.setattr(Path, "replace", locked)
+    with pytest.raises(PermissionError):
+        commands.request("save_state", {"slot": 1})
+    assert len(attempts) == 3
+    assert target.read_text() == "previous command"
+    assert commands.pending is None
+    assert not (commands.directory / "melonds-command.json.tmp").exists()
+    monkeypatch.setattr(Path, "replace", original_replace)
+    request = commands.request("speed", {"value": "x2"})
+    assert request["sequence"] == 2
+    assert json.loads(target.read_text()) == request
+
+
+def test_preexisting_command_temporary_is_never_deleted(commands):
+    temporary = commands.directory / "melonds-command.json.tmp"
+    temporary.write_text("not created by this request")
+    with pytest.raises(FileExistsError):
+        commands.request("save_state", {"slot": 1})
+    assert temporary.read_text() == "not created by this request"
+    assert commands.pending is None
+    assert not (commands.directory / "melonds-command.json").exists()
+
+
 @pytest.mark.parametrize("change", [dict(pid=43), dict(session_id="c" * 32), dict(rom_sha256="0" * 64),
                                     dict(state_directory="missing"), dict(version=True), dict(timestamp_ms="bad"),
                                     dict(capabilities=["write_ram"]), dict(instance_id="../other")])

@@ -135,9 +135,24 @@ class MelonDSCommands:
                        command=command, parameters=parameters)
         target = local_path(self.directory / "melonds-command.json")
         temporary = local_path(self.directory / "melonds-command.json.tmp")
-        with temporary.open("xb") as handle:
-            handle.write(json.dumps(request, separators=(",", ":")).encode())
-        temporary.replace(target)
+        created = False
+        try:
+            with temporary.open("xb") as handle:
+                created = True
+                handle.write(json.dumps(request, separators=(",", ":")).encode())
+            # The native reader may briefly hold the old command on Windows.
+            # Publish this same request once; never retry an executed action.
+            for attempt in range(3):
+                try:
+                    temporary.replace(target)
+                    break
+                except PermissionError:
+                    if attempt == 2:
+                        raise
+                    time.sleep(0.005)
+        finally:
+            if created:
+                temporary.unlink(missing_ok=True)
         self.pending = request
         return request
 

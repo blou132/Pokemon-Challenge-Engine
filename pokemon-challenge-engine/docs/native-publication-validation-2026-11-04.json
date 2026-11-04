@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "report_date": "2026-11-04",
+  "observations_date": "2026-11-03",
+  "platform": "Windows x64",
+  "publication_fix_commit": "fcff8589031f1b01e1d43aff2b0424d89dff59f1",
+  "native_fix_commit": "0cedc80",
+  "native_manifest_sha256": "eb1b83aacadd11d79fe760f1477fd784ac36172a2e81adec6dca04148beb9ff9",
+  "publication_regression": {
+    "observed_failure": "WinError 5 during atomic command publication while the destination was open",
+    "previous_effect": "An unpublished request left its own temporary file, blocking later exclusive creation.",
+    "fix": "Serialize once, retry only the failed replacement up to three times with two 5 ms delays, remove only the temporary file created by this request.",
+    "python_tests_passed": 47,
+    "new_regressions": [
+      "Transient publication conflict retains one sequence and one request.",
+      "Persistent conflict preserves the previous command and allows a later request.",
+      "A preexisting foreign temporary file is preserved."
+    ]
+  },
+  "real_native_stress": {
+    "id": "native-publish-stress-20261103-white",
+    "native_requests": 200,
+    "native_acks": 200,
+    "publication_conflicts_retried": 0,
+    "total_requests_including_state_operations": 203,
+    "total_successful_acknowledgements": 203,
+    "state_operations": [
+      "load existing state from a closed process",
+      "save slot 2",
+      "load slot 2"
+    ],
+    "process_exit_code": 0,
+    "source_rom_and_battery_unchanged": true,
+    "report_sha256": "251068ce79437c0cd234164dfe1ed7ccc1d63fee71565fc97b7e53dccb573c5b",
+    "limitation": "No replacement conflict occurred during this 200-command run; the observed failure is also covered by targeted regression tests."
+  },
+  "exact_product_shiny_observation": {
+    "id": "native-product-shiny-20261103-white",
+    "game": "white_fr_rev0",
+    "rom_sha256": "1f447d46a3e2d97ec8efeb9f794ee61e98484b794eef303a70fa4428ad51a7f7",
+    "settings": "Product pipeline terrain shiny 100%, no randomized categories",
+    "boot": "Existing disk battery copied before boot; no pre-patch state loaded",
+    "scene_visually_checked": "Route 1 normal-grass encounter; wild Ponchiot appears",
+    "species_id": 506,
+    "level": 2,
+    "shiny_xor": 1,
+    "checksum_valid_enemy_records": 2,
+    "process_exit_code": 0,
+    "source_rom_and_battery_unchanged": true,
+    "report_sha256": "fda5f40826909389d1b7fab459b1235232e1ee37b3103a98f4698b875416b4fa",
+    "battle_inspection_sha256": "9f423224d8681ca443a8e42f7cf44dc8737717247d137258fc7592ad4f800e02",
+    "limitations": [
+      "This observation preceded the publication fix.",
+      "The later repeated save-state request failed to publish; the original valid battle state was preserved.",
+      "The planned return to the field state was not performed in this trial.",
+      "This observation does not establish other encounter categories, other games, or new-game progression."
+    ]
+  },
+  "privacy": "No ROM, save, image, raw RAM, trainer identifier or private path is included."
+}

@@ -8,7 +8,7 @@ La version numérique courante est `0.5.0` ; l’interface indique explicitement
 « en validation », sans présenter cette étape comme une validation achevée.
 
 Le nouveau lot et son annexe sont produits dans `runtime/windows-v05-20261104/`.
-Le [rapport des 2–3 novembre](v0.5-delivery-20261102.md) décrit ce lot ; les chemins
+Le [rapport des 2–4 novembre](v0.5-delivery-20261102.md) décrit ce lot ; les chemins
 `windows-v05-final-03` ci-dessous désignent la livraison historique conservée.
 Le manifeste du nouveau ZIP inclut le SHA du code, l'état Git et les empreintes
 des entrées de construction. Une modification des sources pendant le build
@@ -208,6 +208,17 @@ fichiers distribués. L'activation par VBS, le raccourci Bureau et un déplaceme
 après une aventure n'ont pas été vérifiés. Les tests synthétiques d'import et
 les essais de Blanc dans le véritable EXE sont détaillés séparément dans le
 [rapport V0.5](v0.5-melonds-validation.md).
+
+Le lot du 4 novembre est construit depuis le commit propre
+`6128e490287db72d26ec1c76727f1d60a776c269`. Sa vérification contrôle les
+1 190 fichiers distribués, dont les manifestes des composants melonDS et
+Randomizer, et les 194 entrées sources de l'application. Les deux lancements
+isolés de l'EXE extrait réussissent. Un essai réel distinct sur une copie
+indépendante de Blanc FR0 vérifie le lancement de melonDS, l'équipe et la
+Route 1, la confirmation du réglage x2, une sauvegarde depuis le menu Pokémon,
+puis la reprise de la même aventure après fermeture des deux programmes.
+Les empreintes et la portée de ces contrôles figurent dans le
+[rapport de livraison](v0.5-delivery-20261102.md).
 
 
 ## Essais complémentaires après remise

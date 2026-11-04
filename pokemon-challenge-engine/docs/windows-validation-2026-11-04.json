@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-04",
+  "version": "0.5.0 en validation",
+  "artifact": {
+    "filename": "Pokemon-Challenge-Engine-0.5.0-windows-x64.zip",
+    "bytes": 474795469,
+    "sha256": "91b341b02b94f8818546d8c7e803d1800a54eb723a40f02d64fbcd1298de02f9",
+    "exe_sha256": "1af3642c6cfa4a62388428635e33872ca0fe27d9bbcc838e46027f17aa9f08c8",
+    "source_commit": "6128e490287db72d26ec1c76727f1d60a776c269",
+    "source_dirty": false,
+    "files_verified": 1190,
+    "source_files_verified": 194,
+    "components_verified": {
+      "melonDS": 118,
+      "randomizer": 497
+    },
+    "zip_crc_and_sha256_ok": true,
+    "forbidden_files": [],
+    "pe_gui_subsystem": true,
+    "pe_icon": true,
+    "annex_filename": "Pokemon-Challenge-Engine-melonDS-dependency-sources.zip",
+    "annex_sha256": "e7f2937a5908e05d87e1ec3c46386a1b36622f9e30472a322132e3230643082c"
+  },
+  "software_tests": {
+    "final_full_suite": {
+      "tests": 3137,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 3136,
+      "source_commit": "5eda8c9fc2aea2743f4ac1ab870ddac61d896a02",
+      "seconds": 1378.45,
+      "skips": [
+        {
+          "test": "test_scan_does_not_follow_directory_or_rom_symlinks",
+          "reason": "Windows symlink creation unavailable: WinError 1314; required privilege is not held."
+        }
+      ],
+      "log_sha256": "06fbbe971d3d98cfd8a87b5604b388dbeca3916929af668da7c2c9372dd60eaa",
+      "junit_sha256": "481a1fd9d43ee8e2936bbcef4a31f412bd516fa6ee1a1dac46ad9452d3d7df1e"
+    },
+    "application_code_same_as_built": true,
+    "post_build_test_change": "5eda8c9 scopes the synthetic read lock to the control file; no executable code changed.",
+    "prior_attempt": "full-suite-03 stopped after 1495 passes with a diagnostic-plugin INTERNALERROR caused by an overbroad Path.open test monkeypatch; the scoped test fix and full-suite-04 supersede it.",
+    "native_command_targeted_passed": 47
+  },
+  "frozen_smoke": {
+    "ok": true,
+    "launches": 2,
+    "pythonpath_present": false,
+    "developer_path_present": false,
+    "working_directory": "new Windows TEMP directory outside the checkout",
+    "tested": [
+      "real Qt window and navigation",
+      "packaged catalogs and Lua and Java source",
+      "run creation and independent reread",
+      "preferences",
+      "same run and badges after restart",
+      "bundled Java compiler and official ZX discovered without local configuration",
+      "shiny patch modules and Java encoder/decoder available in the executable"
+    ]
+  },
+  "frozen_real_game": {
+    "game": "Pokemon White FR revision 0",
+    "configuration": "existing derived ROM and matching battery copied into an isolated classic run",
+    "synthetic_game_data": false,
+    "launches": 2,
+    "native_processes": 2,
+    "rom_sha256": "e2327f0c154919b0aee1c7467684e9fa551730afe30809a0af18043a2e7317a0",
+    "species_id": 246,
+    "level": 5,
+    "hp": 20,
+    "max_hp": 20,
+    "zone": "Route 1",
+    "speed_x2_confirmed_in_pce": true,
+    "saved_from_pokemon_menu": true,
+    "previous_save_date_visually_confirmed_after_reopen": "2026-11-04 08:30 Europe/Paris",
+    "battery_sha256_after_save": "d27568d03a6c547baf0cb017c83f945e978937f77564ccbe8ac39e8269101b03",
+    "battery_bytes": 524288,
+    "same_battery_after_restart": true,
+    "same_run_party_zone_after_restart": true,
+    "play_time_persisted": true,
+    "exit_codes": {
+      "frozen-native-first-close": 0,
+      "frozen-app-first-close": 0,
+      "frozen-native-second-close": 0,
+      "frozen-app-second-close": 0
+    },
+    "source_rom_and_battery_unchanged": true,
+    "application_log_has_no_errors": true,
+    "local_capture_sha256": {
+      "live_team_and_speed_x2": "5a91c9aac524328321b7d9b61279e5bbd5cc833a62e954dc2ae8e6cb2b878124",
+      "pokemon_save_confirmation_before_yes": "342bcf009c47dea8fbd8226fdce1925c0ecd541197b1c31be974c6b90524964e",
+      "reopened_real_game": "a9707a846656bafd57226a749c9d7f66c53127aadec9c3b7160e4757a87a5943",
+      "reopened_live_team": "dd60ec4013bd95c0de327a53019ba4cbb12d233324df590b7a8d65785eacbe71",
+      "reopened_previous_save_date": "a39c910509fcdf9e9fc4639a4e94e3befe9d58bc8fb3c0ba3a47bb6c21ae8c61"
+    },
+    "limitations": [
+      "One existing White FR0 adventure; no fresh full playthrough.",
+      "No physical controller attached."
+    ]
+  },
+  "existing_personal_files": {
+    "files_verified": 11,
+    "all_unchanged": true
+  },
+  "limitations": [
+    "No fresh Windows operating system installation was available.",
+    "Black FR0 and White 2 FR0 have no locally available ROM for real-game validation.",
+    "Battle actions, captures, encounters, items and heals without reliable readers use explicit manual declarations.",
+    "Custom shiny terrain rates are limited to recognized White FR0; normal grass verified, other encounter categories unvalidated.",
+    "PCE challenge alerts do not enforce restrictions inside Pokemon."
+  ],
+  "privacy": "No ROM, save, raw RAM, trainer identifiers or private paths included."
+}

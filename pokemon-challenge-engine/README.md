@@ -10,7 +10,7 @@ et sa passerelle Lua pour les parties existantes.
 dans la mémoire du jeu. Les contrôles d'équipe signalent les écarts dans PCE ;
 le suivi manuel est conservé et aucun blocage en combat n'est annoncé.
 
-La livraison des 2–3 novembre ajoute le journal des rencontres et actions avec
+La livraison des 2–4 novembre ajoute le journal des rencontres et actions avec
 corrections historisées, les paramètres avancés ZX et Monotype, et les commandes
 natives melonDS depuis PCE (vitesse, dispositions, save states et accès aux
 réglages). Le [rapport de livraison](docs/v0.5-delivery-20261102.md) distingue les
@@ -79,6 +79,9 @@ Elle affiche **V0.5.0 · en validation**. Extraire le ZIP complet, puis ouvrir
 `third-party` près de lui. Lire ses notices et conserver l'annexe de sources
 melonDS avec l'archive principale lors d'une redistribution. Les résultats de
 l'EXE extrait et les SHA256 sont dans le [rapport de livraison](docs/v0.5-delivery-20261102.md).
+Le paquet construit depuis `6128e49` a réussi deux lancements isolés et un essai
+réel sur Blanc FR0 : équipe et Route 1 relues, réglage x2 confirmé, sauvegarde
+dans Pokémon, fermeture puis reprise de la même aventure dans de nouveaux processus.
 La branche courante est `feat/melonds-integration`, sans fusion dans `main`.
 
 ## Mes parties — V0.4.1

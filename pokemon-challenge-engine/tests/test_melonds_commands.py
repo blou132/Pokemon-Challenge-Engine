@@ -74,17 +74,22 @@ def test_transient_native_replacement_lock_is_read_again(commands, monkeypatch):
 
 
 def test_persistent_native_read_lock_remains_bounded(commands, monkeypatch):
+    original_open = Path.open
+    locked_path = commands.directory / "melonds-controls.json"
     attempts = []
 
     def locked(path, *args, **kwargs):
-        attempts.append(path)
-        raise PermissionError("locked")
+        if path == locked_path:
+            attempts.append(path)
+            raise PermissionError("locked")
+        return original_open(path, *args, **kwargs)
 
     monkeypatch.setattr(Path, "open", locked)
     with pytest.raises(PermissionError):
         commands.refresh()
     assert len(attempts) == 3
     assert commands.sequence == 0
+    assert (commands.directory / "test.nds").read_bytes() == b"synthetic cartridge"
 
 
 def test_retrying_acknowledgement_read_never_resends_action(commands, monkeypatch):

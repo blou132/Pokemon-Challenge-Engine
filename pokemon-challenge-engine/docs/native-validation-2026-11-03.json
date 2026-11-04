@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-03",
+  "platform": "Windows x64",
+  "native_fix_commit": "0cedc80",
+  "final_manifest_sha256": "eb1b83aacadd11d79fe760f1477fd784ac36172a2e81adec6dca04148beb9ff9",
+  "final_executable_sha256": "941b7c14079433ec4770d24c5f51f6ecc3a43e77b5a817baba6aa9af275e3ab7",
+  "targeted_transport_tests": {
+    "passed": 45,
+    "native_compiler": "GCC 16.2.0 / Qt 5.15.19"
+  },
+  "shutdown_regression": {
+    "previous_exit_code": 3221225477,
+    "previous_exception": "0xC0000005",
+    "previous_fault_offset": "0x2069b",
+    "cause": "The command QTimer accessed MainWindow.emuInstance after closeEvent had deleted it.",
+    "fix": "Stop and disconnect the timer before deleteWindow; guard instance and thread before each callback."
+  },
+  "trials": [
+    {
+      "id": "native-lifecycle-20261103-white-field",
+      "game": "white",
+      "scene_visually_checked": "Route 1 overworld",
+      "source_rom_sha256": "e2327f0c154919b0aee1c7467684e9fa551730afe30809a0af18043a2e7317a0",
+      "input_rom_and_battery_unchanged": true,
+      "native_requests": 19,
+      "native_successful_acknowledgements": 19,
+      "commands": [
+        "input_pulse",
+        "input_settings",
+        "load_state",
+        "save_state",
+        "screen_layout",
+        "speed",
+        "video_settings"
+      ],
+      "speed_targets_acknowledged": [
+        "MAX",
+        "x1",
+        "x2",
+        "x4"
+      ],
+      "process_exit_code": 0,
+      "source_report_sha256": "bf8ef3cec4697477e13cc52d799e591c9e195ff6a54a22f78d4542216831efde",
+      "persisted_state_sha256": "112bcf09d31c696e43a7a89467f971a62f41b39471889c9e5c85514c9e3ff13d",
+      "resume_kind": "existing_disk_battery",
+      "limitations": [
+        "No new in-game battery save was performed by this command smoke."
+      ]
+    },
+    {
+      "id": "native-lifecycle-20261103-black2",
+      "game": "black2",
+      "scene_visually_checked": "Starting-town overworld",
+      "source_rom_sha256": "693c009dc031e74d01e00385f7156386c457640ebf800e1a04629e1e07aa7d37",
+      "input_rom_and_battery_unchanged": true,
+      "native_requests": 24,
+      "native_successful_acknowledgements": 24,
+      "commands": [
+        "input_pulse",
+        "input_settings",
+        "load_state",
+        "save_state",
+        "screen_layout",
+        "speed",
+        "video_settings"
+      ],
+      "speed_targets_acknowledged": [
+        "MAX",
+        "x1",
+        "x2",
+        "x4"
+      ],
+      "process_exit_code": 0,
+      "source_report_sha256": "b5ca851be239b451785772c479caf7f4c561088e40d006d5ac5767448d0c19b4",
+      "persisted_state_sha256": "49e05ae17b9ea03a04454b33c9686e3893b35b050ed8876aec0d935e9358472a",
+      "resume_kind": "existing_disk_battery",
+      "limitations": [
+        "No new in-game battery save was performed by this command smoke."
+      ]
+    },
+    {
+      "id": "native-lifecycle-20261103-white-reopen",
+      "game": "white",
+      "scene_visually_checked": "Route 1 overworld",
+      "source_rom_sha256": "e2327f0c154919b0aee1c7467684e9fa551730afe30809a0af18043a2e7317a0",
+      "input_rom_and_battery_unchanged": true,
+      "native_requests": 13,
+      "native_successful_acknowledgements": 13,
+      "commands": [
+        "input_pulse",
+        "input_settings",
+        "load_state",
+        "save_state",
+        "screen_layout",
+        "speed",
+        "video_settings"
+      ],
+      "speed_targets_acknowledged": [
+        "MAX",
+        "x1",
+        "x2",
+        "x4"
+      ],
+      "process_exit_code": 0,
+      "source_report_sha256": "2a02dd2d8c54276069ecace7b0f9dd10c847ae914b370dbe9691a500fad339e3",
+      "persisted_state_sha256": "e0607ebdf99d5559f957c02765499c89c85eadf24c9e4e78e264f009f43cbc7f",
+      "resume_kind": "state_from_closed_process",
+      "limitations": [
+        "No new in-game battery save was performed by this command smoke."
+      ],
+      "state_loaded_from_trial": "native-lifecycle-20261103-white-field",
+      "loaded_state_sha256": "112bcf09d31c696e43a7a89467f971a62f41b39471889c9e5c85514c9e3ff13d"
+    },
+    {
+      "id": "native-lifecycle-20261103-black2-reopen",
+      "game": "black2",
+      "scene_visually_checked": "Starting-town overworld",
+      "source_rom_sha256": "693c009dc031e74d01e00385f7156386c457640ebf800e1a04629e1e07aa7d37",
+      "input_rom_and_battery_unchanged": true,
+      "native_requests": 13,
+      "native_successful_acknowledgements": 13,
+      "commands": [
+        "input_pulse",
+        "input_settings",
+        "load_state",
+        "save_state",
+        "screen_layout",
+        "speed",
+        "video_settings"
+      ],
+      "speed_targets_acknowledged": [
+        "MAX",
+        "x1",
+        "x2",
+        "x4"
+      ],
+      "process_exit_code": 0,
+      "source_report_sha256": "a1ec0d77541263d4d3c8208009bdcadbd878454654a1c18c58a6030c0b45dc32",
+      "persisted_state_sha256": "419666ce3e7ce0145107eda493466ef4ec8bdcf3569247106e0197dc7193aec2",
+      "resume_kind": "state_from_closed_process",
+      "limitations": [
+        "No new in-game battery save was performed by this command smoke."
+      ],
+      "state_loaded_from_trial": "native-lifecycle-20261103-black2",
+      "loaded_state_sha256": "49e05ae17b9ea03a04454b33c9686e3893b35b050ed8876aec0d935e9358472a",
+      "harness_note": "The external close helper exceeded its 12 second runner deadline after native exit 0; the native report and all 13 acknowledgements were preserved."
+    },
+    {
+      "id": "native-shiny-20261103-white",
+      "game": "white_fr_rev0",
+      "rom_sha256": "240399d13aefca91b8eb3e1ccdaf9fdd13d7d7ae29696ed6c65c0902fca2eaf2",
+      "scenario": "Terrain shiny 100% development patch",
+      "scene_visually_checked": "Route 1 normal-grass wild battle",
+      "enemy_species_id": 504,
+      "enemy_level": 3,
+      "checksum_valid_enemy_records": 2,
+      "enemy_shiny_xor": 1,
+      "rng_multiplier": "0x5d588b656c078965",
+      "rng_increment": "0x269ec3",
+      "source_inspection_sha256": "a1d86dff2262eaa0f11c16f2d27ffaed4be98fbbe614b566d4b25497284e7af5",
+      "limitations": [
+        "Historical trial before the final lifecycle fix and final product pipeline.",
+        "Existing copied battery used; this does not validate new-game progression.",
+        "Other encounter categories and other games were not established by this observation."
+      ]
+    },
+    {
+      "id": "native-combined-20261103-white",
+      "game": "white_fr_rev0",
+      "rom_sha256": "ec8fae0b1eb6c523f961fbf5d4e3111ca58b03192cd18d53d1e383096d0bc4c5",
+      "scenario": "Terrain shiny 100% development patch plus randomized ROM",
+      "scene_visually_checked": "Route 1 normal-grass wild battle",
+      "enemy_species_id": 293,
+      "enemy_level": 4,
+      "checksum_valid_enemy_records": 2,
+      "enemy_shiny_xor": 1,
+      "rng_multiplier": "0x5d588b656c078965",
+      "rng_increment": "0x269ec3",
+      "source_inspection_sha256": "286575863361767fd74189b69eaa765cf6af291cdfcde6a8367a681af055c488",
+      "limitations": [
+        "Historical trial before the final lifecycle fix and final product pipeline.",
+        "Existing copied battery used; this does not validate new-game progression.",
+        "Other encounter categories and other games were not established by this observation."
+      ]
+    }
+  ],
+  "physical_controller": {
+    "SDL2_initialization_result": 0,
+    "enumerated_devices": 0,
+    "hardware_test_performed": false
+  },
+  "limits": [
+    "Target speed acknowledgements do not guarantee the requested real-time FPS.",
+    "Black and White 2 were not exercised with real game files.",
+    "This evidence does not establish automatic battle or action detection.",
+    "No ROM, save, screenshot, RAM bytes or trainer identifiers are included in this metadata."
+  ]
+}

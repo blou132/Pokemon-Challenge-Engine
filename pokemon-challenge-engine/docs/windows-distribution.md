@@ -7,7 +7,7 @@ l'EXE. L'icône géométrique est celle de l'application ; la version est issue 
 La version numérique courante est `0.5.0` ; l’interface indique explicitement
 « en validation », sans présenter cette étape comme une validation achevée.
 
-Le nouveau lot et son annexe sont produits dans `runtime/windows-v05-20261102/`.
+Le nouveau lot et son annexe sont produits dans `runtime/windows-v05-20261104/`.
 Le [rapport des 2–3 novembre](v0.5-delivery-20261102.md) décrit ce lot ; les chemins
 `windows-v05-final-03` ci-dessous désignent la livraison historique conservée.
 Le manifeste du nouveau ZIP inclut le SHA du code, l'état Git et les empreintes
@@ -35,7 +35,7 @@ avant extraction. Les save states `.ml1` et les sauvegardes `.sav.bak` sont
    Les erreurs de l’application sont consignées dans `logs` du dossier de données.
 
 Le nouveau ZIP et son annexe de sources se trouvent dans
-`runtime/windows-v05-20261102/` à la racine du dépôt. Le
+`runtime/windows-v05-20261104/` à la racine du dépôt. Le
 [rapport de livraison](v0.5-delivery-20261102.md)
 indique les SHA256, le commit utilisé et la portée exacte des essais. L’annexe
 `Pokemon-Challenge-Engine-melonDS-dependency-sources.zip` doit accompagner le ZIP

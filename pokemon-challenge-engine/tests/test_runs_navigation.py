@@ -91,7 +91,8 @@ def test_home_uses_same_creation_dialog_with_each_game_preselected(window, monke
     game_buttons = [button for button in buttons if button.text().startswith("Préparer une partie")]
     for button in game_buttons:
         button.click()
-    games = [game.id for game in window.catalog.games.values() if game.status == "supported"]
+    games = ["black", "white", "black2", "white2", "diamond", "pearl", "platinum", "heartgold", "soulsilver"]
+    assert len(game_buttons) == 9
     assert seen == ["black", *games]
     assert window.runs.list_runs() == []
     assert window.profiles.list_profiles() == []

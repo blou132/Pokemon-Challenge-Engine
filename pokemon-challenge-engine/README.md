@@ -22,7 +22,8 @@ indépendant du ZIP et des aventures. Les cinq jeux Gen IV sont proposés en par
 classique avec melonDS ; leurs challenges et leur suivi mémoire restent indisponibles.
 Le [rapport de bibliothèque personnelle](docs/personal-library-2026-11-05.md)
 décrit l'import local, les protections des maîtresses, les commandes de préparation
-et l'état des validations. Le nouveau paquet Windows reste à construire et vérifier.
+et les validations. Le nouveau paquet Windows est construit et vérifié ; la suite
+complète compte **3 258 tests réussis, 1 ignoré, aucun échec**.
 
 ![Accueil de l'application — capture V0.1](docs/screenshots/accueil-1920.png)
 

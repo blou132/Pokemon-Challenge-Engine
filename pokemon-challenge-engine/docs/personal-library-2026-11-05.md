@@ -2,9 +2,9 @@
 
 La bibliothèque conserve les ROM maîtresses dans un stockage privé permanent,
 indépendant du dépôt, du ZIP portable et des dossiers des aventures. La version
-reste **0.5.0 en validation**. Ce rapport décrit les développements et les preuves
-disponibles ; la suite complète et la nouvelle construction Windows restent à
-consigner après leur exécution.
+reste **0.5.0 en validation**. La nouvelle distribution Windows est construite et
+contrôlée, et la suite complète passe avec **3 258 réussites, 1 test ignoré,
+aucun échec**. Les limites de gameplay sont détaillées ci-dessous.
 
 ## Inventaire réel et import privé
 
@@ -97,7 +97,7 @@ portée propre. L'identification des neuf ROM et leur import fidèle ne constitu
 pas une validation de toutes les aventures ou de tous les challenges sur chacun
 des neuf jeux. Le 5 novembre, les neuf copies classiques ont été exécutées avec
 le composant melonDS PCE : identité native cohérente, plusieurs messages successifs,
-fermeture avec code zéro et contrôle de reprise réussi. Les cinq Gen IV émettent
+fermeture avec code zéro et contrôle de préparation à la reprise réussi. Les cinq Gen IV émettent
 uniquement les capacités d'identité et de session, sans équipe. Ce contrôle de
 démarrage ne valide pas un parcours complet de chaque jeu. Les neuf maîtresses
 (empreintes et dates de modification) et le manifeste sont restés inchangés.
@@ -161,13 +161,75 @@ ses composants et leurs notices/sources, avec la bibliothèque locale séparée.
   **35 nouveaux cas Gen IV** couvrent notamment les copies indépendantes, la
   reprise, les limites de modes et l'absence de lecture Gen V supposée. Les
   différentes séries ciblées se chevauchent ; leurs nombres ne s'additionnent
-  pas au résultat de la future suite complète.
-- **Suite pytest complète après intégration : en attente.**
+  pas au résultat de la suite complète.
+- **Suite pytest complète après intégration : 3 258 réussites, 1 ignoré, aucun échec.**
+  Exécution sur `a7302964fbf884eff10abe88193c83ca73fdc8ed` ; le test ignoré exige
+  un privilège Windows de création de lien symbolique absent de ce poste.
+  Relevés : `runtime/delivery-20261102/library-full-suite-02/pytest.xml`,
+  `pytest.log` et `summary.json`. La première exécution avait révélé une assertion
+  de navigation encore limitée à quatre jeux ; le test corrigé contrôle explicitement
+  les neuf jeux et passe dans cette seconde suite complète.
 - Après correction du cache des préférences, 58 cas d'intégration/Gen IV réussissent.
-- **Nouveau ZIP Windows, contrôle d'exclusion des ROM et essais de son EXE :
-  en attente.** Le ZIP de la livraison précédente ne contient pas cette nouvelle
-  bibliothèque dans son code.
+- **Nouveau ZIP Windows : 1 196 fichiers vérifiés, 200 fichiers sources correspondants,
+  aucun fichier personnel interdit.** Composants vérifiés : melonDS 118 fichiers,
+  Randomizer/JDK 497 fichiers. Le manifeste, les CRC et SHA-256 du ZIP ainsi que
+  l'icône, la version et le sous-système Windows GUI de l'EXE ont été contrôlés.
+- **Persistance entre installations :** l'EXE dans le dossier de construction et
+  l'EXE extrait dans un autre dossier retrouvent tous deux les neuf maîtresses
+  via le chemin par défaut, sans argument de ROM ni réimportation.
+- **EXE, tests synthétiques :** premier lancement et réouverture avec progression
+  synthétique conservée, interface et ressources vérifiées ; bibliothèque de test
+  isolée. Ces essais héritent de l'environnement de développement actuel et ne
+  constituent pas une validation sur un Windows vierge.
+- **EXE, essai réel :** neuf jeux prêts dans l'interface, création de Blanc classique
+  sans chemin saisi, copie fidèle dans l'aventure, lancement natif jusqu'à l'écran
+  titre puis l'introduction. Un save state a été enregistré depuis les commandes PCE,
+  puis chargé dans une nouvelle session après fermeture complète de PCE et melonDS.
+  Les deux commandes ont reçu un accusé natif positif ; l'empreinte du state est
+  identique après réouverture. Cet essai ne démontre pas une nouvelle sauvegarde
+  batterie via le menu Pokémon, ni une lecture d'équipe ou de terrain : le jeu était
+  encore dans son introduction, avec trames `not_ready` et équipe non connue.
+- **Cycle de vie réel :** deux copies classiques de Blanc créées, chemins ROM,
+  sauvegardes, states et émulateurs distincts ; suppression de la seule première
+  aventure créée pour ce test. L'autre aventure et la maîtresse sont inchangées.
+  Aucun émulateur ni sauvegarde batterie n'a été créé dans ce test de services.
+- **Contrôle après build et essais :** neuf ZIP originaux inchangés, neuf maîtresses
+  conformes, dates de modification des maîtresses inchangées. Tous les processus
+  ouverts pour les essais de l'EXE ont été fermés.
 
 Les tests automatiques de ce lot utilisent des données synthétiques et des
 racines explicitement isolées. Les rapports des neuf imports réels sont distincts
 de ces tests. Aucun résultat synthétique ne remplace une preuve d'émulation.
+
+Les preuves privées sont conservées dans `runtime/library-validation-20261105/` :
+`artifact-verification.json`, `frozen-library-0.json`, `frozen-library-1.json`,
+`frozen-smoke-0.json`, `frozen-smoke-1.json`, `frozen-state-saved.json`,
+`frozen-state-reopened.json`, `real-lifecycle.json` et `post-build-preservation.json`.
+Les captures d'écran restent locales et ne sont pas intégrées à la distribution.
+
+## Livraison Windows
+
+Dossier local : `runtime/windows-v05-library-20261105/`.
+
+- Application : `dist/Pokemon-Challenge-Engine/Pokemon-Challenge-Engine.exe`.
+- Archive : `Pokemon-Challenge-Engine-0.5.0-windows-x64.zip`, 474 868 423 octets.
+- Annexe à conserver lors d'une redistribution :
+  `Pokemon-Challenge-Engine-melonDS-dependency-sources.zip`.
+
+| Fichier | SHA-256 |
+| --- | --- |
+| ZIP Windows | `fe74a2b7b01342e82affc8cca7f389962704fa9b868d77262239df42d7187ce9` |
+| EXE Windows | `53be7d7b62706d0fe4391ab843a4e8a37ce8d1b678dac5118cb8f0b366459440` |
+| Annexe sources melonDS | `e7f2937a5908e05d87e1ec3c46386a1b36622f9e30472a322132e3230643082c` |
+
+Construction depuis le commit propre `60a40692ca9b19d9c527eebe2eb2401802132168`.
+La suite finale utilise le même code applicatif ; le commit suivant modifie
+uniquement le test de navigation. Ce rapport final est joint à côté du ZIP après
+les essais ; les sources embarquées gardent leur état exact au moment du build.
+La branche `feat/melonds-integration` est conservée, sans fusion dans `main`.
+
+Le stockage Windows personnel par défaut a été vérifié sur ce poste. Un dossier
+de données personnalisé très imbriqué a rencontré la limite Windows de longueur
+de chemin pendant la copie des licences de melonDS ; l'emplacement par défaut
+de cette installation reste sous cette limite. Ce lot ne modifie pas la politique
+Windows concernant les chemins longs.

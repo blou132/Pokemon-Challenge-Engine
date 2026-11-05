@@ -95,8 +95,20 @@ présentés comme une lecture d'équipe.
 Les [preuves de la livraison précédente](v0.5-delivery-20261102.md) conservent leur
 portée propre. L'identification des neuf ROM et leur import fidèle ne constituent
 pas une validation de toutes les aventures ou de tous les challenges sur chacun
-des neuf jeux. Les nouveaux essais en émulation et de l'EXE seront consignés
-séparément après exécution.
+des neuf jeux. Le 5 novembre, les neuf copies classiques ont été exécutées avec
+le composant melonDS PCE : identité native cohérente, plusieurs messages successifs,
+fermeture avec code zéro et contrôle de reprise réussi. Les cinq Gen IV émettent
+uniquement les capacités d'identité et de session, sans équipe. Ce contrôle de
+démarrage ne valide pas un parcours complet de chaque jeu. Les neuf maîtresses
+(empreintes et dates de modification) et le manifeste sont restés inchangés.
+Preuve locale : `runtime/library-validation-20261105/native-matrix.json`.
+
+Une transformation réelle de Blanc FR0 avec Randomizer avancé et Monotype Feu pur
+(graine 5122026) a produit une ROM distincte et trois starters de type effectif Feu.
+La maîtresse, le ZIP d'origine et le manifeste sont inchangés ; la reprise de la
+partie dérivée passe le contrôle de préparation. Cet essai n'a pas lancé la ROM
+dérivée dans l'émulateur. Preuve locale :
+`runtime/library-validation-20261105/real-transformation.json`.
 
 ## Préparation locale en ligne de commande
 
@@ -151,6 +163,7 @@ ses composants et leurs notices/sources, avec la bibliothèque locale séparée.
   différentes séries ciblées se chevauchent ; leurs nombres ne s'additionnent
   pas au résultat de la future suite complète.
 - **Suite pytest complète après intégration : en attente.**
+- Après correction du cache des préférences, 58 cas d'intégration/Gen IV réussissent.
 - **Nouveau ZIP Windows, contrôle d'exclusion des ROM et essais de son EXE :
   en attente.** Le ZIP de la livraison précédente ne contient pas cette nouvelle
   bibliothèque dans son code.

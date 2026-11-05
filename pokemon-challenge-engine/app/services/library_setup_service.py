@@ -6,7 +6,6 @@ import re
 
 from app.services.auto_setup_service import AutoSetupService
 from app.services.discovery_safety import file_signature
-from app.services.game_mode_config import GameModeConfigStore
 
 
 class LibrarySetupService(AutoSetupService):
@@ -18,6 +17,12 @@ class LibrarySetupService(AutoSetupService):
         self._library_report = None
         self._library_signature = None
         self._bootstrap_done = False
+
+    @staticmethod
+    def _bind_master(profile, path, emulator):
+        profile.update(rom_path=str(path), emulator_kind='melonds', emulator_path=str(emulator or ''),
+                       ini_path='', save_path='', save_state_directory='', save_state_stem='',
+                       apply_settings=False, lua_connection='manual')
 
     def _signature(self, entries):
         paths = [self.library.manifest_path, *(self.library.master_path(entry) for entry in entries)]
@@ -50,12 +55,23 @@ class LibrarySetupService(AutoSetupService):
                 if game_id in GEN4_GAME_IDS:
                     raise ValueError('Importez ce jeu dans Paramètres → Bibliothèque de jeux avant de créer une aventure.')
                 return super().automatic_setup(force=force, game_id=game_id)
+            # Preferences are small and can change independently of the master
+            # inventory. Re-read them even on a library cache hit, and preserve
+            # the existing refusal of corrupt configuration instead of silently
+            # replacing the user's choices with defaults.
+            _, preferences = self._preferences()
+            profiles = preferences['launch_profiles']
             signature = self._signature(entries)
             if not force and self._library_report is not None and signature == self._library_signature:
-                return deepcopy(self._library_report) | {'cached': True}
+                report = deepcopy(self._library_report)
+                for entry in entries:
+                    if report['library_integrity'][entry.game_id]['valid']:
+                        self._bind_master(profiles[entry.game_id], self.library.master_path(entry),
+                                          report['game_states'][entry.game_id]['emulator_path'])
+                report['launch_profiles'] = profiles
+                return report | {'cached': True}
             verified = {result.entry.game_id: result for result in self.library.verify()}
             emulator = find_installation(self.base_dir)
-            profiles = GameModeConfigStore(self.base_dir, self.legacy).load()['launch_profiles']
             report = {'library': True, 'library_root': str(self.library.root), 'game_states': {},
                       'games': [], 'emulators': [], 'installations': [], 'warnings': [], 'details': [],
                       'ready': False, 'prepared_games': [], 'cached': False, 'setup_complete': True,
@@ -85,9 +101,7 @@ class LibrarySetupService(AutoSetupService):
                     report['warnings'].append(result.error)
                     continue
                 profile = profiles[game.id]
-                profile.update(rom_path=str(path), emulator_kind='melonds', emulator_path=str(emulator or ''),
-                               ini_path='', save_path='', save_state_directory='', save_state_stem='',
-                               apply_settings=False, lua_connection='manual')
+                self._bind_master(profile, path, emulator)
                 state.update(status='ready' if emulator else 'needs_attention',
                     message=game.compatibility_summary if emulator else 'ROM vérifiée ; composant melonDS PCE indisponible.')
                 report['ready'] |= bool(emulator)

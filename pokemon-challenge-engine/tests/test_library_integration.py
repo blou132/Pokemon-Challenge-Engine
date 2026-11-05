@@ -13,6 +13,7 @@ import pytest
 
 from app.core.run_manager import RunManager
 from app.services.config_service import AppConfig
+from app.services.game_mode_config import GameModeConfigStore
 from app.services.library_setup_service import LibrarySetupService, verify_library_source
 from app.services.rom_library_service import RomLibraryService
 from app.services.run_deletion_service import RunDeletionService
@@ -138,6 +139,33 @@ def test_snapshot_uses_pinned_master_instead_of_stale_legacy_rom(integrated, tmp
     assert snapshot["rom_path"] == str(env.library.resolve("white"))
     assert snapshot["_library_source"]["sha256"] == env.library.list_entries()[0].sha256
     assert options["rom_path"] == str(foreign)
+
+
+def test_cached_library_reloads_launch_preferences_without_rehashing_masters(integrated, monkeypatch):
+    env = integrated
+    store = GameModeConfigStore(env.base, AppConfig())
+    preferences = store.load()
+    preferences['launch_profiles']['white'].update(speed='x4', backup_on_close=True,
+                                                   backup_retention=25, rom_path='stale-external.nds')
+    store.save(preferences)
+    monkeypatch.setattr(env.library, 'verify', lambda: pytest.fail('Unchanged masters need no new full hash'))
+    report = env.setup.automatic_setup()
+    assert report['cached'] is True
+    options = report['launch_profiles']['white']
+    assert (options['speed'], options['backup_on_close'], options['backup_retention']) == ('x4', True, 25)
+    assert options['rom_path'] == str(env.library.master_path(env.library.list_entries()[0]))
+    assert env.launcher.snapshot('white', options)['speed'] == 'x4'
+
+
+def test_cached_library_refuses_corrupt_preferences_without_overwriting_them(integrated):
+    env = integrated
+    path = GameModeConfigStore(env.base, AppConfig()).path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b'{corrupt preference data')
+    before = path.read_bytes(), path.stat().st_mtime_ns
+    with pytest.raises(ValueError, match='préférences Mode Jeu sont illisibles'):
+        env.setup.automatic_setup()
+    assert (path.read_bytes(), path.stat().st_mtime_ns) == before
 
 
 def test_corrupt_master_after_setup_is_blocked_before_run_preparation(integrated):

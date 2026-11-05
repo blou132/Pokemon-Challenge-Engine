@@ -88,7 +88,7 @@ class LaunchProfilePage(QWidget):
         layout = page_layout(self, "Profil de lancement", "Un ensemble de chemins et de préférences par jeu.")
         self.game_combo = QComboBox()
         for game in catalog.games.values():
-            if game.status == "supported":
+            if game.supports_melonds:
                 self.game_combo.addItem(game.name, game.id)
         layout.addWidget(self.game_combo)
         paths, box = card("Jeu et émulateur")

@@ -147,7 +147,7 @@ class GameModePage(QWidget):
         self.game_combo = QComboBox()
         self.game_combo.setAccessibleName("Jeu du Mode Jeu")
         for game in catalog.games.values():
-            if game.status == "supported":
+            if game.supports_melonds:
                 self.game_combo.addItem(game.name, game.id)
         self.game_combo.currentIndexChanged.connect(self._game_selected)
         selection.addWidget(self.game_combo, 2)
@@ -590,8 +590,8 @@ class GameModePage(QWidget):
         self._autosave = deepcopy(autosave or {})
         self.run_bar.setVisible(run is not None)
         self.manual_actions_button.setEnabled(run is not None)
-        for action in self.manual_actions.values():
-            action.setEnabled(run is not None)
+        for name, action in self.manual_actions.items():
+            action.setEnabled(run is not None and (run.generation == 5 or name == "add_note"))
         self.manual_actions["record_rule_event"].setEnabled(run is not None and bool(
             MANUAL_RULES.intersection(run.active_rules)))
         self.death_tracking_label.setVisible(run is not None)
@@ -682,6 +682,15 @@ class GameModePage(QWidget):
         matching = self._bridge.connected and self._bridge.game_id == run.game_id
         self.team_note.show()
         self.team_note.setText("Dernière équipe observée · " + (self.connection_name + " connecté" if matching else "hors ligne"))
+        if game is not None and game.status == "classic_only":
+            self.rules_label.setText(game.compatibility_summary)
+            self.team_note.setText("Suivi d'équipe Gen IV non disponible.")
+            self.zone_label.setText("Suivi de zone Gen IV non disponible")
+            self.zone_map_label.setText("Aucun profil mémoire Gen IV validé")
+            self.stat_labels["badges"].setText("Suivi Gen IV non disponible")
+            self.stat_labels["deaths"].setText("Suivi Gen IV non disponible")
+            self.capture_count_label.setText("Suivi des captures Gen IV non disponible")
+            self.death_tracking_label.setText("Partie classique : aucune règle de challenge Gen IV active.")
         for index, slot in enumerate(self.team_slots):
             slot.set_pokemon(party[index] if index < len(party) else None, known_empty=bool(party), generation=run.generation)
         self.nuzlocke_widget.hide()

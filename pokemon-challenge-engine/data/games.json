@@ -52,14 +52,43 @@
     "revision": 0
   },
   {
+    "id": "diamond",
+    "name": "Pokémon Diamant",
+    "generation": 4,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": false,
+    "supports_desmume": false,
+    "status": "classic_only",
+    "game_code": "ADAF",
+    "region": "FR",
+    "revision": null
+  },
+  {
+    "id": "pearl",
+    "name": "Pokémon Perle",
+    "generation": 4,
+    "platform": "Nintendo DS",
+    "type_count": 17,
+    "supports_monotype": false,
+    "supports_desmume": false,
+    "status": "classic_only",
+    "game_code": "APAF",
+    "region": "FR",
+    "revision": null
+  },
+  {
     "id": "platinum",
     "name": "Pokémon Platine",
     "generation": 4,
     "platform": "Nintendo DS",
     "type_count": 17,
-    "supports_monotype": true,
-    "supports_desmume": true,
-    "status": "planned"
+    "supports_monotype": false,
+    "supports_desmume": false,
+    "status": "classic_only",
+    "game_code": "CPUF",
+    "region": "FR",
+    "revision": null
   },
   {
     "id": "heartgold",
@@ -67,9 +96,12 @@
     "generation": 4,
     "platform": "Nintendo DS",
     "type_count": 17,
-    "supports_monotype": true,
-    "supports_desmume": true,
-    "status": "planned"
+    "supports_monotype": false,
+    "supports_desmume": false,
+    "status": "classic_only",
+    "game_code": "IPKF",
+    "region": "FR",
+    "revision": null
   },
   {
     "id": "soulsilver",
@@ -77,9 +109,12 @@
     "generation": 4,
     "platform": "Nintendo DS",
     "type_count": 17,
-    "supports_monotype": true,
-    "supports_desmume": true,
-    "status": "planned"
+    "supports_monotype": false,
+    "supports_desmume": false,
+    "status": "classic_only",
+    "game_code": "IPGF",
+    "region": "FR",
+    "revision": null
   },
   {
     "id": "emerald",

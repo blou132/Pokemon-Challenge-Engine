@@ -9,12 +9,14 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
+from app.core.game_detector import GEN4_GAME_IDS
 from app.models.run import utc_now
 from app.services.discovery_safety import file_hash, local_path
 from app.services.melonds_runtime import initial_config, validate_config, verify_installation
 from app.services.run_isolation_service import OWNER, RunIsolationService, _copy, _regular
 from app.services.rom_transformation_service import RomTransformationService, transformation_options, verified_transformation_report
 from app.services.save_conversion_service import convert_gen5_battery
+from app.services.library_setup_service import verify_library_source
 
 
 class MelonDSRunService:
@@ -34,7 +36,18 @@ class MelonDSRunService:
                 "save_path": root / "saves" / (stem + ".sav"),
                 "save_state_directory": root / "states", "backup_directory": root / "backups"}
 
+    @staticmethod
+    def _validate_game_support(run):
+        if run.game_id in GEN4_GAME_IDS:
+            snapshot = run.rules_snapshot
+            if run.generation != 4 or snapshot.get("mode") != "normal" or snapshot.get("active_rules") or \
+                    snapshot.get("monotype") is not None or "rom_transformation" in snapshot.get("settings", {}):
+                raise ValueError("Gen IV : seule une partie classique sans challenge ni transformation est disponible.")
+
     def prepare(self, run, executable: Path, *, migrate=False, import_save=None):
+        self._validate_game_support(run)
+        if run.game_id in GEN4_GAME_IDS and (migrate or import_save is not None or run.save_path):
+            raise ValueError("L'import et la conversion de sauvegardes Gen IV ne sont pas validés ; créez une nouvelle aventure classique.")
         if self.manager.active_id == run.run_id:
             raise ValueError("Arrêtez le suivi de cette partie avant de changer d'émulateur.")
         current = self.manager.load(run.run_id)
@@ -51,6 +64,7 @@ class MelonDSRunService:
                 or run.current_zone is not None or run.badges is not None):
             raise ValueError("Une nouvelle ROM dérivée exige une aventure sans sauvegarde importée.")
         source_rom = _regular(local_path(original.get("rom_path", "")))
+        library_hash = None if migrate else verify_library_source(run, source_rom)
         found = RunIsolationService._identity(source_rom, run)
         existing = RunIsolationService(self.manager)
         if migrate:
@@ -72,6 +86,8 @@ class MelonDSRunService:
             transformation = None
             if migrate or configured is None:
                 rom_hash = _copy(source_rom, staging / "game" / expected["rom_path"].name)
+                if library_hash is not None and rom_hash != library_hash:
+                    raise ValueError("La ROM maîtresse a changé pendant la copie ; préparation refusée.")
                 if run.rom_fingerprint and rom_hash != run.rom_fingerprint:
                     raise ValueError("La ROM ne correspond plus à cette partie.")
                 if configured is not None:
@@ -83,8 +99,13 @@ class MelonDSRunService:
                         if item.is_file():
                             _copy(item, staging / "transformation" / item.name)
             else:
+                private_input = staging / "source-input.nds"
+                copied_hash = _copy(source_rom, private_input)
+                if library_hash is not None and copied_hash != library_hash:
+                    raise ValueError("La ROM maîtresse a changé pendant la copie ; transformation refusée.")
                 result = RomTransformationService.from_local_config(self.manager.root.parent).transform(
-                    source_rom, staging / "transformation", game_id=run.game_id, seed=run.seed, options=configured)
+                    private_input, staging / "transformation", game_id=run.game_id, seed=run.seed, options=configured)
+                private_input.unlink()
                 rom_hash = _copy(result.rom_path, staging / "game" / expected["rom_path"].name)
                 if rom_hash != result.manifest["output_sha256"]:
                     raise ValueError("La ROM dérivée a changé pendant la copie.")
@@ -152,6 +173,7 @@ class MelonDSRunService:
                 RunIsolationService._remove_staging(staging)
 
     def validate(self, run):
+        self._validate_game_support(run)
         root = self.directory(run)
         marker = _regular(root / "isolation.json")
         if marker.stat().st_size > 1024 * 1024:

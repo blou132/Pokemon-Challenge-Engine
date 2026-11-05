@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from app.bridge.protocol import GAME_IDS, SCRIPT_VERSION
-from app.core.game_detector import GAME_CODE_PREFIXES
+from app.core.game_detector import GAME_CODE_PREFIXES, GEN4_GAME_IDS
 from app.services.bridge_service import BridgeService
 
 RESOURCE_DIR = Path(__file__).resolve().parents[2]
@@ -49,7 +49,9 @@ class EmulatorService:
         if emulator_kind not in {"desmume", "melonds"}:
             raise ValueError("Émulateur inconnu.")
         if game_id not in GAME_IDS:
-            raise ValueError("Sélectionnez Pokémon Noir, Blanc, Noir 2 ou Blanc 2.")
+            raise ValueError("Sélectionnez un des neuf jeux Pokémon DS reconnus.")
+        if game_id in GEN4_GAME_IDS and emulator_kind != "melonds":
+            raise ValueError("Gen IV : utilisez melonDS en partie classique ; aucun suivi Lua Gen IV n'est validé.")
         code, revision = None, None
         if rom_path:
             rom = Path(rom_path)

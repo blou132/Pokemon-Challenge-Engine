@@ -25,8 +25,10 @@ class ChallengeEngine:
         game = self.catalog.games.get(game_id)
         if game is None:
             raise ValueError("Ce jeu est inconnu du catalogue.")
-        if game.status != "supported":
+        if game.status not in {"supported", "classic_only"}:
             raise ValueError(f"{game.name} est prévu pour une version ultérieure.")
+        if game.status == "classic_only" and mode != "normal":
+            raise ValueError("La génération IV propose uniquement une partie classique avec melonDS ; les challenges ne sont pas disponibles.")
         if type(seed) is not int or seed < 0:
             raise ValueError("La seed doit être un entier positif ou nul.")
         normalized = self.random_selector.normalize_states(states)
@@ -88,8 +90,12 @@ class ChallengeEngine:
             return [str(error)]
         errors: list[str] = []
         game = self.catalog.games.get(challenge.game_id)
-        if game is None or game.status != "supported":
+        if game is None or game.status not in {"supported", "classic_only"}:
             errors.append("Le jeu du challenge n'est pas pris en charge dans cette version.")
+        if game is not None and game.status == "classic_only" and (
+                challenge.mode != "normal" or challenge.active_rules or challenge.monotype is not None or
+                "rom_transformation" in challenge.settings):
+            errors.append("La génération IV propose uniquement une partie classique avec melonDS ; les challenges et transformations ne sont pas disponibles.")
         errors.extend(self.rule_engine.validate(challenge.active_rules, challenge.game_id))
         active = set(challenge.active_rules)
         if challenge.mode == "normal" and active:

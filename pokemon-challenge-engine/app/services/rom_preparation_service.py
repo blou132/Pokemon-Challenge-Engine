@@ -22,7 +22,7 @@ MAX_ROM_BYTES = 1024 * 1024 * 1024
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
 MAX_ARCHIVE_ENTRIES = 2048
 MAX_CENTRAL_BYTES = 4 * 1024 * 1024
-REGIONS = {"F": "FR", "O": "EN", "D": "DE", "I": "IT", "J": "JP", "K": "KO", "S": "ES"}
+REGIONS = {"F": "FR", "O": "EN", "E": "EN", "P": "EN", "D": "DE", "I": "IT", "J": "JP", "K": "KO", "S": "ES"}
 
 
 def _check_desmume_path(path: Path) -> None:
@@ -41,7 +41,7 @@ def identity(header: bytes) -> tuple[str, str, str, int]:
         raise ValueError("Code Nintendo DS illisible.") from exc
     game = GAME_CODE_PREFIXES.get(code[:3])
     if game is None or not re.fullmatch(r"[A-Z0-9]{4}", code):
-        raise ValueError("Cette ROM n'est pas un des quatre jeux Pokémon Gen V pris en charge.")
+        raise ValueError("Cette ROM n'est pas un des neuf jeux Pokémon DS Gen IV/V reconnus.")
     return game, code, REGIONS.get(code[3], "unknown"), header[0x1E]
 
 
@@ -134,7 +134,7 @@ def inspect_rom_source(source_path: str | Path) -> tuple[GameCandidate, ...]:
             result.append(GameCandidate(path, info.filename, game, code, region, revision, info.file_size,
                                         "zip", len(members) > 1))
         if not result:
-            raise ValueError("Aucun jeu Pokémon Gen V reconnu dans les en-têtes du ZIP.")
+            raise ValueError("Aucun jeu Pokémon DS Gen IV/V reconnu dans les en-têtes du ZIP.")
         return tuple(result)
 
 

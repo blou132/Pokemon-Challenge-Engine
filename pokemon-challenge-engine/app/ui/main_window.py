@@ -30,9 +30,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, catalog: Catalog, base_dir: Path, parent: QWidget | None = None) -> None:
+    def __init__(self, catalog: Catalog, base_dir: Path, parent: QWidget | None = None, *,
+                 library_service=None, library_source_directories=()) -> None:
         super().__init__(parent)
         self.catalog = catalog
+        self.library_service = library_service
+        self.library_source_directories = tuple(library_source_directories)
         self.setWindowTitle("Pokemon Challenge Engine")
         self.resize(1260, 740)
         self.setMinimumSize(1060, 640)
@@ -137,7 +140,8 @@ class MainWindow(QMainWindow):
         self.challenge_page = ChallengePage(catalog, self.profiles)
         self.rules_page = RulesPage(catalog)
         self.profile_page = ProfilePage(catalog, self.profiles)
-        self.settings_page = SettingsPage(self.config_service, self.config, catalog.games.values())
+        self.settings_page = SettingsPage(self.config_service, self.config, catalog.games.values(),
+                                          library_service=library_service)
         self.bridge_controller = BridgeController(base_dir, self)
         self.bridge_controller.state_changed.connect(self.run_controller.consume)
         self.bridge_controller.state_changed.connect(lambda _: self._refresh_pending_installation())
@@ -161,6 +165,7 @@ class MainWindow(QMainWindow):
         self.settings_page.config_changed.connect(self.config_changed)
         self.settings_page.installation_requested.connect(self.open_installation)
         self.settings_page.detection_requested.connect(lambda: self.refresh_installation(force=True))
+        self.settings_page.library_changed.connect(lambda: self.refresh_installation(force=True))
         self.navigate(6)
         self.refresh_home()
         self.statusBar().showMessage(f"Prêt  ·  {VERSION_LABEL} : préparation locale, suivi selon le moteur et la partie")
@@ -322,6 +327,8 @@ class MainWindow(QMainWindow):
         from app.services.run_launch_service import RunLaunchService
         from PySide6.QtWidgets import QDialog
         options = GameModeConfigStore(self.base_dir, self.config).load()["launch_profiles"]
+        if self._discovery_report and self._discovery_report.get("library"):
+            options = self._discovery_report["launch_profiles"]
         dialog = NewRunDialog(self.catalog, self.profiles.list_profiles(), options, self, profile=profile, base_dir=self.base_dir)
         if self._discovery_report is not None:
             dialog.set_detection_state(self._discovery_report, select_ready=profile is None and game_id is None)
@@ -349,12 +356,15 @@ class MainWindow(QMainWindow):
                 errors = ChallengeEngine(self.catalog).validate(challenge)
                 if errors:
                     raise ValueError("\n".join(errors))
-            snapshot = RunLaunchService(self.base_dir, self.config).snapshot(game.id, values["launch_profile"], values["save_path"])
+            snapshot = RunLaunchService(self.base_dir, self.config, setup=self.setup_service()).snapshot(
+                game.id, values["launch_profile"], values["save_path"])
             snapshot["_isolation_pending"] = True
+            identity = snapshot.get("_library_source", {})
             run = self.runs.create(values["name"], game.id, generation=game.generation,
                 challenge=challenge, profile_id=selected.id if selected else None,
                 preset=challenge.settings.get("preset_id") if challenge else "classic",
-                game_code=game.game_code, region=game.region, revision=game.revision,
+                game_code=identity.get("game_code", game.game_code), region=identity.get("region", game.region),
+                revision=identity.get("revision", game.revision), rom_fingerprint=identity.get("sha256"),
                 save_path=values["save_path"] or None, launch_profile=snapshot)
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, "Partie non créée", str(exc))
@@ -478,7 +488,10 @@ class MainWindow(QMainWindow):
                     snapshot["_source"] = deepcopy(source)
                 self._run_action(run.run_id, "update_launch_reference", {
                     "profile": snapshot, "rom_fingerprint": result["rom_fingerprint"]})
-                message = ("Partie prête. Jouer lance melonDS et son suivi en lecture seule ; l'équipe reste inconnue jusqu'à sa lecture."
+                game = self.catalog.games.get(run.game_id)
+                message = ("Partie prête. " + game.compatibility_summary
+                           if game is not None and game.status == "classic_only" else
+                           "Partie prête. Jouer lance melonDS et son suivi en lecture seule ; l'équipe reste inconnue jusqu'à sa lecture."
                            if snapshot.get("emulator_kind") == "melonds" else
                            "Partie prête. Jouer prépare la connexion Lua et lance DeSmuME ; le temps commence avec les messages du jeu.")
             else:
@@ -719,7 +732,12 @@ class MainWindow(QMainWindow):
     def setup_service(self):
         if self._setup_service is None:
             from app.services.auto_setup_service import AutoSetupService
-            self._setup_service = AutoSetupService(self.base_dir, self.config)
+            if self.library_service is None:
+                self._setup_service = AutoSetupService(self.base_dir, self.config)
+            else:
+                from app.services.library_setup_service import LibrarySetupService
+                self._setup_service = LibrarySetupService(self.base_dir, self.config, self.library_service,
+                    self.catalog, source_directories=self.library_source_directories)
         return self._setup_service
 
     def start_first_run(self) -> None:
@@ -773,6 +791,15 @@ class MainWindow(QMainWindow):
                 self._installation_watch.start()
         self._discovery_report = report
         self.settings_page.set_detection_state(report)
+        if self.library_service is not None:
+            counts = {game_id: 0 for game_id in self.catalog.games}
+            for run in self.runs.list_runs():
+                counts[run.game_id] = counts.get(run.game_id, 0) + 1
+            self.settings_page.library_panel.set_context(
+                melonds_available=any(item.get("emulator_kind") == "melonds" for item in report.get("emulators", [])),
+                run_counts=counts)
+            self.settings_page.library_panel.apply_verification(report.get("library_integrity", {}))
+            self.settings_page.library_panel.refresh()
         self.home_page.set_detection_state(report)
         if self.runs_page is not None:
             self.runs_page.set_detection_state(report)
@@ -795,7 +822,7 @@ class MainWindow(QMainWindow):
         self._installation_watch.stop()  # A failed operation needs a deliberate retry.
         self.statusBar().showMessage("Recherche à vérifier : " + message)
         report = {"game_states": {game.id: {"status": "needs_attention", "message": message}
-                                  for game in self.catalog.games.values() if game.status == "supported"},
+                                  for game in self.catalog.games.values() if game.supports_melonds},
                   "ready": False, "warnings": [message], "error": message}
         self._discovery_report = report
         self.settings_page.set_detection_state(report)
@@ -804,6 +831,10 @@ class MainWindow(QMainWindow):
             self.runs_page.set_detection_state(report)
 
     def open_installation(self, *, first_run=False) -> None:
+        if self.library_service is not None and self._discovery_report and self._discovery_report.get("library"):
+            self.navigate(4)
+            self.settings_page.library_panel.refresh()
+            return
         from app.ui.setup_dialog import InstallationDialog
         if self.installation_dialog is None:
             self.installation_dialog = InstallationDialog(self.setup_service(), self, first_run=first_run,
@@ -927,6 +958,10 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "DeSmuME s'est arrêté", "L'émulateur s'est arrêté après le lancement. Vérifiez votre installation et la ROM sélectionnée.")
 
     def closeEvent(self, event) -> None:
+        if self.settings_page.library_panel.is_busy:
+            self.statusBar().showMessage("Attendez la fin de l'opération de bibliothèque avant de fermer PCE.")
+            event.ignore()
+            return
         if (self.discovery_runner.is_busy or self.run_prepare.is_busy or self.run_files.is_busy or self._switch_target is not None or self.run_controller.activation_pending or (self.installation_dialog is not None and self.installation_dialog.is_busy)
                 or (self.game_mode_window is not None and (self.game_mode_window.launch_busy
                     or self.game_mode_window._pending_run_launch is not None or self.game_mode_window._pending_reference_save))):
@@ -934,6 +969,10 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         self._closing = True
+        if not self.settings_page.shutdown_library(0):
+            self._closing = False
+            event.ignore()
+            return
         self._installation_watch.stop()
         if self.installation_dialog is not None:
             self.installation_dialog.close()

@@ -183,7 +183,7 @@ class NewRunDialog(QDialog):
         form = QFormLayout()
         self.game_combo = QComboBox()
         for game in catalog.games.values():
-            if game.status == "supported":
+            if game.supports_melonds:
                 self.game_combo.addItem(game.name, game.id)
         self.profile_combo = QComboBox()
         from app.services.melonds_runtime import find_installation
@@ -258,6 +258,18 @@ class NewRunDialog(QDialog):
     def _game_changed(self):
         game_id = self.game_combo.currentData()
         self._loading = True
+        classic_only = self.catalog.games[game_id].status == "classic_only"
+        self.emulator_combo.model().item(self.emulator_combo.findData("desmume")).setEnabled(not classic_only)
+        self.emulator_combo.setItemText(self.emulator_combo.findData("melonds"),
+            "melonDS · partie classique, sans suivi Gen IV" if classic_only else "melonDS · suivi PCE en lecture seule")
+        for source in ("profile", "custom"):
+            self.source_combo.model().item(self.source_combo.findData(source)).setEnabled(not classic_only)
+        self.save_mode_combo.model().item(self.save_mode_combo.findData("import")).setEnabled(not classic_only)
+        self.save_mode_combo.setToolTip("Import de sauvegardes Gen IV non validé ; commencez une nouvelle aventure."
+                                       if classic_only else "")
+        if classic_only:
+            self.source_combo.setCurrentIndex(self.source_combo.findData("classic"))
+            self.emulator_combo.setCurrentIndex(self.emulator_combo.findData("melonds"))
         self.custom_challenge = None
         self.profile_combo.clear()
         self.profile_combo.addItem("Choisissez un modèle compatible", None)
@@ -345,7 +357,9 @@ class NewRunDialog(QDialog):
                                     "Sélectionnez un modèle pour copier ses règles dans cette partie. Les modèles se gèrent depuis Mes parties.")
             self.rules_label.setToolTip(challenge_summary(selected.challenge, self.catalog) if selected else "")
         else:
-            self.rules_label.setText("Classique : 0 règle active. Temps, équipe, zone et événements restent disponibles.")
+            game = self.catalog.games[self.game_combo.currentData()]
+            self.rules_label.setText(game.compatibility_summary if game.status == "classic_only" else
+                                    "Classique : 0 règle active. Temps, équipe, zone et événements restent disponibles.")
             self.rules_label.setToolTip("")
         if not self.name_edit.isModified():
             suffix = {"classic": "Classique", "profile": "Partie", "custom": "Challenge"}[source]
@@ -379,6 +393,10 @@ class NewRunDialog(QDialog):
 
     def selection(self):
         game_id = self.game_combo.currentData()
+        if self.catalog.games[game_id].status == "classic_only" and (
+                self.source_combo.currentData() != "classic" or self.emulator_combo.currentData() != "melonds" or
+                self.save_mode_combo.currentData() != "new"):
+            raise ValueError("Gen IV : choisissez une nouvelle aventure classique avec melonDS, sans import de sauvegarde.")
         launch = deepcopy(self.launch_profiles.get(game_id))
         if self.emulator_combo.currentData() == "melonds":
             if self.melonds_executable is None:
@@ -403,7 +421,13 @@ class NewRunDialog(QDialog):
                 "launch_profile": launch}
 
     def accept(self):
-        if not self.selection()["name"] or not self.selection()["game_id"]:
+        try:
+            values = self.selection()
+        except ValueError as exc:
+            self.error_label.setText(str(exc))
+            self.error_label.show()
+            return
+        if not values["name"] or not values["game_id"]:
             self.error_label.setText("Choisissez un jeu et donnez un nom à cette partie.")
             self.error_label.show()
             return
@@ -411,7 +435,6 @@ class NewRunDialog(QDialog):
             self.error_label.setText("Le chemin de sauvegarde est invalide.")
             self.error_label.show()
             return
-        values = self.selection()
         if values["source"] == "profile" and not values["profile_id"]:
             self.error_label.setText("Sélectionnez un modèle existant ou choisissez une autre configuration.")
             self.error_label.show()
@@ -846,6 +869,15 @@ class RunDetailsDialog(QDialog):
                 self.team_table.setItem(row, col, QTableWidgetItem(value))
         self.team_note.setText(f"{len(run.known_pokemon)} individu(s) connu(s) de cette partie ; le cimetière reste conservé hors de l'équipe."
                                if run.known_pokemon else "Équipe et identités : en attente d'observation du jeu.")
+        classic_only = game is not None and game.status == "classic_only"
+        for button in (self.capture_button, self.death_button):
+            button.setEnabled(not classic_only)
+        if classic_only:
+            self.badge_plus.setEnabled(False)
+            self.badge_minus.setEnabled(False)
+            self.correction_button.setEnabled(False)
+            self.progress_label.setText(game.compatibility_summary)
+            self.team_note.setText("Suivi d'équipe Gen IV non disponible ; aucun profil mémoire validé.")
         self.rules_view.setPlainText("Règles figées à la création de cette partie\n\n" + ("\n".join("• " + text for text in rules) or "Classique · 0 règle active")
                                     + f"\n\nModèle source : {run.profile_id or 'Aucun'}\nPreset d'origine : {run.preset or 'Non renseigné'}\nSeed : {run.seed}"
                                     + "\n\nModifier le modèle source ne modifie pas ces règles. Aucune règle ne modifie la RAM ou la sauvegarde Pokémon."

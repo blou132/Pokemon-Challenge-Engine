@@ -403,7 +403,11 @@ class GameModeWindow(QMainWindow):
             self.service.bridge_environment = {"PCE_BRIDGE_DIR": str(bridge.session_dir),
                                                "PCE_BRIDGE_SESSION": bridge.session_id}
             self._lua_pipeline = None
-            self._lua_message = "melonDS démarré. En attente d'une lecture effective de l'équipe…"
+            game = self.catalog.games.get(pending["game_id"])
+            self._lua_message = ("melonDS démarré. En attente de l'identité de la cartouche et des commandes. "
+                                 "Suivi d'équipe Gen IV non disponible."
+                                 if game is not None and game.status == "classic_only" else
+                                 "melonDS démarré. En attente d'une lecture effective de l'équipe…")
             self._launch_process(pending["game_id"])
             return
         self.page.set_session_phase("preparing", "Préparation de l'autoload Lua…", busy=True)
@@ -480,7 +484,10 @@ class GameModeWindow(QMainWindow):
         if matching:
             self.lua_timeout.stop()
             self._lua_message = ""
-            self.page.set_session_phase("connected", "Connexion melonDS confirmée par les données du jeu."
+            info = self.catalog.games.get(game)
+            self.page.set_session_phase("connected", "Cartouche Gen IV identifiée. Équipe et règles non suivies."
+                                        if info is not None and info.status == "classic_only" else
+                                        "Connexion melonDS confirmée par les données du jeu."
                                         if self.page.is_melonds else "Connexion Lua confirmée par le jeu.")
         elif state.status in {"stopped", "disconnected", "error"}:
             self.page.set_session_phase("error" if state.status == "error" else "disconnected",

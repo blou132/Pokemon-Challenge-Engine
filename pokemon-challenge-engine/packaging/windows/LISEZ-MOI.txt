@@ -3,7 +3,28 @@ V0.5.0 · en validation
 
 1. Extraire toute l'archive dans un dossier local.
 2. Double-cliquer sur Pokemon-Challenge-Engine.exe.
-3. Ajouter ses ROM personnelles dans Paramètres puis créer une aventure dans Mes parties.
+3. Ouvrir Paramètres > Bibliothèque de jeux puis créer une aventure dans Mes parties.
+
+BIBLIOTHEQUE PERMANENTE
+Les ROM personnelles sont importées une fois dans :
+%LOCALAPPDATA%\Pokemon-Challenge-Engine\library
+Cette bibliothèque est commune au développement, aux nouveaux EXE et aux mises
+à jour, même lorsque les parties utilisent le mode portable ou --data-dir.
+Les jeux déjà importés sont retrouvés automatiquement ; aucune réimportation
+n'est nécessaire. Ne jamais inclure ce dossier dans un nettoyage de build.
+Chaque nouvelle aventure vérifie la ROM maîtresse puis crée sa propre copie.
+Les transformations s'appliquent uniquement à une copie privée de la partie.
+La suppression d'une partie conserve les ROM maîtresses et les originaux.
+
+Préparation personnelle facultative avant le premier lancement :
+Pokemon-Challenge-Engine.exe --prepare-library "C:\chemin\roms sources"
+L'import est aussi proposé dans Paramètres > Bibliothèque de jeux. Au premier
+lancement, un dossier roms sources voisin de l'EXE est détecté si la bibliothèque
+est vide. Les sources sont lues sans modification. Aucun téléchargement de ROM.
+L'archive publique reste sans ROM et sans manifeste de bibliothèque personnelle.
+Gen IV : nouvelles aventures classiques melonDS uniquement ; pas de suivi
+d'équipe, challenge automatisé, Randomizer ni import d'ancienne sauvegarde validés.
+Compatibilité détaillée : application-source/docs/personal-library-2026-11-05.md.
 
 Python et PowerShell ne sont pas nécessaires pour lancer l'application.
 Conserver le dossier _internal près de l'EXE. Ne pas exécuter depuis l'archive ZIP.

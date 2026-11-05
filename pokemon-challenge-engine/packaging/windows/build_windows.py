@@ -24,10 +24,10 @@ def forbidden_distribution_path(path: Path) -> bool:
     return (
         bool(re.search(r"\.(?:nds|gba|gbc?|sav|dsv|dst|rom|srm|duc|ml[0-9]|ds[0-9]|state[0-9]*)(?:\.|$)", name))
         or path.suffix.lower() == ".bin"
-        or name in {"config.json", "run.json", "progress.json", "setup.local.json",
+        or name in {"config.json", "run.json", "progress.json", "setup.local.json", "library.json",
                     "melonds.toml", "melonds.ini", "desmume.ini", ".env"}
         or name.startswith(("bios7", "bios9", "firmware.bin"))
-        or any(part.lower() in {"user-data", "runs", "saves", "savestates", "profiles", "backups"}
+        or any(part.lower() in {"user-data", "runs", "saves", "savestates", "profiles", "backups", "library", "roms sources"}
                for part in path.parts)
     )
 

@@ -21,6 +21,7 @@ from app.services.emulator_settings_service import IniDocument
 from app.services.emulator_window_manager import EmulatorWindowManager
 from app.services.lua_runtime_installer import LuaRuntimeInstaller
 from app.services.rom_preparation_service import identity
+from app.services.library_setup_service import verify_library_source
 from app.services.rom_transformation_service import (RomTransformationService, transformation_options,
                                                        verified_transformation_report)
 
@@ -183,6 +184,7 @@ class RunIsolationService:
             raise ValueError("Une ROM Randomizer exige une nouvelle aventure sans sauvegarde ni progression importée.")
         options = deepcopy(run.launch_profile or {})
         source_rom = _regular(local_path(options.get("rom_path", "")))
+        library_hash = verify_library_source(run, source_rom)
         source_exe = _regular(local_path(options.get("emulator_path", "")))
         source_ini = _regular(local_path(options.get("ini_path") or source_exe.parent / "desmume.ini"))
         found = self._identity(source_rom, run)
@@ -211,13 +213,21 @@ class RunIsolationService:
             transformation = None
             if randomizer is None:
                 rom_hash = _copy(source_rom, staging / expected["rom_path"].relative_to(root))
+                if library_hash is not None and rom_hash != library_hash:
+                    raise ValueError("La ROM maîtresse a changé pendant la copie ; préparation refusée.")
                 if run.rom_fingerprint and rom_hash != run.rom_fingerprint:
                     raise ValueError("L'empreinte ROM a changé ; la partie existante est conservée.")
             else:
                 if run.rom_fingerprint and file_hash(source_rom) != run.rom_fingerprint:
                     raise ValueError("L'empreinte ROM source a changé ; transformation refusée.")
+                # The transformation tool receives only a run-owned input copy.
+                private_input = staging / "source-input.nds"
+                copied_hash = _copy(source_rom, private_input)
+                if library_hash is not None and copied_hash != library_hash:
+                    raise ValueError("La ROM maîtresse a changé pendant la copie ; transformation refusée.")
                 result = RomTransformationService.from_local_config(self.manager.root.parent).transform(
-                    source_rom, staging / "transformation", game_id=run.game_id, seed=run.seed, options=randomizer)
+                    private_input, staging / "transformation", game_id=run.game_id, seed=run.seed, options=randomizer)
+                private_input.unlink()
                 rom_hash = _copy(result.rom_path, staging / expected["rom_path"].relative_to(root))
                 if rom_hash != result.manifest["output_sha256"]:
                     raise ValueError("La ROM dérivée a changé avant son association à cette partie.")

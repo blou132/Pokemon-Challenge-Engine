@@ -16,6 +16,14 @@ natives melonDS depuis PCE (vitesse, dispositions, save states et accès aux
 réglages). Le [rapport de livraison](docs/v0.5-delivery-20261102.md) distingue les
 essais en jeu des tests de logiciel et précise les limites restantes.
 
+L'ajout du 5 novembre apporte **Paramètres → Bibliothèque de jeux** : neuf ROM
+personnelles françaises inventoriées et copiées dans un stockage privé permanent,
+indépendant du ZIP et des aventures. Les cinq jeux Gen IV sont proposés en partie
+classique avec melonDS ; leurs challenges et leur suivi mémoire restent indisponibles.
+Le [rapport de bibliothèque personnelle](docs/personal-library-2026-11-05.md)
+décrit l'import local, les protections des maîtresses, les commandes de préparation
+et l'état des validations. Le nouveau paquet Windows reste à construire et vérifier.
+
 ![Accueil de l'application — capture V0.1](docs/screenshots/accueil-1920.png)
 
 [Voir la roue Monotype](docs/screenshots/monotype.png) · [Résultats des contrôles](docs/verification.md)

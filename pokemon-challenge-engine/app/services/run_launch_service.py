@@ -21,6 +21,14 @@ class RunLaunchService:
         values["challenge_profile_id"] = None
         if save_path is not None:
             values["save_path"] = save_path
+        library = getattr(self.setup, "library", None)
+        if library is not None:
+            from app.services.library_setup_service import source_reference
+            reference = source_reference(library, game_id)
+            if reference is not None:
+                values["rom_path"] = reference["path"]
+                values["_library_source"] = reference
+                return values
         record = self.setup.store.load()["games"].get(game_id)
         if record and record["prepared_path"] == values["rom_path"]:
             values["_source"] = {key: record.get(key) for key in ("source_path", "archive_member")}
@@ -75,6 +83,7 @@ class RunLaunchService:
             return self._prepare_melonds(run)
         snapshot = deepcopy(run.launch_profile or {})
         source = snapshot.pop("_source", None)
+        library_source = snapshot.pop("_library_source", None)
         pending_isolation = snapshot.pop("_isolation_pending", False)
         # An owned copy must never be rebound to its original ZIP/cache by the
         # legacy source-recovery path. Missing copies require explicit repair.
@@ -136,6 +145,8 @@ class RunLaunchService:
                 current.launch_profile["_isolation_pending"] = True
                 if source:
                     current.launch_profile["_source"] = deepcopy(source)
+                if library_source:
+                    current.launch_profile["_library_source"] = deepcopy(library_source)
             run = manager.update(run.run_id, associate)
             run = RunIsolationService(manager).isolate(run, import_save=run.save_path)
             return self.prepare(run)
@@ -147,6 +158,7 @@ class RunLaunchService:
         from app.services.run_isolation_service import RunIsolationService
         isolation = RunIsolationService(RunManager(self.base_dir / "runs"))
         isolation.validate(run)
+        snapshot = {key: value for key, value in snapshot.items() if not key.startswith("_")}
         values = validate_config({"launch_profiles": {run.game_id: snapshot}}, self.config,
                                  self.base_dir)["launch_profiles"][run.game_id]
         values["challenge_profile_id"] = None
@@ -173,6 +185,9 @@ class RunLaunchService:
         if (run.launch_profile or {}).get("_isolation_pending"):
             values = deepcopy(run.launch_profile)
             source = values.get("_source")
+            if values.get("_library_source") is not None:
+                from app.services.library_setup_service import verify_library_source
+                verify_library_source(run, Path(values.get("rom_path", "")))
             if source and source.get("source_path"):
                 prepared = RomPreparationService(self.setup.cache_root).prepare(source["source_path"],
                     member=source.get("archive_member"), expected_game=run.game_id)

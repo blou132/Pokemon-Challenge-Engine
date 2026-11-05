@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from app.core.profile_manager import _invalid_constant, _strict_pairs
 from app.models.challenge import Challenge
+from app.core.game_detector import GEN4_GAME_IDS, GEN5_GAME_IDS
 from app.models.run import Run, history_event, utc_now, validate_run_id
 from app.services.discovery_safety import local_path
 
@@ -107,15 +108,23 @@ class RunManager:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
 
-    def create(self, name: str, game_id: str, generation: int = 5, *, challenge: Challenge | dict | None = None,
+    def create(self, name: str, game_id: str, generation: int | None = None, *, challenge: Challenge | dict | None = None,
                profile_id: str | None = None, preset: str | None = None, seed: int | None = None,
                game_code: str | None = None, region: str | None = None, revision: int | None = None,
                rom_fingerprint: str | None = None, save_path: str | None = None,
                launch_profile: dict | None = None) -> Run:
+        expected_generation = 4 if game_id in GEN4_GAME_IDS else 5 if game_id in GEN5_GAME_IDS else None
+        if generation is None:
+            generation = expected_generation or 5
+        if expected_generation is not None and generation != expected_generation:
+            raise ValueError("La génération ne correspond pas au jeu identifié.")
         if challenge is None:
             challenge = Challenge(game_id, "normal", [], {}, {"enforcement": "soft", "rule_parameters": {}},
                                   None, seed if seed is not None else 0)
         snapshot = challenge.to_dict() if isinstance(challenge, Challenge) else Challenge.from_dict(challenge).to_dict()
+        if game_id in GEN4_GAME_IDS and (snapshot["mode"] != "normal" or snapshot["active_rules"] or
+                snapshot["monotype"] is not None or "rom_transformation" in snapshot["settings"]):
+            raise ValueError("Gen IV : seule une partie classique sans challenge ni transformation est disponible.")
         if snapshot["game_id"] != game_id or seed is not None and snapshot["seed"] != seed:
             raise ValueError("Le profil et la partie doivent utiliser le même jeu et la même seed.")
         run = Run(str(uuid4()), name.strip() if isinstance(name, str) else name, game_id, generation, snapshot,

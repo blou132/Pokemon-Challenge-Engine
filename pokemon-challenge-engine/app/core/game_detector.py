@@ -5,7 +5,12 @@ from pathlib import Path
 # Les trois premiers caractères du code jeu sont indépendants de la région.
 # Référence des codes : https://github.com/FlagBrew/PKSM/wiki/FAQs
 # Structure de l'en-tête : https://github.com/WerWolv/ImHex-Patterns/blob/master/patterns/nds.hexpat
-GAME_CODE_PREFIXES = {"IRB": "black", "IRA": "white", "IRE": "black2", "IRD": "white2"}
+GEN5_CODE_PREFIXES = {"IRB": "black", "IRA": "white", "IRE": "black2", "IRD": "white2"}
+GEN4_CODE_PREFIXES = {"ADA": "diamond", "APA": "pearl", "CPU": "platinum",
+                      "IPK": "heartgold", "IPG": "soulsilver"}
+GAME_CODE_PREFIXES = GEN5_CODE_PREFIXES | GEN4_CODE_PREFIXES
+GEN4_GAME_IDS = frozenset(GEN4_CODE_PREFIXES.values())
+GEN5_GAME_IDS = frozenset(GEN5_CODE_PREFIXES.values())
 
 
 class GameDetector:

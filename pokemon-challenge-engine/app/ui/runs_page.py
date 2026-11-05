@@ -117,7 +117,7 @@ class RunsPage(QWidget):
         installation_box.addLayout(installation_row)
         self.installation_games = {}
         games_grid = QGridLayout()
-        for index, game in enumerate(game for game in catalog.games.values() if game.status == "supported"):
+        for index, game in enumerate(game for game in catalog.games.values() if game.supports_melonds):
             status = label(f"{game.name} · À vérifier", "muted")
             self.installation_games[game.id] = status
             games_grid.addWidget(status, index // 2, index % 2)

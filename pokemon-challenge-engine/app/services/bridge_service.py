@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from app.bridge.protocol import GAME_IDS, MAX_MESSAGE_BYTES, BridgeMessage, ProtocolError, parse_message
 from app.bridge.state import BridgeState
+from app.core.game_detector import GEN4_GAME_IDS
 
 _SNAPSHOT_NAME = re.compile(r"snapshot-([0-9]{1,64})\.json\Z")
 _OBSERVATION_NAME = re.compile(r"observation-([0-9]{10})\.json\Z")
@@ -50,7 +51,9 @@ class BridgeService:
 
     def start(self, game_id: str, rom_code: str | None = None, rom_revision: int | None = None) -> BridgeState:
         if not isinstance(game_id, str) or game_id not in GAME_IDS:
-            raise ValueError("La passerelle accepte Pokémon Noir, Blanc, Noir 2 et Blanc 2.")
+            raise ValueError("La passerelle accepte les neuf jeux Pokémon DS reconnus.")
+        if game_id in GEN4_GAME_IDS and (rom_code is None or rom_revision is None):
+            raise ValueError("Gen IV : identifiez la ROM et sa révision avant de démarrer la session melonDS.")
         if rom_code is not None and (not isinstance(rom_code, str) or re.fullmatch(r"[A-Z0-9]{4}", rom_code) is None):
             raise ValueError("Le code de ROM attendu est invalide.")
         if rom_revision is not None and (type(rom_revision) is not int or not 0 <= rom_revision <= 255):

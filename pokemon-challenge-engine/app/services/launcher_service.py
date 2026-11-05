@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 
-from app.core.game_detector import GAME_CODE_PREFIXES
+from app.core.game_detector import GEN5_GAME_IDS
 from app.services.config_service import AppConfig
 from app.services.external_process import child_environment, external_dll_search
 
@@ -21,8 +21,8 @@ class LauncherService:
     def validate(self, game_id: str) -> list[str]:
         """Contrôle uniquement les métadonnées des chemins, jamais le contenu des fichiers."""
         errors: list[str] = []
-        if game_id not in GAME_CODE_PREFIXES.values():
-            return ["Ce jeu n'est pas pris en charge pour le lancement."]
+        if game_id not in GEN5_GAME_IDS:
+            return ["Ce jeu n'est pas pris en charge par l'intégration DeSmuME ; utilisez melonDS pour la génération IV."]
         try:
             config = AppConfig.from_dict(self.config.to_dict())
         except (AttributeError, TypeError, ValueError):

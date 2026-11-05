@@ -60,9 +60,11 @@ def test_component_path_escape_is_rejected(builder, component, name):
 
 @pytest.mark.parametrize("name", ["game.nds", "GAME.NDS", "save.dsv", "firmware.bin", "state.dst",
                                  "state.ml1", "game.sav.bak", "backup.NDS.old", "state.ds0",
-                                 "config.json", "run.json", "melonDS.toml"])
+                                 "config.json", "run.json", "melonDS.toml", "library.json",
+                                 "library/private-inventory.json", "roms sources/source.zip"])
 def test_component_rom_save_and_firmware_are_rejected(builder, component, name):
     root, data = component
+    (root / name).parent.mkdir(parents=True, exist_ok=True)
     (root / name).write_bytes(b"synthetic restricted file")
     data["files"][name] = hashlib.sha256((root / name).read_bytes()).hexdigest()
     save(root, data)

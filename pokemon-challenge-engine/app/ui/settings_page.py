@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from app.models.game import Game
 from app.services.config_service import AppConfig, ConfigService
 from app.services.launcher_service import LauncherService
+from app.ui.rom_library_panel import RomLibraryPanel
 from app.ui.widgets.common import INSTALLATION_LABELS
 
 
@@ -21,14 +22,17 @@ class SettingsPage(QWidget):
     config_changed = Signal(object)
     installation_requested = Signal()
     detection_requested = Signal()
+    library_changed = Signal()
 
     def __init__(self, config_service: ConfigService, config: AppConfig, games: Iterable[Game],
-                 parent: QWidget | None = None) -> None:
+                 parent: QWidget | None = None, *, library_service=None) -> None:
         super().__init__(parent)
         self.setObjectName("page")
         self.config_service = config_service
         self.config = config
-        self.games = tuple(game for game in games if game.status == "supported")
+        self.library_service = library_service
+        all_games = tuple(games)
+        self.games = tuple(game for game in all_games if game.status == "supported")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         scroll = QScrollArea()
@@ -50,6 +54,10 @@ class SettingsPage(QWidget):
         subtitle.setObjectName("subtitle")
         content.addWidget(subtitle)
 
+        self.library_panel = RomLibraryPanel(all_games, library_service, self)
+        self.library_panel.library_changed.connect(self.library_changed)
+        content.addWidget(self.library_panel)
+
         storage_card, storage_layout = self._card("Données et anciennes parties")
         content.addWidget(storage_card)
         self.data_directory_label = QLabel(str(config_service.path.parent))
@@ -65,8 +73,12 @@ class SettingsPage(QWidget):
         self.installation_state.setWordWrap(True)
         installation_layout.addWidget(self.installation_state)
         self.installation_summary: dict[str, QLabel] = {}
-        for key, label in (("retrobat", "RetroBat"), ("emulator", "DeSmuME"),
-                           ("lua", "Support Lua"), ("games", "Jeux"), ("saves", "Sauvegardes")):
+        installation_labels = (
+            (("retrobat", "Bibliothèque privée"), ("emulator", "melonDS"), ("lua", "Passerelle native"))
+            if library_service is not None else
+            (("retrobat", "RetroBat"), ("emulator", "DeSmuME"), ("lua", "Support Lua"))
+        )
+        for key, label in (*installation_labels, ("games", "Jeux"), ("saves", "Sauvegardes")):
             widget = QLabel(f"{label} · Recherche en cours…")
             widget.setWordWrap(True)
             self.installation_summary[key] = widget
@@ -80,7 +92,9 @@ class SettingsPage(QWidget):
 
         self.installation_button = QPushButton("Installation && diagnostic")
         self.installation_button.setObjectName("primary")
-        self.installation_button.setToolTip("Détecter les jeux locaux, préparer les archives et vérifier le support Lua.")
+        self.installation_button.setToolTip(
+            "Vérifier la bibliothèque privée et le composant melonDS local." if library_service is not None else
+            "Détecter les jeux locaux, préparer les archives et vérifier le support Lua.")
         self.installation_button.clicked.connect(self.installation_requested)
         installation_layout.addWidget(self.installation_button)
 
@@ -146,6 +160,9 @@ class SettingsPage(QWidget):
 
     def set_detection_state(self, report: dict) -> None:
         """Affiche le résultat partagé sans relancer la recherche ni modifier les champs."""
+        if report.get("library"):
+            self._set_library_detection_state(report)
+            return
         states = report.get("game_states", {})
         ready = any(state.get("status") == "ready" for state in states.values())
         self.installation_state.setText("Installation PCE · Prête" if ready else
@@ -173,7 +190,27 @@ class SettingsPage(QWidget):
             status = state.get("status", "not_found")
             message = state.get("message", "")
             if status == "not_found":
-                message = f"Veuillez ajouter {game.name} à votre bibliothèque RetroBat."
+                message = f"Ajoutez {game.name} à votre bibliothèque de jeux ou choisissez son fichier local."
+            self.game_states[game.id].setText(f"{game.name} · {INSTALLATION_LABELS.get(status, 'À vérifier')}" +
+                                             (f"\n{message}" if message and status != "ready" else ""))
+
+    def _set_library_detection_state(self, report: dict) -> None:
+        states = report.get("game_states", {})
+        self.installation_state.setText("Installation PCE · Prête" if report.get("ready") else
+                                       "Consultez la bibliothèque de jeux et les informations ci-dessous.")
+        self.installation_summary["retrobat"].setText("Bibliothèque privée · Permanente et disponible hors ligne")
+        self.installation_summary["emulator"].setText("melonDS · " + (
+            "Disponible" if report.get("emulators") else "Composant vérifié introuvable"))
+        self.installation_summary["lua"].setText("Suivi · Passerelle native Gen V ; Gen IV disponible en partie classique")
+        present = {item.get("game_id") for item in report.get("games", [])}
+        self.installation_summary["games"].setText(f"Jeux · {len(present)} / 9 présents dans la bibliothèque")
+        self.installation_summary["saves"].setText("Sauvegardes · Dossiers indépendants pour chaque aventure")
+        self.installation_button.setText("Installation && diagnostic")
+        self.installation_button.setToolTip("Vérifier la bibliothèque privée et le composant melonDS local.")
+        for game in self.games:
+            state = states.get(game.id, {})
+            status = state.get("status", "not_found")
+            message = state.get("message", "")
             self.game_states[game.id].setText(f"{game.name} · {INSTALLATION_LABELS.get(status, 'À vérifier')}" +
                                              (f"\n{message}" if message and status != "ready" else ""))
 
@@ -188,6 +225,15 @@ class SettingsPage(QWidget):
         label.setStyleSheet("font-size: 17px; font-weight: 600;")
         layout.addWidget(label)
         return card, layout
+
+    def shutdown_library(self, timeout_ms: int = 5000) -> bool:
+        return self.library_panel.shutdown(timeout_ms)
+
+    def closeEvent(self, event) -> None:
+        if not self.shutdown_library():
+            event.ignore()
+            return
+        super().closeEvent(event)
 
     def _path_row(self, layout: QVBoxLayout, title: str, value: str, tooltip: str, kind: str) -> QLineEdit:
         label = QLabel(title)

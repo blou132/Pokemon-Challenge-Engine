@@ -5,7 +5,7 @@ import json
 import re
 from typing import Any
 
-from app.core.game_detector import GAME_CODE_PREFIXES
+from app.core.game_detector import GAME_CODE_PREFIXES, GEN4_GAME_IDS
 
 PROTOCOL_VERSION = 2
 SCRIPT_VERSION = "0.5.0"
@@ -177,6 +177,11 @@ def parse_message(payload: bytes) -> BridgeMessage:
     if len(set(capabilities)) != len(capabilities):
         raise ProtocolError("Une capacité est présente plusieurs fois.")
     capabilities = tuple(capabilities)
+    if data["game_id"] in GEN4_GAME_IDS and (
+            data["emulator"] != "melonds" or version != 2 or
+            set(capabilities) - {"heartbeat", "game_identity"} or
+            any(data.get(key) is not None for key in ("memory_profile", "party_size", "party", "observation"))):
+        raise ProtocolError("Gen IV : seule l'identité melonDS est disponible ; aucun profil mémoire ni suivi d'équipe n'est validé.")
     if version == 1 and "tracking" in capabilities:
         raise ProtocolError("Le suivi nécessite le protocole v2.")
     if "party_identity" in capabilities and (version != 2 or data["script_version"] not in IDENTITY_SCRIPT_VERSIONS):

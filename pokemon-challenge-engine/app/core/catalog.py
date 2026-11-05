@@ -103,14 +103,18 @@ class Catalog:
             _integer(row["type_count"], 1, 30, "Nombre de types")
             if any(type(row[key]) is not bool for key in ("supports_monotype", "supports_desmume")):
                 raise ValueError(f"Jeu {row['id']} : les compatibilités doivent être des booléens.")
-            if row["status"] not in ("supported", "planned"):
+            if row["status"] not in ("supported", "classic_only", "planned"):
                 raise ValueError(f"Jeu {row['id']} : statut inconnu.")
+            if row["status"] == "classic_only" and (row["generation"] != 4 or
+                    row["platform"] != "Nintendo DS" or row["supports_monotype"] or row["supports_desmume"]):
+                raise ValueError(f"Jeu {row['id']} : le mode classique Gen IV exige melonDS sans transformation.")
             if "game_code" in row:
                 if not isinstance(row["game_code"], str) or not re.fullmatch(r"[A-Z0-9]{4}", row["game_code"]):
                     raise ValueError(f"Jeu {row['id']} : code de jeu invalide.")
                 if row["region"] not in ("FR", "EN", "DE", "IT", "ES", "JP", "KO"):
                     raise ValueError(f"Jeu {row['id']} : région inconnue.")
-                _integer(row["revision"], 0, 255, "Révision ROM")
+                if not (row["status"] == "classic_only" and row["revision"] is None):
+                    _integer(row["revision"], 0, 255, "Révision ROM")
             if row["id"] in games:
                 raise ValueError(f"Jeu dupliqué : {row['id']}.")
             games[row["id"]] = Game(**row)

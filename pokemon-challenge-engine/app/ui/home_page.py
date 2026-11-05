@@ -38,11 +38,13 @@ class HomePage(QWidget):
         layout.addWidget(label("Choisissez votre terrain de jeu", "sectionTitle"))
         games_row = QGridLayout()
         games_row.setSpacing(18)
-        for index, game in enumerate(g for g in catalog.games.values() if g.status == "supported"):
+        for index, game in enumerate(g for g in catalog.games.values() if g.supports_melonds):
             frame, game_box = card()
             game_box.addWidget(label(f"0{index + 1}   /   NINTENDO DS", "eyebrow"))
             game_box.addWidget(label(game.name, "sectionTitle"))
             game_box.addWidget(label(f"Génération {game.generation}  ·  {game.type_count} types  ·  Prêt à configurer", "muted"))
+            if game.status == "classic_only":
+                game_box.addWidget(label(game.compatibility_summary, "muted"))
             status = label("Installation · À vérifier", "muted")
             self.game_states[game.id] = status
             game_box.addWidget(status)

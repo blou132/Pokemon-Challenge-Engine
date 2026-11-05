@@ -47,7 +47,7 @@ class SaveManagerPage(QWidget):
         layout = page_layout(self, "Sauvegardes", "Les fichiers sont choisis pour chaque jeu. Les backups automatiques sont désactivés par défaut.")
         self.game_combo = QComboBox()
         for game in games:
-            if game.status == "supported":
+            if game.supports_melonds:
                 self.game_combo.addItem(game.name, game.id)
         self.game_combo.currentIndexChanged.connect(self._game_changed)
         layout.addWidget(self.game_combo)

@@ -76,7 +76,11 @@ def test_four_gen5_rom_fields_keep_independent_paths(settings):
     assert page.rom_edits["white2"].accessibleName() == "Pokémon Blanc 2 — ROM .nds"
     with patch("app.ui.settings_page.QMessageBox.information"):
         page.save_button.click()
-    assert service.load().rom_paths == expected
+    loaded = service.load().rom_paths
+    assert {game_id: loaded[game_id] for game_id in expected} == expected
+    assert {game_id: path for game_id, path in loaded.items() if game_id not in expected} == {
+        game_id: "" for game_id in ("diamond", "pearl", "platinum", "heartgold", "soulsilver")
+    }
 
 
 def test_save_error_is_shown_without_signal(settings) -> None:

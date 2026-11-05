@@ -25,7 +25,7 @@ _FRAME_FIELDS = frozenset({
     "console_type", "rom_code", "rom_revision", "ram_code", "ram_revision",
     "memory_profile", "party_count", "party_hex", "map_id", "status",
 })
-_REGIONS = {"F": "FR", "O": "EN", "D": "DE", "I": "IT", "J": "JP", "K": "KO", "S": "ES"}
+_REGIONS = {"F": "FR", "O": "EN", "E": "EN", "P": "EN", "D": "DE", "I": "IT", "J": "JP", "K": "KO", "S": "ES"}
 
 
 def _decrypt(raw: bytes, seed: int) -> bytes:
